@@ -1,4 +1,4 @@
-/// A sealed class representing the various errors that can occur within the storage service.
+/// A sealed class representing the various errors that can occur within the vault storage.
 ///
 /// Using a sealed class allows for exhaustive pattern matching on error types,
 /// ensuring that all potential failure cases are handled explicitly.
@@ -14,7 +14,7 @@ sealed class StorageError {
   final Object? originalException;
 }
 
-/// An error that occurs during the initialization of the storage service.
+/// An error that occurs during the initialization of the vault storage.
 ///
 /// This could happen if there are issues with setting up Hive, accessing secure
 /// storage, or generating encryption keys.

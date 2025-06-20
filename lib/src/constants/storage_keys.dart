@@ -1,6 +1,6 @@
 /// A utility class that holds constant values for storage keys.
 ///
-/// This class centralizes the keys used throughout the storage service to prevent typos
+/// This class centralizes the keys used throughout the vault storage to prevent typos
 /// and provide a single source of truth. It includes keys for secure storage and box names.
 class StorageKeys {
   StorageKeys._();

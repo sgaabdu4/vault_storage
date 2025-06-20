@@ -8,7 +8,7 @@ part of 'vault_storage_providers.dart';
 
 /// A Riverpod provider that creates and initializes an instance of [IVaultStorage].
 ///
-/// This provider is responsible for instantiating the [StorageServiceImpl],
+/// This provider is responsible for instantiating the [VaultStorageImpl],
 /// calling its `init` method, and making the service available to the rest of
 /// the application. It is marked with `keepAlive: true` to ensure the storage
 /// service instance persists throughout the app's lifecycle.
@@ -24,7 +24,7 @@ const vaultStorageProvider = VaultStorageProvider._();
 
 /// A Riverpod provider that creates and initializes an instance of [IVaultStorage].
 ///
-/// This provider is responsible for instantiating the [StorageServiceImpl],
+/// This provider is responsible for instantiating the [VaultStorageImpl],
 /// calling its `init` method, and making the service available to the rest of
 /// the application. It is marked with `keepAlive: true` to ensure the storage
 /// service instance persists throughout the app's lifecycle.
@@ -40,7 +40,7 @@ final class VaultStorageProvider extends $FunctionalProvider<
     with $FutureModifier<IVaultStorage>, $FutureProvider<IVaultStorage> {
   /// A Riverpod provider that creates and initializes an instance of [IVaultStorage].
   ///
-  /// This provider is responsible for instantiating the [StorageServiceImpl],
+  /// This provider is responsible for instantiating the [VaultStorageImpl],
   /// calling its `init` method, and making the service available to the rest of
   /// the application. It is marked with `keepAlive: true` to ensure the storage
   /// service instance persists throughout the app's lifecycle.
@@ -77,7 +77,7 @@ final class VaultStorageProvider extends $FunctionalProvider<
   }
 }
 
-String _$vaultStorageHash() => r'988ed46f40390d31280be2e31ce2c8028190a9eb';
+String _$vaultStorageHash() => r'ecc9d0bc8af478921647ae12dcc183705f6572ac';
 
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

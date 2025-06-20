@@ -1,4 +1,4 @@
-# Storage Service
+# Vault Storage
 
 A secure and performant local storage solution for Flutter applications, built with Hive, Flutter Secure Storage, and Riverpod. It provides both key-value storage and encrypted file storage, with intensive cryptographic operations offloaded to background isolates to ensure a smooth UI.
 
@@ -34,7 +34,7 @@ Future<void> main() async {
   // Create a ProviderContainer to access the provider.
   final container = ProviderContainer();
 
-  // Initialize the storage service.
+  // Initialize the vault storage.
   await container.read(storageServiceProvider.future);
 
   runApp(

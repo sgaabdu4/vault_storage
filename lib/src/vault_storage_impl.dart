@@ -53,7 +53,7 @@ Future<Uint8List> _decryptInIsolate(DecryptRequest request) async {
 /// The service must be initialized via the [init] method before use. It provides
 /// methods for CRUD operations on two types of Hive boxes (`secure` and `normal`)
 /// and for saving, retrieving, and deleting encrypted files.
-class StorageServiceImpl implements IVaultStorage {
+class VaultStorageImpl implements IVaultStorage {
   /// A client for interacting with the platform's secure storage (e.g., Keychain, Keystore).
   final FlutterSecureStorage _secureStorage;
 
@@ -68,19 +68,19 @@ class StorageServiceImpl implements IVaultStorage {
   /// A flag indicating whether the service has been successfully initialized.
   /// This is marked as `@visibleForTesting` to allow for easier testing.
   @visibleForTesting
-  bool isStorageServiceReady = false;
+  bool isVaultStorageReady = false;
 
-  /// Creates a new instance of [StorageServiceImpl].
+  /// Creates a new instance of [VaultStorageImpl].
   ///
   /// If [secureStorage] or [uuid] are not provided, it defaults to their
   /// standard implementations. This allows for dependency injection during testing.
-  StorageServiceImpl({FlutterSecureStorage? secureStorage, Uuid? uuid})
+  VaultStorageImpl({FlutterSecureStorage? secureStorage, Uuid? uuid})
       : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _uuid = uuid ?? const Uuid();
 
   @override
   Future<Either<StorageError, Unit>> init() async {
-    if (isStorageServiceReady) return right(unit);
+    if (isVaultStorageReady) return right(unit);
 
     final task = TaskEither<StorageError, Unit>.tryCatch(
       () async {
@@ -92,7 +92,7 @@ class StorageServiceImpl implements IVaultStorage {
 
     final result = await task.run();
     return result.fold((error) => left(error), (_) {
-      isStorageServiceReady = true;
+      isVaultStorageReady = true;
       return right(unit);
     });
   }
@@ -243,10 +243,10 @@ class StorageServiceImpl implements IVaultStorage {
   /// This method should be called when the service is no longer needed, such as
   /// when the application is shutting down, to ensure all resources are released.
   Future<void> dispose() async {
-    if (isStorageServiceReady) {
+    if (isVaultStorageReady) {
       await Hive.close();
       storageBoxes.clear();
-      isStorageServiceReady = false;
+      isVaultStorageReady = false;
     }
   }
 
@@ -267,11 +267,11 @@ class StorageServiceImpl implements IVaultStorage {
 
   /// Executes a [TaskEither] and performs pre-execution checks.
   ///
-  /// This helper ensures that the storage service is initialized before any
+  /// This helper ensures that the vault storage is initialized before any
   /// operation is attempted. If not, it returns a `StorageInitializationError`.
   /// It also handles JSON serialization errors specifically.
   Future<Either<StorageError, T>> _executeTask<T>(TaskEither<StorageError, T> task) {
-    if (!isStorageServiceReady) {
+    if (!isVaultStorageReady) {
       return Future.value(left(const StorageInitializationError('Storage not initialized')));
     }
     // Enhance error handling to specifically catch serialization issues.

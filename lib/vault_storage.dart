@@ -1,7 +1,7 @@
-/// A barrel file that exports the public-facing API of the storage service.
+/// A barrel file that exports the public-facing API of the vault storage.
 ///
 /// This file is the single entry point for other parts of the application to
-/// access the storage service's features. It exports the essential interfaces,
+/// access the vault storage's features. It exports the essential interfaces,
 /// models, enums, errors, and providers, simplifying imports and decoupling
 /// feature modules from the internal implementation details of the service.
 library vault_storage;

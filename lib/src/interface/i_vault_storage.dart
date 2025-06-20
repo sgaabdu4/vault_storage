@@ -4,14 +4,14 @@ import 'package:fpdart/fpdart.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 
-/// Defines the contract for a comprehensive storage service.
+/// Defines the contract for a comprehensive vault storage.
 ///
 /// This interface specifies the capabilities for both key-value storage and secure
 /// file storage. It is designed to be implemented by a service that can handle
 /// sensitive and non-sensitive data, with clear separation between the two.
 /// The use of `fpdart`'s `Either` type ensures robust, type-safe error handling.
 abstract class IVaultStorage {
-  /// Initializes the storage service.
+  /// Initializes the vault storage.
   ///
   /// This must be called before any other methods are used. It sets up the necessary
   /// resources, such as opening Hive boxes and preparing encryption keys.

@@ -15,7 +15,7 @@ import 'mocks.mocks.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late StorageServiceImpl storageService;
+  late VaultStorageImpl storageService;
   late MockFlutterSecureStorage mockSecureStorage;
   late MockUuid mockUuid;
   late MockBox<String> mockSecureBox;
@@ -27,7 +27,7 @@ void main() {
     mockSecureBox = MockBox<String>();
     mockNormalBox = MockBox<String>();
 
-    storageService = StorageServiceImpl(
+    storageService = VaultStorageImpl(
       secureStorage: mockSecureStorage,
       uuid: mockUuid,
     );
@@ -36,7 +36,7 @@ void main() {
       BoxType.secure: mockSecureBox,
       BoxType.normal: mockNormalBox,
     });
-    storageService.isStorageServiceReady = true;
+    storageService.isVaultStorageReady = true;
 
     const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler((MethodCall methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
@@ -50,7 +50,7 @@ void main() {
     const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler(null);
   });
 
-  group('StorageServiceImpl Tests', () {
+  group('VaultStorageImpl Tests', () {
     group('Key-Value Storage', () {
       group('get', () {
         test('should return value when key exists', () async {
@@ -324,7 +324,7 @@ void main() {
 
     group('Service State', () {
       test('any operation should return StorageInitializationError if not initialized', () async {
-        storageService.isStorageServiceReady = false;
+        storageService.isVaultStorageReady = false;
 
         final getResult = await storageService.get<dynamic>(BoxType.normal, 'key');
         expect(getResult.fold((l) => l, (r) => r), isA<StorageInitializationError>());
@@ -338,7 +338,7 @@ void main() {
       test('dispose should clear boxes and set ready flag to false', () async {
         await storageService.dispose();
         expect(storageService.storageBoxes.isEmpty, isTrue);
-        expect(storageService.isStorageServiceReady, isFalse);
+        expect(storageService.isVaultStorageReady, isFalse);
       });
 
       test('_getBox being called for a non-existent box should result in an error', () async {
@@ -350,15 +350,15 @@ void main() {
     });
 
     group('Initialization', () {
-      test('init should succeed and set isStorageServiceReady to true', () async {
-        storageService.isStorageServiceReady = false;
+      test('init should succeed and set isVaultStorageReady to true', () async {
+        storageService.isVaultStorageReady = false;
         when(mockSecureStorage.read(key: anyNamed('key')))
             .thenAnswer((_) async => base64UrlEncode(List.generate(32, (i) => i)));
 
         final result = await storageService.init();
 
         expect(result.isRight(), isTrue);
-        expect(storageService.isStorageServiceReady, isTrue);
+        expect(storageService.isVaultStorageReady, isTrue);
       });
 
       test('init should return left if already initialized', () async {
@@ -397,19 +397,19 @@ void main() {
       });
 
       test('init should return StorageInitializationError on failure', () async {
-        storageService.isStorageServiceReady = false;
+        storageService.isVaultStorageReady = false;
         when(mockSecureStorage.read(key: anyNamed('key'))).thenThrow(Exception('Could not read key'));
 
         final result = await storageService.init();
 
         expect(result.isLeft(), isTrue);
         expect(result.fold((l) => l, (r) => null), isA<StorageInitializationError>());
-        expect(storageService.isStorageServiceReady, isFalse);
+        expect(storageService.isVaultStorageReady, isFalse);
       });
 
       test('init should return StorageInitializationError on Hive.initFlutter failure', () async {
         // Arrange
-        storageService.isStorageServiceReady = false;
+        storageService.isVaultStorageReady = false;
         const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler((MethodCall methodCall) async {
           if (methodCall.method == 'getApplicationDocumentsDirectory') {
             // Simulate a failure in getting the directory, which Hive.initFlutter depends on.
@@ -426,7 +426,7 @@ void main() {
         final error = result.fold((l) => l, (r) => null);
         expect(error, isA<StorageInitializationError>());
         expect((error as StorageInitializationError).message, 'Failed to initialize Hive');
-        expect(storageService.isStorageServiceReady, isFalse);
+        expect(storageService.isVaultStorageReady, isFalse);
       });
 
       test('getOrCreateSecureKey should return StorageInitializationError on read failure', () async {
