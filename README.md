@@ -56,13 +56,13 @@ Future<void> main() async {
 You can store and retrieve simple key-value pairs using the `set` and `get` methods. The `BoxType` enum determines whether the data is stored in the encrypted `secure` box or the unencrypted `normal` box.
 
 ```dart
-final storageService = await container.read(storageServiceProvider.future);
+final vaultStorage = await container.read(storageServiceProvider.future);
 
 // Store a secure value
-await storageService.set(BoxType.secure, 'api_key', 'my_secret_key');
+await vaultStorage.set(BoxType.secure, 'api_key', 'my_secret_key');
 
 // Retrieve a secure value
-final apiKey = await storageService.get<String>(BoxType.secure, 'api_key');
+final apiKey = await vaultStorage.get<String>(BoxType.secure, 'api_key');
 
 apiKey.fold(
   (error) => print('Error retrieving key: ${error.message}'),
@@ -78,10 +78,10 @@ For larger data like images or documents, you can use the secure file storage me
 import 'dart:typed_data';
 
 // Assume 'imageData' is a Uint8List
-final storageService = await container.read(storageServiceProvider.future);
+final vaultStorage = await container.read(storageServiceProvider.future);
 
 // Save a file
-final saveResult = await storageService.saveSecureFile(
+final saveResult = await vaultStorage.saveSecureFile(
   fileBytes: imageData,
   fileExtension: 'png',
 );
@@ -92,7 +92,7 @@ saveResult.fold(
     print('File saved successfully. Metadata: $metadata');
 
     // Retrieve the file
-    final getResult = await storageService.getSecureFile(fileMetadata: metadata);
+    final getResult = await vaultStorage.getSecureFile(fileMetadata: metadata);
 
     getResult.fold(
       (error) => print('Error retrieving file: ${error.message}'),
@@ -115,14 +115,14 @@ You'll need to create an instance of `StorageService` and initialize it when you
 import 'package:vault_storage/vault_storage.dart';
 
 // Using a global variable for simplicity.
-late final StorageService storageService;
+late final StorageService vaultStorage;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Instantiate and initialize the service.
-  storageService = StorageService();
-  await storageService.init(); // You must call init() before using the service.
+  vaultStorage = StorageService();
+  await vaultStorage.init(); // You must call init() before using the service.
 
   runApp(const MyApp());
 }
@@ -130,16 +130,16 @@ Future<void> main() async {
 
 ### 2. Accessing the Service
 
-Once initialized, you can use your `storageService` instance anywhere in your app to call its methods. The API is identical to the one used with Riverpod.
+Once initialized, you can use your `vaultStorage` instance anywhere in your app to call its methods. The API is identical to the one used with Riverpod.
 
 ```dart
 // Example of using the manually created instance:
 
 // Store a secure value
-await storageService.set(BoxType.secure, 'api_key', 'my_secret_key');
+await vaultStorage.set(BoxType.secure, 'api_key', 'my_secret_key');
 
 // Retrieve a secure value
-final apiKey = await storageService.get<String>(BoxType.secure, 'api_key');
+final apiKey = await vaultStorage.get<String>(BoxType.secure, 'api_key');
 
 apiKey.fold(
   (error) => print('Error retrieving key: ${error.message}'),
