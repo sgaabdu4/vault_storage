@@ -2,6 +2,8 @@
 
 A secure and performant local storage solution for Flutter applications, built with Hive, Flutter Secure Storage, and Riverpod. It provides both key-value storage and encrypted file storage, with intensive cryptographic operations offloaded to background isolates to ensure a smooth UI.
 
+> **Note**: This package depends on Riverpod v3 (`riverpod: ^3.0.0-dev`), which is currently in pre-release. Be mindful of potential API changes in future Riverpod updates.
+
 ## Features
 
 -   **Dual Storage Model**: Simple key-value storage via Hive and secure file storage for larger data blobs (e.g., images, documents).
@@ -155,3 +157,7 @@ This package includes a comprehensive test suite. To run the tests, use the foll
 ```bash
 flutter test
 ```
+
+## License
+
+This project is licensed under the MIT License.
