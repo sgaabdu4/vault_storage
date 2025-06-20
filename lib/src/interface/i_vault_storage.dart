@@ -89,6 +89,15 @@ abstract class IVaultStorage {
   /// Returns a `Future` that completes with an `Either`:
   /// - `Right(Unit)` on successful deletion.
   /// - `Left(StorageError)` if the deletion fails.
-  Future<Either<StorageError, Unit>> deleteSecureFile(
-      {required Map<String, dynamic> fileMetadata});
+  Future<Either<StorageError, Unit>> deleteSecureFile({required Map<String, dynamic> fileMetadata});
+
+  /// Disposes of all resources used by the vault storage.
+  ///
+  /// This should be called when the storage service is no longer needed to ensure
+  /// that all resources, such as Hive boxes, are properly closed.
+  ///
+  /// Returns a `Future` that completes with an `Either`:
+  /// - `Right(Unit)` on successful disposal.
+  /// - `Left(StorageError)` if disposal fails.
+  Future<Either<StorageError, Unit>> dispose();
 }

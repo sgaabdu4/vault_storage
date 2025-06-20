@@ -49,6 +49,12 @@ class StorageDeleteError extends StorageError {
   const StorageDeleteError(super.message, [super.originalException]);
 }
 
+/// An error that occurs when the storage service is being disposed.
+class StorageDisposalError extends StorageError {
+  /// Creates a new [StorageDisposalError].
+  const StorageDisposalError(super.message, [super.originalException]);
+}
+
 /// An error that occurs during the serialization or deserialization of data.
 ///
 /// This is typically thrown when an object cannot be converted to a format suitable
