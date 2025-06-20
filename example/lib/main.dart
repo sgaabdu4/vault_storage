@@ -112,8 +112,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
               ],
             ),
             const SizedBox(height: 20),
-            if (_retrievedValue != null) Text('Retrieved Value: $_retrievedValue'),
-            if (_errorMessage != null) Text('Error: $_errorMessage', style: const TextStyle(color: Colors.red)),
+            if (_retrievedValue != null)
+              Text('Retrieved Value: $_retrievedValue'),
+            if (_errorMessage != null)
+              Text('Error: $_errorMessage',
+                  style: const TextStyle(color: Colors.red)),
           ],
         ),
       ),

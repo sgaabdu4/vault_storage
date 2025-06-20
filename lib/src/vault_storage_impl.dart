@@ -36,7 +36,8 @@ Future<Uint8List> _decryptInIsolate(DecryptRequest request) async {
     nonce: request.nonce,
     mac: Mac(request.macBytes),
   );
-  final decryptedData = await _algorithm.decrypt(secretBox, secretKey: secretKey);
+  final decryptedData =
+      await _algorithm.decrypt(secretBox, secretKey: secretKey);
   return Uint8List.fromList(decryptedData);
 }
 
@@ -49,7 +50,8 @@ class VaultStorageImpl implements IVaultStorage {
   final Uuid _uuid;
 
   @visibleForTesting
-  final Map<BoxType, Box<dynamic>> storageBoxes = {}; // WEB-COMPAT: Changed to Box<dynamic>
+  final Map<BoxType, Box<dynamic>> storageBoxes =
+      {}; // WEB-COMPAT: Changed to Box<dynamic>
 
   @visibleForTesting
   bool isVaultStorageReady = false;
@@ -88,7 +90,9 @@ class VaultStorageImpl implements IVaultStorage {
       final jsonString = _getBox(box).get(key) as String?;
       if (jsonString == null) return null;
       return json.decode(jsonString) as T;
-    }, (e) => StorageReadError('Failed to read "$key" from ${box.name} box', e));
+    },
+        (e) =>
+            StorageReadError('Failed to read "$key" from ${box.name} box', e));
   }
 
   @override
@@ -103,7 +107,8 @@ class VaultStorageImpl implements IVaultStorage {
   Future<Either<StorageError, void>> delete(BoxType box, String key) {
     return _execute(
       () => _getBox(box).delete(key),
-      (e) => StorageDeleteError('Failed to delete "$key" from ${box.name} box', e),
+      (e) =>
+          StorageDeleteError('Failed to delete "$key" from ${box.name} box', e),
     );
   }
 
@@ -124,7 +129,8 @@ class VaultStorageImpl implements IVaultStorage {
     required Uint8List fileBytes,
     required String fileExtension,
   }) {
-    final operation = TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
+    final operation =
+        TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
       final fileId = _uuid.v4();
       final secureKeyName = 'file_key_$fileId';
       final secretKey = await _algorithm.newSecretKey();
@@ -148,7 +154,8 @@ class VaultStorageImpl implements IVaultStorage {
         await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
       }
 
-      await _secureStorage.write(key: secureKeyName, value: base64Url.encode(keyBytes));
+      await _secureStorage.write(
+          key: secureKeyName, value: base64Url.encode(keyBytes));
 
       // Return unified metadata
       return {
@@ -177,7 +184,8 @@ class VaultStorageImpl implements IVaultStorage {
       Uint8List encryptedFileBytes;
       if (kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
-        final encryptedContentBase64 = _getBox(BoxType.secureFiles).get(fileId) as String?;
+        final encryptedContentBase64 =
+            _getBox(BoxType.secureFiles).get(fileId) as String?;
         if (encryptedContentBase64 == null) {
           throw Exception('File content not found in Hive for id: $fileId');
         }
@@ -186,7 +194,8 @@ class VaultStorageImpl implements IVaultStorage {
         // NATIVE: Retrieve from file system
         final filePath = fileMetadata['filePath'] as String?;
         if (filePath == null) {
-          throw Exception('File path is missing in metadata for native platform');
+          throw Exception(
+              'File path is missing in metadata for native platform');
         }
         encryptedFileBytes = await File(filePath).readAsBytes();
       }
@@ -266,16 +275,21 @@ class VaultStorageImpl implements IVaultStorage {
     Future<T> Function() operation,
     StorageError Function(Object e) errorBuilder,
   ) {
-    return _executeTask(TaskEither.tryCatch(operation, (e, _) => errorBuilder(e)));
+    return _executeTask(
+        TaskEither.tryCatch(operation, (e, _) => errorBuilder(e)));
   }
 
-  Future<Either<StorageError, T>> _executeTask<T>(TaskEither<StorageError, T> task) {
+  Future<Either<StorageError, T>> _executeTask<T>(
+      TaskEither<StorageError, T> task) {
     if (!isVaultStorageReady) {
-      return Future.value(left(const StorageInitializationError('Storage not initialized')));
+      return Future.value(
+          left(const StorageInitializationError('Storage not initialized')));
     }
     return task.mapLeft((l) {
-      if (l.originalException is FormatException || l.originalException is JsonUnsupportedObjectError) {
-        return StorageSerializationError('${l.message}: ${l.originalException}');
+      if (l.originalException is FormatException ||
+          l.originalException is JsonUnsupportedObjectError) {
+        return StorageSerializationError(
+            '${l.message}: ${l.originalException}');
       }
       return l;
     }).run();
@@ -299,11 +313,14 @@ class VaultStorageImpl implements IVaultStorage {
       return TaskEither.tryCatch(() async {
         if (encodedKey == null) {
           final key = Hive.generateSecureKey();
-          await _secureStorage.write(key: StorageKeys.secureKey, value: base64UrlEncode(key));
+          await _secureStorage.write(
+              key: StorageKeys.secureKey, value: base64UrlEncode(key));
           return key;
         }
         return base64Url.decode(encodedKey);
-      }, (e, _) => StorageInitializationError('Failed to create/decode secure key', e));
+      },
+          (e, _) => StorageInitializationError(
+              'Failed to create/decode secure key', e));
     });
   }
 
@@ -315,11 +332,13 @@ class VaultStorageImpl implements IVaultStorage {
         StorageKeys.secureBox,
         encryptionCipher: cipher,
       );
-      storageBoxes[BoxType.normal] = await Hive.openBox<String>(StorageKeys.normalBox);
+      storageBoxes[BoxType.normal] =
+          await Hive.openBox<String>(StorageKeys.normalBox);
 
       // WEB-COMPAT: Open the new box for files, also encrypted
       storageBoxes[BoxType.secureFiles] = await Hive.openBox<String>(
-        StorageKeys.secureFilesBox, // Make sure this is defined in your constants
+        StorageKeys
+            .secureFilesBox, // Make sure this is defined in your constants
         encryptionCipher: cipher,
       );
 

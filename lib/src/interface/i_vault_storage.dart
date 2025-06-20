@@ -89,7 +89,8 @@ abstract class IVaultStorage {
   /// Returns a `Future` that completes with an `Either`:
   /// - `Right(Unit)` on successful deletion.
   /// - `Left(StorageError)` if the deletion fails.
-  Future<Either<StorageError, Unit>> deleteSecureFile({required Map<String, dynamic> fileMetadata});
+  Future<Either<StorageError, Unit>> deleteSecureFile(
+      {required Map<String, dynamic> fileMetadata});
 
   /// Disposes of all resources used by the vault storage.
   ///
