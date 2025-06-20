@@ -1,6 +1,6 @@
 import 'dart:convert';
 // WEB-COMPAT: Conditional import for dart:io
-import 'dart:io' if (dart.library.html) 'dart:html' show File;
+import 'dart:io' if (dart.library.js_interop) 'dart:html' show File;
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -8,7 +8,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 // WEB-COMPAT: Conditional import for path_provider
 import 'package:path_provider/path_provider.dart'
-    if (dart.library.html) 'package:vault_storage/src/mock/path_provider_mock.dart';
+    if (dart.library.js_interop) 'package:vault_storage/src/mock/path_provider_mock.dart';
 import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
