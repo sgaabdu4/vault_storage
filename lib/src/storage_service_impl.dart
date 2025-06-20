@@ -67,7 +67,7 @@ class StorageServiceImpl implements IStorageService {
         return unit;
       },
       (e, _) => StorageInitializationError('Failed to initialize Hive', e),
-    ).flatMap((_) => _getOrCreateSecureKey()).flatMap((key) => _openBoxes(key));
+    ).flatMap((_) => getOrCreateSecureKey()).flatMap((key) => openBoxes(key));
 
     final result = await task.run();
     return result.fold((error) => left(error), (_) {
@@ -244,7 +244,8 @@ class StorageServiceImpl implements IStorageService {
     return box;
   }
 
-  TaskEither<StorageError, List<int>> _getOrCreateSecureKey() {
+  @visibleForTesting
+  TaskEither<StorageError, List<int>> getOrCreateSecureKey() {
     return TaskEither.tryCatch(
       () => _secureStorage.read(key: StorageKeys.secureKey),
       (e, _) => StorageInitializationError('Failed to read secure key', e),
@@ -260,7 +261,8 @@ class StorageServiceImpl implements IStorageService {
     });
   }
 
-  TaskEither<StorageError, Unit> _openBoxes(List<int> encryptionKey) {
+  @visibleForTesting
+  TaskEither<StorageError, Unit> openBoxes(List<int> encryptionKey) {
     return TaskEither.tryCatch(() async {
       storageBoxes[BoxType.secure] = await Hive.openBox<String>(
         StorageKeys.secureBox,
