@@ -1,3 +1,7 @@
+## 0.0.3
+
+* fix: Update conditional imports for web compatibility in vault_storage_impl.dart, from dart.library.html to dart.library.js_interop
+
 ## 0.0.2
 
 * Added web compatibility for vault_storage package.
