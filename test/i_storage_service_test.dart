@@ -17,11 +17,15 @@ class FakeStorageService implements IStorageService {
   @override
   Future<Either<StorageError, void>> clear(BoxType box) async => right(null);
   @override
-  Future<Either<StorageError, Map<String, dynamic>>> saveSecureFile({required Uint8List fileBytes, required String fileExtension}) async => right({'file': 'meta'});
+  Future<Either<StorageError, Map<String, dynamic>>> saveSecureFile(
+          {required Uint8List fileBytes, required String fileExtension}) async =>
+      right({'file': 'meta'});
   @override
-  Future<Either<StorageError, Uint8List>> getSecureFile({required Map<String, dynamic> fileMetadata}) async => right(Uint8List(0));
+  Future<Either<StorageError, Uint8List>> getSecureFile({required Map<String, dynamic> fileMetadata}) async =>
+      right(Uint8List(0));
   @override
-  Future<Either<StorageError, Unit>> deleteSecureFile({required Map<String, dynamic> fileMetadata}) async => right(unit);
+  Future<Either<StorageError, Unit>> deleteSecureFile({required Map<String, dynamic> fileMetadata}) async =>
+      right(unit);
 }
 
 void main() {

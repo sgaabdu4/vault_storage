@@ -27,7 +27,6 @@ Future<SecretBox> _encryptInIsolate(EncryptRequest request) async {
   return _algorithm.encrypt(request.fileBytes, secretKey: secretKey);
 }
 
-
 /// The function that will run in the background isolate to decrypt data.
 Future<Uint8List> _decryptInIsolate(DecryptRequest request) async {
   final secretKey = SecretKey(request.keyBytes);
@@ -49,16 +48,18 @@ Future<Uint8List> _decryptInIsolate(DecryptRequest request) async {
 class StorageServiceImpl implements IStorageService {
   final FlutterSecureStorage _secureStorage;
   final Uuid _uuid;
-  final Map<BoxType, Box<String>> _boxes = {};
-  bool _isInitialized = false;
+  @visibleForTesting
+  final Map<BoxType, Box<String>> storageBoxes = {};
+  @visibleForTesting
+  bool isStorageServiceReady = false;
 
   StorageServiceImpl({FlutterSecureStorage? secureStorage, Uuid? uuid})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-      _uuid = uuid ?? const Uuid();
+      : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+        _uuid = uuid ?? const Uuid();
 
   @override
   Future<Either<StorageError, Unit>> init() async {
-    if (_isInitialized) return right(unit);
+    if (isStorageServiceReady) return right(unit);
 
     final task = TaskEither<StorageError, Unit>.tryCatch(
       () async {
@@ -70,7 +71,7 @@ class StorageServiceImpl implements IStorageService {
 
     final result = await task.run();
     return result.fold((error) => left(error), (_) {
-      _isInitialized = true;
+      isStorageServiceReady = true;
       return right(unit);
     });
   }
@@ -209,10 +210,10 @@ class StorageServiceImpl implements IStorageService {
   // ==========================================
 
   Future<void> dispose() async {
-    if (_isInitialized) {
+    if (isStorageServiceReady) {
       await Hive.close();
-      _boxes.clear();
-      _isInitialized = false;
+      storageBoxes.clear();
+      isStorageServiceReady = false;
     }
   }
 
@@ -224,12 +225,11 @@ class StorageServiceImpl implements IStorageService {
   }
 
   Future<Either<StorageError, T>> _executeTask<T>(TaskEither<StorageError, T> task) {
-    if (!_isInitialized) {
+    if (!isStorageServiceReady) {
       return Future.value(left(const StorageInitializationError('Storage not initialized')));
     }
     return task.mapLeft((l) {
-      if (l.originalException is FormatException ||
-          l.originalException is JsonUnsupportedObjectError) {
+      if (l.originalException is FormatException || l.originalException is JsonUnsupportedObjectError) {
         return StorageSerializationError('${l.message}: ${l.originalException}');
       }
       return l;
@@ -237,7 +237,7 @@ class StorageServiceImpl implements IStorageService {
   }
 
   Box<String> _getBox(BoxType type) {
-    final box = _boxes[type];
+    final box = storageBoxes[type];
     if (box == null) {
       throw Exception('Box $type not opened. Ensure init() was called.');
     }
@@ -262,11 +262,11 @@ class StorageServiceImpl implements IStorageService {
 
   TaskEither<StorageError, Unit> _openBoxes(List<int> encryptionKey) {
     return TaskEither.tryCatch(() async {
-      _boxes[BoxType.secure] = await Hive.openBox<String>(
+      storageBoxes[BoxType.secure] = await Hive.openBox<String>(
         StorageKeys.secureBox,
         encryptionCipher: HiveAesCipher(encryptionKey),
       );
-      _boxes[BoxType.normal] = await Hive.openBox<String>(StorageKeys.normalBox);
+      storageBoxes[BoxType.normal] = await Hive.openBox<String>(StorageKeys.normalBox);
       return unit;
     }, (e, _) => StorageInitializationError('Failed to open storage boxes', e));
   }

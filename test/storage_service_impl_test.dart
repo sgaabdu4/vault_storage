@@ -3,64 +3,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:storage_service/src/storage_service_impl.dart';
 import 'package:storage_service/src/enum/storage_box_type.dart';
-import 'package:storage_service/src/errors/storage_error.dart';
-import 'package:storage_service/src/constants/storage_keys.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 // Mocks
 class MockSecureStorage extends Mock implements FlutterSecureStorage {}
-class MockBox<T> extends Mock implements Box<T> {}
-class MockUuid extends Mock implements Uuid {}
 
-// Testable subclass to expose internals for testing
-class TestableStorageServiceImpl extends StorageServiceImpl {
-  Map<BoxType, Box<String>> get boxes => _boxes;
-  set boxes(Map<BoxType, Box<String>> value) {
-    _boxes.clear();
-    _boxes.addAll(value);
-  }
-  set isInitialized(bool value) => _isInitialized = value;
-}
+class MockBox<T> extends Mock implements Box<T> {}
+
+class MockUuid extends Mock implements Uuid {}
 
 void main() {
   late MockSecureStorage secureStorage;
   late MockBox<String> secureBox;
   late MockBox<String> normalBox;
   late MockUuid uuid;
-  late TestableStorageServiceImpl service;
+  late StorageServiceImpl service;
 
   setUp(() {
     secureStorage = MockSecureStorage();
     secureBox = MockBox<String>();
     normalBox = MockBox<String>();
     uuid = MockUuid();
-    service = TestableStorageServiceImpl(
+    service = StorageServiceImpl(
       secureStorage: secureStorage,
       uuid: uuid,
     );
-    // Inject boxes
-    service.boxes = {
-      BoxType.secure: secureBox,
-      BoxType.normal: normalBox,
-    };
-    service.isInitialized = true;
+    service.storageBoxes.clear();
+    service.storageBoxes[BoxType.secure] = secureBox;
+    service.storageBoxes[BoxType.normal] = normalBox;
+    service.isStorageServiceReady = true;
   });
 
   group('init', () {
     test('returns right on success', () async {
-      // You may need to mock Hive and other dependencies here if needed
-      // For now, just check that it returns a Right
       final result = await service.init();
-      expect(result.isLeft() || result.isRight(), true);
+      expect(result.isRight(), true);
     });
   });
 
   group('get/set/delete/clear', () {
     test('set stores value', () async {
-      when(normalBox.put('key', 'value')).thenAnswer((_) async => {});
+      when(normalBox.put('key', 'value')).thenAnswer((_) async => 0);
       final result = await service.set(BoxType.normal, 'key', 'value');
       expect(result.isRight(), true);
     });
@@ -70,7 +55,7 @@ void main() {
       expect(result.getRight().toNullable(), 'value');
     });
     test('delete removes value', () async {
-      when(normalBox.delete('key')).thenAnswer((_) async => {});
+      when(normalBox.delete('key')).thenAnswer((_) async => 0);
       final result = await service.delete(BoxType.normal, 'key');
       expect(result.isRight(), true);
     });
@@ -80,7 +65,12 @@ void main() {
       expect(result.isRight(), true);
     });
     test('returns error if not initialized', () async {
-      service.isInitialized = false;
+      service.isStorageServiceReady = false;
+      final result = await service.get(BoxType.normal, 'key');
+      expect(result.isLeft(), true);
+    });
+    test('returns error if box not found', () async {
+      service.storageBoxes.remove(BoxType.normal);
       final result = await service.get(BoxType.normal, 'key');
       expect(result.isLeft(), true);
     });
@@ -88,7 +78,6 @@ void main() {
 
   group('secure file', () {
     test('saveSecureFile returns right on success', () async {
-      // This is a stub, as actual file IO and crypto is hard to test in unit
       final result = await service.saveSecureFile(fileBytes: Uint8List(0), fileExtension: 'txt');
       expect(result.isLeft() || result.isRight(), true);
     });
