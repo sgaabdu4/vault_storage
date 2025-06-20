@@ -1,0 +1,22 @@
+name: example
+description: Demonstrates how to use the vault_storage package.
+publish_to: "none"
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.0.0-dev.16
+  riverpod_annotation: ^3.0.0-dev.16
+  vault_storage:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

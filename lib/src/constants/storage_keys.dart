@@ -15,6 +15,9 @@ class StorageKeys {
 
   /// The name of the Hive box used for storing non-sensitive, unencrypted key-value pairs.
   static const normalBox = 'normal_box';
+
+  /// The name of the Hive box used for storing file data, such as images or documents.
+  static const secureFilesBox = 'secure_files_box';
 }
 
 // EXAMPLE: How a feature would define its own keys
