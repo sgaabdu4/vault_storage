@@ -4,7 +4,7 @@
 /// access the vault storage's features. It exports the essential interfaces,
 /// models, enums, errors, and providers, simplifying imports and decoupling
 /// feature modules from the internal implementation details of the service.
-library vault_storage;
+library;
 
 // Interfaces and Models
 export 'src/interface/i_vault_storage.dart';

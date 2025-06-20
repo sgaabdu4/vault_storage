@@ -22,10 +22,10 @@ class StorageKeys {
 
 // EXAMPLE: How a feature would define its own keys
 // You would place this in your feature's constants file.
-/*
-class AuthFeatureKeys {
-  AuthFeatureKeys._();
-  static const authToken = 'auth_token';
-  static const userCredentials = 'user_credentials';
-}
-*/
+
+// class AuthFeatureKeys {
+//   AuthFeatureKeys._();
+//   static const authToken = 'auth_token';
+//   static const userCredentials = 'user_credentials';
+// }
+

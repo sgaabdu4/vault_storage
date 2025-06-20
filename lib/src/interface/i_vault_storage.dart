@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
@@ -70,6 +69,7 @@ abstract class IVaultStorage {
   Future<Either<StorageError, Map<String, dynamic>>> saveSecureFile({
     required Uint8List fileBytes,
     required String fileExtension,
+    @visibleForTesting bool? isWeb,
   });
 
   /// Retrieves and decrypts a secure file using its [fileMetadata].
@@ -82,6 +82,7 @@ abstract class IVaultStorage {
   /// - `Left(StorageError)` if the retrieval or decryption fails.
   Future<Either<StorageError, Uint8List>> getSecureFile({
     required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
   });
 
   /// Deletes a secure file from storage using its [fileMetadata].
@@ -89,8 +90,10 @@ abstract class IVaultStorage {
   /// Returns a `Future` that completes with an `Either`:
   /// - `Right(Unit)` on successful deletion.
   /// - `Left(StorageError)` if the deletion fails.
-  Future<Either<StorageError, Unit>> deleteSecureFile(
-      {required Map<String, dynamic> fileMetadata});
+  Future<Either<StorageError, Unit>> deleteSecureFile({
+    required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
+  });
 
   /// Disposes of all resources used by the vault storage.
   ///

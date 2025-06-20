@@ -128,6 +128,7 @@ class VaultStorageImpl implements IVaultStorage {
   Future<Either<StorageError, Map<String, dynamic>>> saveSecureFile({
     required Uint8List fileBytes,
     required String fileExtension,
+    @visibleForTesting bool? isWeb,
   }) {
     final operation =
         TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
@@ -143,7 +144,7 @@ class VaultStorageImpl implements IVaultStorage {
 
       // WEB-COMPAT: Platform-aware saving logic
       String? filePath; // Nullable for web
-      if (kIsWeb) {
+      if (isWeb ?? kIsWeb) {
         // WEB: Store the encrypted bytes directly in Hive as a base64 string
         final encryptedContentBase64 = base64Url.encode(secretBox.cipherText);
         await _getBox(BoxType.secureFiles).put(fileId, encryptedContentBase64);
@@ -173,6 +174,7 @@ class VaultStorageImpl implements IVaultStorage {
   @override
   Future<Either<StorageError, Uint8List>> getSecureFile({
     required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
   }) {
     final operation = TaskEither<StorageError, Uint8List>.tryCatch(() async {
       final fileId = fileMetadata['fileId'] as String;
@@ -182,7 +184,7 @@ class VaultStorageImpl implements IVaultStorage {
 
       // WEB-COMPAT: Platform-aware retrieval logic
       Uint8List encryptedFileBytes;
-      if (kIsWeb) {
+      if (isWeb ?? kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
         final encryptedContentBase64 =
             _getBox(BoxType.secureFiles).get(fileId) as String?;
@@ -223,13 +225,14 @@ class VaultStorageImpl implements IVaultStorage {
   @override
   Future<Either<StorageError, Unit>> deleteSecureFile({
     required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
   }) {
     final operation = TaskEither<StorageError, Unit>.tryCatch(() async {
       final fileId = fileMetadata['fileId'] as String;
       final secureKeyName = fileMetadata['secureKeyName'] as String;
 
       // WEB-COMPAT: Platform-aware deletion logic
-      if (kIsWeb) {
+      if (isWeb ?? kIsWeb) {
         // WEB: Delete from Hive
         await _getBox(BoxType.secureFiles).delete(fileId);
       } else {
