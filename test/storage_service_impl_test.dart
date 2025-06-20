@@ -407,6 +407,29 @@ void main() {
         expect(storageService.isStorageServiceReady, isFalse);
       });
 
+      test('init should return StorageInitializationError on Hive.initFlutter failure', () async {
+        // Arrange
+        storageService.isStorageServiceReady = false;
+        const MethodChannel('plugins.flutter.io/path_provider')
+            .setMockMethodCallHandler((MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            // Simulate a failure in getting the directory, which Hive.initFlutter depends on.
+            throw Exception('Failed to get directory');
+          }
+          return null;
+        });
+
+        // Act
+        final result = await storageService.init();
+
+        // Assert
+        expect(result.isLeft(), isTrue);
+        final error = result.fold((l) => l, (r) => null);
+        expect(error, isA<StorageInitializationError>());
+        expect((error as StorageInitializationError).message, 'Failed to initialize Hive');
+        expect(storageService.isStorageServiceReady, isFalse);
+      });
+
       test('getOrCreateSecureKey should return StorageInitializationError on read failure', () async {
         when(mockSecureStorage.read(key: anyNamed('key'))).thenThrow(Exception('Could not read key'));
 
