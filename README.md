@@ -99,6 +99,51 @@ saveResult.fold(
 );
 ```
 
+## Usage without Riverpod
+
+If you are not using Riverpod, you can instantiate and manage the `StorageService` directly.
+
+### 1. Initialization
+
+You'll need to create an instance of `StorageService` and initialize it when your application starts. You can store the instance in a global variable or use a service locator pattern (like `get_it`).
+
+```dart
+// In your main.dart or an initialization file
+import 'package:vault_storage/vault_storage.dart';
+
+// Using a global variable for simplicity.
+late final StorageService storageService;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Instantiate and initialize the service.
+  storageService = StorageService();
+  await storageService.init(); // You must call init() before using the service.
+
+  runApp(const MyApp());
+}
+```
+
+### 2. Accessing the Service
+
+Once initialized, you can use your `storageService` instance anywhere in your app to call its methods. The API is identical to the one used with Riverpod.
+
+```dart
+// Example of using the manually created instance:
+
+// Store a secure value
+await storageService.set(BoxType.secure, 'api_key', 'my_secret_key');
+
+// Retrieve a secure value
+final apiKey = await storageService.get<String>(BoxType.secure, 'api_key');
+
+apiKey.fold(
+  (error) => print('Error retrieving key: ${error.message}'),
+  (key) => print('Retrieved API key: $key'),
+);
+```
+
 ## Error Handling
 
 The service uses `fpdart`'s `Either` for error handling. All methods return an `Either<StorageError, T>`, where `T` is the success type. This forces you to handle potential failures explicitly.
