@@ -23,7 +23,8 @@ Future<IVaultStorage> vaultStorage(Ref ref) async {
   final initResult = await implementation.init();
 
   return initResult.fold(
-    (error) => throw Exception('Failed to initialize storage: ${error.message}'),
+    (error) =>
+        throw Exception('Failed to initialize storage: ${error.message}'),
     (_) {
       ref.onDispose(() async => implementation.dispose());
       return implementation;
