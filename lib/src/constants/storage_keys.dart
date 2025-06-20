@@ -28,4 +28,3 @@ class StorageKeys {
 //   static const authToken = 'auth_token';
 //   static const userCredentials = 'user_credentials';
 // }
-
