@@ -1,3 +1,11 @@
+## 0.0.4
+
+* refactor: Rename storageService to vaultStorage for consistency in README and tests
+* chore: Update README for web compatibility and usage improvements
+* docs: Clarify Riverpod dev version requirement and that generated files are included
+* docs: Improve code examples and error handling documentation
+* docs: Add comprehensive usage examples for both key-value and secure file storage
+
 ## 0.0.3
 
 * fix: Update conditional imports for web compatibility in vault_storage_impl.dart, from dart.library.html to dart.library.js_interop
