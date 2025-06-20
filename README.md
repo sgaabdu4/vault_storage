@@ -14,14 +14,15 @@ A secure and performant local storage solution for Flutter applications, built w
 
 ## Getting Started
 
-This is a local package. To use it in your main application, add it as a path dependency in your `pubspec.yaml`:
+Add `vault_storage` to your `pubspec.yaml` file. You can get the latest version from [pub.dev](https://pub.dev/packages/vault_storage).
 
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage:
-    path: packages/vault_storage
+  vault_storage: ^0.0.1 # Replace with the latest version
 ```
+
+Then, run `flutter pub get` in your terminal.
 
 Before running your app, you must initialize the service. This is typically done in your `main.dart` or an initialization module.
 
