@@ -6,12 +6,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:storage_service/src/constants/storage_keys.dart';
-import 'package:storage_service/src/entities/decrypt_request.dart';
-import 'package:storage_service/src/entities/encrypt_request.dart';
-import 'package:storage_service/src/enum/storage_box_type.dart';
-import 'package:storage_service/src/errors/storage_error.dart';
-import 'package:storage_service/src/interface/i_storage_service.dart';
+import 'package:vault_storage/src/constants/storage_keys.dart';
+import 'package:vault_storage/src/entities/decrypt_request.dart';
+import 'package:vault_storage/src/entities/encrypt_request.dart';
+import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
+import 'package:vault_storage/src/interface/i_vault_storage.dart';
 import 'package:uuid/uuid.dart';
 
 final _algorithm = AesGcm.with256bits();
@@ -43,16 +43,37 @@ Future<Uint8List> _decryptInIsolate(DecryptRequest request) async {
 // Service Implementation
 // ==========================================================================
 
-/// The implementation of the storage service.
-/// It uses Hive for structured data and encrypted files for binary data.
-class StorageServiceImpl implements IStorageService {
+/// An implementation of the [IVaultStorage] that uses Hive for key-value
+/// storage and a custom file-based solution for secure, encrypted file storage.
+///
+/// This service is designed to be robust and performant, offloading heavy
+/// cryptographic operations to background isolates to prevent UI jank. It uses
+/// `flutter_secure_storage` to safeguard the master encryption key for Hive.
+///
+/// The service must be initialized via the [init] method before use. It provides
+/// methods for CRUD operations on two types of Hive boxes (`secure` and `normal`)
+/// and for saving, retrieving, and deleting encrypted files.
+class StorageServiceImpl implements IVaultStorage {
+  /// A client for interacting with the platform's secure storage (e.g., Keychain, Keystore).
   final FlutterSecureStorage _secureStorage;
+
+  /// A UUID generator used for creating unique file identifiers.
   final Uuid _uuid;
+
+  /// A map holding the opened Hive boxes, keyed by their [BoxType].
+  /// This is marked as `@visibleForTesting` to allow for easier testing.
   @visibleForTesting
   final Map<BoxType, Box<String>> storageBoxes = {};
+
+  /// A flag indicating whether the service has been successfully initialized.
+  /// This is marked as `@visibleForTesting` to allow for easier testing.
   @visibleForTesting
   bool isStorageServiceReady = false;
 
+  /// Creates a new instance of [StorageServiceImpl].
+  ///
+  /// If [secureStorage] or [uuid] are not provided, it defaults to their
+  /// standard implementations. This allows for dependency injection during testing.
   StorageServiceImpl({FlutterSecureStorage? secureStorage, Uuid? uuid})
       : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _uuid = uuid ?? const Uuid();
@@ -85,6 +106,7 @@ class StorageServiceImpl implements IStorageService {
     return _execute<T?>(() async {
       final jsonString = _getBox(box).get(key);
       if (jsonString == null) return null;
+      // Assuming the value is stored as a JSON string.
       return json.decode(jsonString) as T;
     }, (e) => StorageReadError('Failed to read "$key" from ${box.name} box', e));
   }
@@ -92,6 +114,7 @@ class StorageServiceImpl implements IStorageService {
   @override
   Future<Either<StorageError, void>> set<T>(BoxType box, String key, T value) {
     return _execute(
+      // The value is encoded to a JSON string before being stored.
       () => _getBox(box).put(key, json.encode(value)),
       (e) => StorageWriteError('Failed to write "$key" to ${box.name} box', e),
     );
@@ -138,8 +161,10 @@ class StorageServiceImpl implements IStorageService {
       final filePath = '${dir.path}/$fileId.$fileExtension.enc';
       await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
 
+      // Store the file-specific encryption key securely.
       await _secureStorage.write(key: secureKeyName, value: base64Url.encode(keyBytes));
 
+      // Return metadata needed for decryption and file management.
       return {
         'filePath': filePath,
         'secureKeyName': secureKeyName,
@@ -156,6 +181,7 @@ class StorageServiceImpl implements IStorageService {
     required Map<String, dynamic> fileMetadata,
   }) {
     final operation = TaskEither<StorageError, Uint8List>.tryCatch(() async {
+      // Extract metadata needed for decryption.
       final filePath = fileMetadata['filePath'] as String;
       final secureKeyName = fileMetadata['secureKeyName'] as String;
       final nonce = base64Url.decode(fileMetadata['nonce'] as String);
@@ -163,6 +189,7 @@ class StorageServiceImpl implements IStorageService {
 
       final encryptedFileBytes = await File(filePath).readAsBytes();
 
+      // Retrieve the file-specific encryption key.
       final keyString = await _secureStorage.read(key: secureKeyName);
       if (keyString == null) {
         throw Exception('File key not found in secure storage.');
@@ -192,11 +219,13 @@ class StorageServiceImpl implements IStorageService {
       final filePath = fileMetadata['filePath'] as String;
       final secureKeyName = fileMetadata['secureKeyName'] as String;
 
+      // Delete the encrypted file from the filesystem.
       final file = File(filePath);
       if (file.existsSync()) {
         file.deleteSync();
       }
 
+      // Delete the file's encryption key from secure storage.
       await _secureStorage.delete(key: secureKeyName);
 
       return unit;
@@ -209,6 +238,10 @@ class StorageServiceImpl implements IStorageService {
   // DISPOSE & PRIVATE HELPERS
   // ==========================================
 
+  /// Closes all open Hive boxes and resets the service's ready state.
+  ///
+  /// This method should be called when the service is no longer needed, such as
+  /// when the application is shutting down, to ensure all resources are released.
   Future<void> dispose() async {
     if (isStorageServiceReady) {
       await Hive.close();
@@ -217,6 +250,14 @@ class StorageServiceImpl implements IStorageService {
     }
   }
 
+  /// A private helper to execute a storage operation and wrap it in an `Either`.
+  ///
+  /// This method simplifies error handling by catching exceptions and converting
+  /// them into a `StorageError` type, which is returned on the `Left` side of
+  /// the `Either`. Successful results are returned on the `Right` side.
+  ///
+  /// - [operation]: The asynchronous function to execute.
+  /// - [errorBuilder]: A function that creates a `StorageError` from a caught exception.
   Future<Either<StorageError, T>> _execute<T>(
     Future<T> Function() operation,
     StorageError Function(Object e) errorBuilder,
@@ -224,10 +265,16 @@ class StorageServiceImpl implements IStorageService {
     return _executeTask(TaskEither.tryCatch(operation, (e, _) => errorBuilder(e)));
   }
 
+  /// Executes a [TaskEither] and performs pre-execution checks.
+  ///
+  /// This helper ensures that the storage service is initialized before any
+  /// operation is attempted. If not, it returns a `StorageInitializationError`.
+  /// It also handles JSON serialization errors specifically.
   Future<Either<StorageError, T>> _executeTask<T>(TaskEither<StorageError, T> task) {
     if (!isStorageServiceReady) {
       return Future.value(left(const StorageInitializationError('Storage not initialized')));
     }
+    // Enhance error handling to specifically catch serialization issues.
     return task.mapLeft((l) {
       if (l.originalException is FormatException || l.originalException is JsonUnsupportedObjectError) {
         return StorageSerializationError('${l.message}: ${l.originalException}');
@@ -236,6 +283,10 @@ class StorageServiceImpl implements IStorageService {
     }).run();
   }
 
+  /// Retrieves an opened Hive box of a specific [type].
+  ///
+  /// Throws an exception if the requested box has not been opened, which would
+  /// indicate a programming error (e.g., calling this before `init` completes).
   Box<String> _getBox(BoxType type) {
     final box = storageBoxes[type];
     if (box == null) {
@@ -244,6 +295,12 @@ class StorageServiceImpl implements IStorageService {
     return box;
   }
 
+  /// Retrieves the master encryption key from secure storage, or creates a new one.
+  ///
+  /// This is a critical step in the initialization process. If a key exists, it's
+  /// read and decoded. If not, a new 256-bit key is generated and stored securely
+  /// for future use.
+  /// This is marked as `@visibleForTesting` to allow for easier testing.
   @visibleForTesting
   TaskEither<StorageError, List<int>> getOrCreateSecureKey() {
     return TaskEither.tryCatch(
@@ -252,15 +309,23 @@ class StorageServiceImpl implements IStorageService {
     ).flatMap((encodedKey) {
       return TaskEither.tryCatch(() async {
         if (encodedKey == null) {
+          // Generate a new key if one doesn't exist.
           final key = Hive.generateSecureKey();
           await _secureStorage.write(key: StorageKeys.secureKey, value: base64UrlEncode(key));
           return key;
         }
+        // Decode the existing key.
         return base64Url.decode(encodedKey);
       }, (e, _) => StorageInitializationError('Failed to create/decode secure key', e));
     });
   }
 
+  /// Opens the normal and secure Hive boxes.
+  ///
+  /// The secure box is opened with the provided [encryptionKey], ensuring its
+  /// contents are encrypted on disk. The opened boxes are stored in the
+  /// [storageBoxes] map.
+  /// This is marked as `@visibleForTesting` to allow for easier testing.
   @visibleForTesting
   TaskEither<StorageError, Unit> openBoxes(List<int> encryptionKey) {
     return TaskEither.tryCatch(() async {

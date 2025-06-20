@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:storage_service/src/constants/storage_keys.dart';
+import 'package:vault_storage/src/constants/storage_keys.dart';
 
 void main() {
   group('StorageKeys', () {

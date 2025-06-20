@@ -1,3 +1,7 @@
+/// Defines the type of Hive box to be used for a storage operation.
+///
+/// This enum allows for a clear distinction between storing sensitive and non-sensitive
+/// data, ensuring that appropriate security measures are applied.
 enum BoxType {
   /// For non-sensitive data like cache and user preferences.
   normal,

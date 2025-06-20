@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mockito/mockito.dart';
-import 'package:storage_service/src/enum/storage_box_type.dart';
-import 'package:storage_service/src/errors/storage_error.dart';
-import 'package:storage_service/src/storage_service_impl.dart';
+import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
+import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import 'mocks.mocks.dart';
 
@@ -410,8 +410,7 @@ void main() {
       test('init should return StorageInitializationError on Hive.initFlutter failure', () async {
         // Arrange
         storageService.isStorageServiceReady = false;
-        const MethodChannel('plugins.flutter.io/path_provider')
-            .setMockMethodCallHandler((MethodCall methodCall) async {
+        const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler((MethodCall methodCall) async {
           if (methodCall.method == 'getApplicationDocumentsDirectory') {
             // Simulate a failure in getting the directory, which Hive.initFlutter depends on.
             throw Exception('Failed to get directory');

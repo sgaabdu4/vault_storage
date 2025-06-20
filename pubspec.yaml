@@ -1,4 +1,4 @@
-name: storage_service
+name: vault_storage
 description: A package for secure key-value and file storage using Hive and
   flutter_secure_storage.
 version: 0.0.1

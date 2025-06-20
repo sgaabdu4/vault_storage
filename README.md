@@ -17,100 +17,96 @@ This is a local package. To use it in your main application, add it as a path de
 ```yaml
 dependencies:
   # ... other dependencies
-  storage_service:
-    path: packages/storage_service
+  vault_storage:
+    path: packages/vault_storage
 ```
 
 Before running your app, you must initialize the service. This is typically done in your `main.dart` or an initialization module.
 
 ```dart
 // In your main function or an initialization class
-import 'package:storage_service/storage_service.dart';
+import 'package:vault_storage/vault_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() async {
-  // Ensure Flutter is initialized
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Create a provider container to initialize services
+  // Create a ProviderContainer to access the provider.
   final container = ProviderContainer();
 
-  // Await the storage service's initialization
+  // Initialize the storage service.
   await container.read(storageServiceProvider.future);
 
-  // Now you can run your app
-  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MyApp(),
+    ),
+  );
 }
 ```
 
 ## Usage
 
-Access the service via the Riverpod provider. All methods return an `Either<StorageError, T>`, which you can handle using `fold`.
-
 ### Key-Value Storage
 
-Use `BoxType.normal` for non-sensitive data and `BoxType.secure` for data that should be encrypted at rest.
+You can store and retrieve simple key-value pairs using the `set` and `get` methods. The `BoxType` enum determines whether the data is stored in the encrypted `secure` box or the unencrypted `normal` box.
 
 ```dart
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:storage_service/storage_service.dart';
+final storageService = await container.read(storageServiceProvider.future);
 
-void example(WidgetRef ref) async {
-  final storageService = await ref.read(storageServiceProvider.future);
+// Store a secure value
+await storageService.set(BoxType.secure, 'api_key', 'my_secret_key');
 
-  // Write to the normal (unencrypted) box
-  await storageService.set(BoxType.normal, 'theme_preference', 'dark');
+// Retrieve a secure value
+final apiKey = await storageService.get<String>(BoxType.secure, 'api_key');
 
-  // Write sensitive data to the secure (encrypted) box
-  await storageService.set(BoxType.secure, 'user_auth_token', 'secret-jwt-token');
-
-  // Read data
-  final result = await storageService.get<String>(BoxType.normal, 'theme_preference');
-  result.fold(
-    (error) => print('Error reading theme: ${error.message}'),
-    (value) => print('User theme is: $value'),
-  );
-}
+apiKey.fold(
+  (error) => print('Error retrieving key: ${error.message}'),
+  (key) => print('Retrieved API key: $key'),
+);
 ```
 
 ### Secure File Storage
 
-Use `saveSecureFile` and `getSecureFile` to store and retrieve `Uint8List` data, such as images or documents.
+For larger data like images or documents, you can use the secure file storage methods.
 
 ```dart
 import 'dart:typed_data';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:storage_service/storage_service.dart';
 
-void fileExample(WidgetRef ref, Uint8List myImageBytes) async {
-  final storageService = await ref.read(storageServiceProvider.future);
+// Assume 'imageData' is a Uint8List
+final storageService = await container.read(storageServiceProvider.future);
 
-  // 1. Save the file
-  final saveResult = await storageService.saveSecureFile(
-    fileBytes: myImageBytes,
-    fileExtension: 'png',
-  );
+// Save a file
+final saveResult = await storageService.saveSecureFile(
+  fileBytes: imageData,
+  fileExtension: 'png',
+);
 
-  saveResult.fold(
-    (error) => print('Error saving file: ${error.message}'),
-    (fileMetadata) async {
-      print('File saved! Metadata: $fileMetadata');
+saveResult.fold(
+  (error) => print('Error saving file: ${error.message}'),
+  (metadata) async {
+    print('File saved successfully. Metadata: $metadata');
 
-      // IMPORTANT: You must save this `fileMetadata` map somewhere persistent
-      // (like the secure Hive box) to be able to retrieve the file later.
-      await storageService.set(BoxType.secure, 'user_avatar_meta', fileMetadata);
+    // Retrieve the file
+    final getResult = await storageService.getSecureFile(fileMetadata: metadata);
 
-      // 2. Later, retrieve the file using the saved metadata
-      final getResult = await storageService.getSecureFile(fileMetadata: fileMetadata);
-      getResult.fold(
-        (err) => print('Error getting file: ${err.message}'),
-        (decryptedBytes) => print('Successfully retrieved ${decryptedBytes.length} bytes.'),
-      );
-    },
-  );
-}
+    getResult.fold(
+      (error) => print('Error retrieving file: ${error.message}'),
+      (fileBytes) => print('Retrieved file with ${fileBytes.length} bytes.'),
+    );
+  },
+);
 ```
 
-## Additional Information
+## Error Handling
 
-This package is designed for internal use within the `smartmum`
+The service uses `fpdart`'s `Either` for error handling. All methods return an `Either<StorageError, T>`, where `T` is the success type. This forces you to handle potential failures explicitly.
+
+## Testing
+
+This package includes a comprehensive test suite. To run the tests, use the following command:
+
+```bash
+flutter test
+```
