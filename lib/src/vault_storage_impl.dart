@@ -1,4 +1,3 @@
-import 'dart:convert';
 // WEB-COMPAT: Conditional import for dart:io
 import 'dart:io' if (dart.library.js_interop) 'dart:html' show File;
 import 'package:cryptography/cryptography.dart';
@@ -91,8 +90,7 @@ class VaultStorageImpl implements IVaultStorage {
       final jsonString = _getBox(box).get(key) as String?;
       if (jsonString == null) return null;
       
-      final decodeResult = JsonSafe.decode<T>(jsonString);
-      return decodeResult.fold(
+      return jsonString.decodeJsonSafely<T>().fold(
         (error) => throw error,
         (value) => value
       );
@@ -105,8 +103,7 @@ class VaultStorageImpl implements IVaultStorage {
   Future<Either<StorageError, void>> set<T>(BoxType box, String key, T value) {
     return _execute(
       () {
-        final encodeResult = JsonSafe.encode(value);
-        return encodeResult.fold(
+        return value.encodeJsonSafely().fold(
           (error) => throw error,
           (jsonString) => _getBox(box).put(key, jsonString)
         );
@@ -433,7 +430,9 @@ class VaultStorageImpl implements IVaultStorage {
     StorageError Function(Object e) errorBuilder,
   ) {
     return _executeTask(
-        TaskEither.tryCatch(operation, (e, _) => errorBuilder(e)));
+        TaskEither.tryCatch(operation, (e, _) => 
+          e is StorageSerializationError ? e : errorBuilder(e)
+        ));
   }
 
   Future<Either<StorageError, T>> _executeTask<T>(
@@ -443,15 +442,18 @@ class VaultStorageImpl implements IVaultStorage {
           left(const StorageInitializationError('Storage not initialized')));
     }
     return task.mapLeft((l) {
-      // Base64DecodeError is already a StorageReadError subclass, no need to remap
-
-      // JSON serialization errors are mapped to StorageSerializationError
-      if (l.originalException is JsonUnsupportedObjectError ||
-          (l.originalException is FormatException &&
-              !(l is Base64DecodeError))) {
+      // If we're already dealing with a StorageSerializationError, return it as is
+      if (l is StorageSerializationError) {
+        return l;
+      }
+      
+      // Check if this is a serialization error from our extensions
+      // by examining the original exception (which could be a FormatException)
+      if (l.originalException is FormatException && !(l is Base64DecodeError)) {
         return StorageSerializationError(
             '${l.message}: ${l.originalException}');
       }
+      
       return l;
     }).run();
   }

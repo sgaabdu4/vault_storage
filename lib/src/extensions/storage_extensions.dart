@@ -106,3 +106,43 @@ class JsonSafe {
     }
   }
 }
+
+/// Extension on [String] to provide safe JSON decoding with proper error handling
+extension JsonDecodingExtension on String {
+  /// Decodes a JSON string safely, returning Either<StorageSerializationError, T>
+  ///
+  /// - The left side contains a [StorageSerializationError] if decoding fails
+  /// - The right side contains the successfully decoded object of type T
+  ///
+  /// Example:
+  /// ```dart
+  /// final result = jsonString.decodeJsonSafely<Map<String, dynamic>>();
+  /// result.fold(
+  ///   (error) => print('Decode failed: ${error.message}'),
+  ///   (map) => print('Decoded successfully: $map')
+  /// );
+  /// ```
+  Either<StorageSerializationError, T> decodeJsonSafely<T>() {
+    return JsonSafe.decode<T>(this);
+  }
+}
+
+/// Extension on [Object] to provide safe JSON encoding with proper error handling
+extension JsonEncodingExtension on Object? {
+  /// Encodes an object to JSON safely, returning Either<StorageSerializationError, String>
+  ///
+  /// - The left side contains a [StorageSerializationError] if encoding fails
+  /// - The right side contains the successfully encoded JSON string
+  ///
+  /// Example:
+  /// ```dart
+  /// final result = object.encodeJsonSafely();
+  /// result.fold(
+  ///   (error) => print('Encode failed: ${error.message}'),
+  ///   (jsonString) => print('Encoded successfully: $jsonString')
+  /// );
+  /// ```
+  Either<StorageSerializationError, String> encodeJsonSafely() {
+    return JsonSafe.encode(this);
+  }
+}
