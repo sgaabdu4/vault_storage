@@ -14,5 +14,13 @@ void main() {
     test('normalBox should have the correct value', () {
       expect(StorageKeys.normalBox, 'normal_box');
     });
+
+    test('secureFilesBox should have the correct value', () {
+      expect(StorageKeys.secureFilesBox, 'secure_files_box');
+    });
+
+    test('normalFilesBox should have the correct value', () {
+      expect(StorageKeys.normalFilesBox, 'normal_files_box');
+    });
   });
 }
