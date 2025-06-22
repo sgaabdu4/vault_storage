@@ -7,6 +7,7 @@ import 'dart:async' as _i5;
 
 import 'package:flutter/foundation.dart' as _i4;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i2;
+import 'package:fpdart/fpdart.dart' as _i12;
 import 'package:hive_ce/src/box/box.dart' as _i9;
 import 'package:hive_ce/src/box/box_base.dart' as _i10;
 import 'package:mockito/mockito.dart' as _i1;
@@ -14,6 +15,8 @@ import 'package:mockito/src/dummies.dart' as _i8;
 import 'package:uuid/data.dart' as _i7;
 import 'package:uuid/uuid.dart' as _i6;
 import 'package:uuid/uuid_value.dart' as _i3;
+import 'package:vault_storage/src/errors/errors.dart' as _i13;
+import 'package:vault_storage/src/storage/task_execution.dart' as _i11;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -1108,4 +1111,64 @@ class MockBox<E> extends _i1.Mock implements _i9.Box<E> {
         returnValue: _i5.Future<void>.value(),
         returnValueForMissingStub: _i5.Future<void>.value(),
       ) as _i5.Future<void>);
+}
+
+/// A class which mocks [TaskExecutor].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockTaskExecutor extends _i1.Mock implements _i11.TaskExecutor {
+  MockTaskExecutor() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i5.Future<_i12.Either<_i13.StorageError, T>> execute<T>(
+    _i5.Future<T> Function()? operation,
+    _i13.StorageError Function(Object)? errorBuilder, {
+    required bool? isStorageReady,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #execute,
+          [
+            operation,
+            errorBuilder,
+          ],
+          {#isStorageReady: isStorageReady},
+        ),
+        returnValue: _i5.Future<_i12.Either<_i13.StorageError, T>>.value(
+            _i8.dummyValue<_i12.Either<_i13.StorageError, T>>(
+          this,
+          Invocation.method(
+            #execute,
+            [
+              operation,
+              errorBuilder,
+            ],
+            {#isStorageReady: isStorageReady},
+          ),
+        )),
+      ) as _i5.Future<_i12.Either<_i13.StorageError, T>>);
+
+  @override
+  _i5.Future<_i12.Either<_i13.StorageError, T>> executeTask<T>(
+    _i12.TaskEither<_i13.StorageError, T>? task, {
+    required bool? isStorageReady,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #executeTask,
+          [task],
+          {#isStorageReady: isStorageReady},
+        ),
+        returnValue: _i5.Future<_i12.Either<_i13.StorageError, T>>.value(
+            _i8.dummyValue<_i12.Either<_i13.StorageError, T>>(
+          this,
+          Invocation.method(
+            #executeTask,
+            [task],
+            {#isStorageReady: isStorageReady},
+          ),
+        )),
+      ) as _i5.Future<_i12.Either<_i13.StorageError, T>>);
 }

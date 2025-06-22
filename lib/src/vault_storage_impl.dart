@@ -1,64 +1,46 @@
-import 'dart:convert';
-// WEB-COMPAT: Conditional import for dart:io
-import 'dart:io' if (dart.library.js_interop) 'dart:html' show File;
-import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-// WEB-COMPAT: Conditional import for path_provider
-import 'package:path_provider/path_provider.dart'
-    if (dart.library.js_interop) 'package:vault_storage/src/mock/path_provider_mock.dart';
-import 'package:vault_storage/src/constants/storage_keys.dart';
-import 'package:vault_storage/src/entities/decrypt_request.dart';
-import 'package:vault_storage/src/entities/encrypt_request.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
-import 'package:vault_storage/src/errors/storage_error.dart';
-import 'package:vault_storage/src/interface/i_vault_storage.dart';
 import 'package:uuid/uuid.dart';
 
-final _algorithm = AesGcm.with256bits();
+import 'package:vault_storage/src/constants/storage_keys.dart';
+import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/errors/errors.dart';
+import 'package:vault_storage/src/extensions/extensions.dart';
+import 'package:vault_storage/src/interface/i_vault_storage.dart';
+import 'package:vault_storage/src/storage/file_operations.dart';
+import 'package:vault_storage/src/storage/task_execution.dart';
 
-// ==========================================================================
-// Isolate Data Models and Functions
-// These must be top-level or static to be used with compute().
-// ==========================================================================
-
-Future<SecretBox> _encryptInIsolate(EncryptRequest request) async {
-  final secretKey = SecretKey(request.keyBytes);
-  return _algorithm.encrypt(request.fileBytes, secretKey: secretKey);
-}
-
-Future<Uint8List> _decryptInIsolate(DecryptRequest request) async {
-  final secretKey = SecretKey(request.keyBytes);
-  final secretBox = SecretBox(
-    request.encryptedBytes,
-    nonce: request.nonce,
-    mac: Mac(request.macBytes),
-  );
-  final decryptedData =
-      await _algorithm.decrypt(secretBox, secretKey: secretKey);
-  return Uint8List.fromList(decryptedData);
-}
-
-// ==========================================================================
-// Service Implementation
-// ==========================================================================
-
+/// Main implementation of the [IVaultStorage] interface.
+///
+/// Provides secure and normal storage for key-value pairs and files,
+/// with platform-aware implementations for both web and native platforms.
 class VaultStorageImpl implements IVaultStorage {
   final FlutterSecureStorage _secureStorage;
   final Uuid _uuid;
+  final TaskExecutor _taskExecutor;
+  final FileOperations _fileOperations;
 
   @visibleForTesting
-  final Map<BoxType, Box<dynamic>> storageBoxes =
-      {}; // WEB-COMPAT: Changed to Box<dynamic>
+  final Map<BoxType, Box<dynamic>> storageBoxes = {};
 
   @visibleForTesting
   bool isVaultStorageReady = false;
 
-  VaultStorageImpl({FlutterSecureStorage? secureStorage, Uuid? uuid})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-        _uuid = uuid ?? const Uuid();
+  /// Creates a new [VaultStorageImpl] instance.
+  ///
+  /// Optionally, you can provide custom implementations of [FlutterSecureStorage]
+  /// and [Uuid] for testing purposes.
+  VaultStorageImpl({
+    FlutterSecureStorage? secureStorage,
+    Uuid? uuid,
+    TaskExecutor? taskExecutor,
+    FileOperations? fileOperations,
+  })  : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+        _uuid = uuid ?? const Uuid(),
+        _taskExecutor = taskExecutor ?? TaskExecutor(),
+        _fileOperations = fileOperations ?? FileOperations();
 
   @override
   Future<Either<StorageError, Unit>> init() async {
@@ -66,7 +48,6 @@ class VaultStorageImpl implements IVaultStorage {
 
     final task = TaskEither<StorageError, Unit>.tryCatch(
       () async {
-        // WEB-COMPAT: Removed subDir for Hive.initFlutter for web compatibility
         await Hive.initFlutter();
         return unit;
       },
@@ -86,42 +67,55 @@ class VaultStorageImpl implements IVaultStorage {
 
   @override
   Future<Either<StorageError, T?>> get<T>(BoxType box, String key) {
-    return _execute<T?>(() async {
-      final jsonString = _getBox(box).get(key) as String?;
-      if (jsonString == null) return null;
-      return json.decode(jsonString) as T;
-    },
-        (e) =>
-            StorageReadError('Failed to read "$key" from ${box.name} box', e));
+    return _taskExecutor.execute<T?>(
+      () async {
+        final jsonString = _getBox(box).get(key) as String?;
+        if (jsonString == null) return null;
+
+        return jsonString
+            .decodeJsonSafely<T>()
+            .fold((error) => throw error, (value) => value);
+      },
+      (e) => StorageReadError('Failed to read "$key" from ${box.name} box', e),
+      isStorageReady: isVaultStorageReady,
+    );
   }
 
   @override
   Future<Either<StorageError, void>> set<T>(BoxType box, String key, T value) {
-    return _execute(
-      () => _getBox(box).put(key, json.encode(value)),
+    return _taskExecutor.execute(
+      () {
+        return value.encodeJsonSafely().fold(
+              (error) => throw error,
+              (jsonString) => _getBox(box).put(key, jsonString),
+            );
+      },
       (e) => StorageWriteError('Failed to write "$key" to ${box.name} box', e),
+      isStorageReady: isVaultStorageReady,
     );
   }
 
   @override
   Future<Either<StorageError, void>> delete(BoxType box, String key) {
-    return _execute(
+    return _taskExecutor.execute(
       () => _getBox(box).delete(key),
       (e) =>
           StorageDeleteError('Failed to delete "$key" from ${box.name} box', e),
+      isStorageReady: isVaultStorageReady,
     );
   }
 
   @override
   Future<Either<StorageError, void>> clear(BoxType box) {
-    return _execute(
+    return _taskExecutor.execute(
       () async => await _getBox(box).clear(),
       (e) => StorageDeleteError('Failed to clear ${box.name} box', e),
+      isStorageReady: isVaultStorageReady,
     );
   }
 
   // ==========================================
-  // SECURE FILE STORAGE (Now with Web Support)
+  // SECURE FILE STORAGE
   // ==========================================
 
   @override
@@ -130,45 +124,15 @@ class VaultStorageImpl implements IVaultStorage {
     required String fileExtension,
     @visibleForTesting bool? isWeb,
   }) {
-    final operation =
-        TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
-      final fileId = _uuid.v4();
-      final secureKeyName = 'file_key_$fileId';
-      final secretKey = await _algorithm.newSecretKey();
-      final keyBytes = await secretKey.extractBytes();
-
-      final secretBox = await compute(
-        _encryptInIsolate,
-        EncryptRequest(fileBytes: fileBytes, keyBytes: keyBytes),
-      );
-
-      // WEB-COMPAT: Platform-aware saving logic
-      String? filePath; // Nullable for web
-      if (isWeb ?? kIsWeb) {
-        // WEB: Store the encrypted bytes directly in Hive as a base64 string
-        final encryptedContentBase64 = base64Url.encode(secretBox.cipherText);
-        await _getBox(BoxType.secureFiles).put(fileId, encryptedContentBase64);
-      } else {
-        // NATIVE: Use path_provider and dart:io to save to a file
-        final dir = await getApplicationDocumentsDirectory();
-        filePath = '${dir.path}/$fileId.$fileExtension.enc';
-        await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
-      }
-
-      await _secureStorage.write(
-          key: secureKeyName, value: base64Url.encode(keyBytes));
-
-      // Return unified metadata
-      return {
-        'fileId': fileId, // The universal key for retrieval
-        'filePath': filePath, // Path is only present on native platforms
-        'secureKeyName': secureKeyName,
-        'nonce': base64Url.encode(secretBox.nonce),
-        'mac': base64Url.encode(secretBox.mac.bytes),
-      };
-    }, (e, _) => StorageWriteError('Failed to save secure file', e));
-
-    return _executeTask(operation);
+    return _fileOperations.saveSecureFile(
+      fileBytes: fileBytes,
+      fileExtension: fileExtension,
+      isWeb: isWeb,
+      secureStorage: _secureStorage,
+      uuid: _uuid,
+      getBox: _getBox,
+      isStorageReady: isVaultStorageReady,
+    );
   }
 
   @override
@@ -176,50 +140,13 @@ class VaultStorageImpl implements IVaultStorage {
     required Map<String, dynamic> fileMetadata,
     @visibleForTesting bool? isWeb,
   }) {
-    final operation = TaskEither<StorageError, Uint8List>.tryCatch(() async {
-      final fileId = fileMetadata['fileId'] as String;
-      final secureKeyName = fileMetadata['secureKeyName'] as String;
-      final nonce = base64Url.decode(fileMetadata['nonce'] as String);
-      final macBytes = base64Url.decode(fileMetadata['mac'] as String);
-
-      // WEB-COMPAT: Platform-aware retrieval logic
-      Uint8List encryptedFileBytes;
-      if (isWeb ?? kIsWeb) {
-        // WEB: Retrieve from Hive and decode from base64
-        final encryptedContentBase64 =
-            _getBox(BoxType.secureFiles).get(fileId) as String?;
-        if (encryptedContentBase64 == null) {
-          throw Exception('File content not found in Hive for id: $fileId');
-        }
-        encryptedFileBytes = base64Url.decode(encryptedContentBase64);
-      } else {
-        // NATIVE: Retrieve from file system
-        final filePath = fileMetadata['filePath'] as String?;
-        if (filePath == null) {
-          throw Exception(
-              'File path is missing in metadata for native platform');
-        }
-        encryptedFileBytes = await File(filePath).readAsBytes();
-      }
-
-      final keyString = await _secureStorage.read(key: secureKeyName);
-      if (keyString == null) {
-        throw Exception('File key not found in secure storage.');
-      }
-      final keyBytes = base64Url.decode(keyString);
-
-      return compute(
-        _decryptInIsolate,
-        DecryptRequest(
-          encryptedBytes: encryptedFileBytes,
-          keyBytes: keyBytes,
-          nonce: nonce,
-          macBytes: macBytes,
-        ),
-      );
-    }, (e, _) => StorageReadError('Failed to read secure file', e));
-
-    return _executeTask(operation);
+    return _fileOperations.getSecureFile(
+      fileMetadata: fileMetadata,
+      isWeb: isWeb,
+      secureStorage: _secureStorage,
+      getBox: _getBox,
+      isStorageReady: isVaultStorageReady,
+    );
   }
 
   @override
@@ -227,31 +154,59 @@ class VaultStorageImpl implements IVaultStorage {
     required Map<String, dynamic> fileMetadata,
     @visibleForTesting bool? isWeb,
   }) {
-    final operation = TaskEither<StorageError, Unit>.tryCatch(() async {
-      final fileId = fileMetadata['fileId'] as String;
-      final secureKeyName = fileMetadata['secureKeyName'] as String;
+    return _fileOperations.deleteSecureFile(
+      fileMetadata: fileMetadata,
+      isWeb: isWeb,
+      secureStorage: _secureStorage,
+      getBox: _getBox,
+      isStorageReady: isVaultStorageReady,
+    );
+  }
 
-      // WEB-COMPAT: Platform-aware deletion logic
-      if (isWeb ?? kIsWeb) {
-        // WEB: Delete from Hive
-        await _getBox(BoxType.secureFiles).delete(fileId);
-      } else {
-        // NATIVE: Delete from file system
-        final filePath = fileMetadata['filePath'] as String?;
-        if (filePath != null) {
-          final file = File(filePath);
-          if (await file.exists()) {
-            await file.delete();
-          }
-        }
-      }
+  // ==========================================
+  // NORMAL FILE STORAGE
+  // ==========================================
 
-      await _secureStorage.delete(key: secureKeyName);
+  @override
+  Future<Either<StorageError, Map<String, dynamic>>> saveNormalFile({
+    required Uint8List fileBytes,
+    required String fileExtension,
+    @visibleForTesting bool? isWeb,
+  }) {
+    return _fileOperations.saveNormalFile(
+      fileBytes: fileBytes,
+      fileExtension: fileExtension,
+      isWeb: isWeb,
+      uuid: _uuid,
+      getBox: _getBox,
+      isStorageReady: isVaultStorageReady,
+    );
+  }
 
-      return unit;
-    }, (e, _) => StorageDeleteError('Failed to delete secure file', e));
+  @override
+  Future<Either<StorageError, Uint8List>> getNormalFile({
+    required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
+  }) {
+    return _fileOperations.getNormalFile(
+      fileMetadata: fileMetadata,
+      isWeb: isWeb,
+      getBox: _getBox,
+      isStorageReady: isVaultStorageReady,
+    );
+  }
 
-    return _executeTask(operation);
+  @override
+  Future<Either<StorageError, Unit>> deleteNormalFile({
+    required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
+  }) {
+    return _fileOperations.deleteNormalFile(
+      fileMetadata: fileMetadata,
+      isWeb: isWeb,
+      getBox: _getBox,
+      isStorageReady: isVaultStorageReady,
+    );
   }
 
   // ==========================================
@@ -274,35 +229,12 @@ class VaultStorageImpl implements IVaultStorage {
     return task.run();
   }
 
-  Future<Either<StorageError, T>> _execute<T>(
-    Future<T> Function() operation,
-    StorageError Function(Object e) errorBuilder,
-  ) {
-    return _executeTask(
-        TaskEither.tryCatch(operation, (e, _) => errorBuilder(e)));
-  }
-
-  Future<Either<StorageError, T>> _executeTask<T>(
-      TaskEither<StorageError, T> task) {
-    if (!isVaultStorageReady) {
-      return Future.value(
-          left(const StorageInitializationError('Storage not initialized')));
-    }
-    return task.mapLeft((l) {
-      if (l.originalException is FormatException ||
-          l.originalException is JsonUnsupportedObjectError) {
-        return StorageSerializationError(
-            '${l.message}: ${l.originalException}');
-      }
-      return l;
-    }).run();
-  }
-
-  // WEB-COMPAT: Changed to return Box<dynamic>
+  /// Get a box from storage, throwing an error if it's not opened
   Box<dynamic> _getBox(BoxType type) {
     final box = storageBoxes[type];
     if (box == null) {
-      throw Exception('Box $type not opened. Ensure init() was called.');
+      throw StorageInitializationError(
+          'Box ${type.name} not opened. Ensure init() was called.');
     }
     return box;
   }
@@ -317,10 +249,13 @@ class VaultStorageImpl implements IVaultStorage {
         if (encodedKey == null) {
           final key = Hive.generateSecureKey();
           await _secureStorage.write(
-              key: StorageKeys.secureKey, value: base64UrlEncode(key));
+              key: StorageKeys.secureKey, value: key.encodeBase64());
           return key;
         }
-        return base64Url.decode(encodedKey);
+        final decodeResult =
+            encodedKey.decodeBase64Safely(context: 'secure storage key');
+        return decodeResult.fold(
+            (error) => throw error, (decodedKey) => decodedKey);
       },
           (e, _) => StorageInitializationError(
               'Failed to create/decode secure key', e));
@@ -338,12 +273,13 @@ class VaultStorageImpl implements IVaultStorage {
       storageBoxes[BoxType.normal] =
           await Hive.openBox<String>(StorageKeys.normalBox);
 
-      // WEB-COMPAT: Open the new box for files, also encrypted
       storageBoxes[BoxType.secureFiles] = await Hive.openBox<String>(
-        StorageKeys
-            .secureFilesBox, // Make sure this is defined in your constants
+        StorageKeys.secureFilesBox,
         encryptionCipher: cipher,
       );
+
+      storageBoxes[BoxType.normalFiles] =
+          await Hive.openBox<String>(StorageKeys.normalFilesBox);
 
       return unit;
     }, (e, _) => StorageInitializationError('Failed to open storage boxes', e));

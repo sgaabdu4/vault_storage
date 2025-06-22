@@ -95,6 +95,43 @@ abstract class IVaultStorage {
     @visibleForTesting bool? isWeb,
   });
 
+  /// Saves a file's bytes without encryption.
+  ///
+  /// This method takes the raw [fileBytes] and a [fileExtension], stores it
+  /// using the most appropriate method for the platform, and returns metadata required for later retrieval.
+  ///
+  /// Returns a `Future` that completes with an `Either`:
+  /// - `Right(Map<String, dynamic>)` containing the file metadata (e.g., path, id).
+  /// - `Left(StorageError)` if the save operation fails.
+  Future<Either<StorageError, Map<String, dynamic>>> saveNormalFile({
+    required Uint8List fileBytes,
+    required String fileExtension,
+    @visibleForTesting bool? isWeb,
+  });
+
+  /// Retrieves a normal file using its [fileMetadata].
+  ///
+  /// The [fileMetadata] map must contain all the necessary information to locate
+  /// the file, as provided by `saveNormalFile`.
+  ///
+  /// Returns a `Future` that completes with an `Either`:
+  /// - `Right(Uint8List)` containing the file bytes.
+  /// - `Left(StorageError)` if the retrieval fails.
+  Future<Either<StorageError, Uint8List>> getNormalFile({
+    required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
+  });
+
+  /// Deletes a normal file from storage using its [fileMetadata].
+  ///
+  /// Returns a `Future` that completes with an `Either`:
+  /// - `Right(Unit)` on successful deletion.
+  /// - `Left(StorageError)` if the deletion fails.
+  Future<Either<StorageError, Unit>> deleteNormalFile({
+    required Map<String, dynamic> fileMetadata,
+    @visibleForTesting bool? isWeb,
+  });
+
   /// Disposes of all resources used by the vault storage.
   ///
   /// This should be called when the storage service is no longer needed to ensure
