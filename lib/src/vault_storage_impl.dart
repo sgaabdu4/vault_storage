@@ -90,7 +90,12 @@ class VaultStorageImpl implements IVaultStorage {
     return _execute<T?>(() async {
       final jsonString = _getBox(box).get(key) as String?;
       if (jsonString == null) return null;
-      return json.decode(jsonString) as T;
+      
+      final decodeResult = JsonSafe.decode<T>(jsonString);
+      return decodeResult.fold(
+        (error) => throw error,
+        (value) => value
+      );
     },
         (e) =>
             StorageReadError('Failed to read "$key" from ${box.name} box', e));
@@ -99,7 +104,13 @@ class VaultStorageImpl implements IVaultStorage {
   @override
   Future<Either<StorageError, void>> set<T>(BoxType box, String key, T value) {
     return _execute(
-      () => _getBox(box).put(key, json.encode(value)),
+      () {
+        final encodeResult = JsonSafe.encode(value);
+        return encodeResult.fold(
+          (error) => throw error,
+          (jsonString) => _getBox(box).put(key, jsonString)
+        );
+      },
       (e) => StorageWriteError('Failed to write "$key" to ${box.name} box', e),
     );
   }

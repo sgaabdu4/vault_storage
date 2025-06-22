@@ -9,6 +9,8 @@ import 'package:mockito/mockito.dart';
 import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
+import 'package:vault_storage/src/extensions/extensions.dart';
+import 'package:vault_storage/src/extensions/storage_extensions.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import 'mocks.mocks.dart';
@@ -45,8 +47,7 @@ void main() {
     });
     vaultStorage.isVaultStorageReady = true;
 
-    const MethodChannel('plugins.flutter.io/path_provider')
-        .setMockMethodCallHandler((MethodCall methodCall) async {
+    const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler((MethodCall methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
         return '.';
       }
@@ -55,8 +56,7 @@ void main() {
   });
 
   tearDown(() {
-    const MethodChannel('plugins.flutter.io/path_provider')
-        .setMockMethodCallHandler(null);
+    const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler(null);
   });
 
   group('VaultStorageImpl Tests', () {
@@ -67,8 +67,7 @@ void main() {
           final value = {'data': 'test_data'};
           when(mockNormalBox.get(key)).thenReturn(jsonEncode(value));
 
-          final result =
-              await vaultStorage.get<Map<String, dynamic>>(BoxType.normal, key);
+          final result = await vaultStorage.get<Map<String, dynamic>>(BoxType.normal, key);
 
           expect(result.isRight(), isTrue);
           expect(result.getOrElse((_) => {}), value);
@@ -94,16 +93,14 @@ void main() {
           expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
         });
 
-        test('should return StorageSerializationError on json decoding error',
-            () async {
+        test('should return StorageSerializationError on json decoding error', () async {
           const key = 'test_key';
           when(mockNormalBox.get(key)).thenReturn('invalid json');
 
           final result = await vaultStorage.get<dynamic>(BoxType.normal, key);
 
           expect(result.isLeft(), isTrue);
-          expect(result.fold((l) => l, (r) => r),
-              isA<StorageSerializationError>());
+          expect(result.fold((l) => l, (r) => r), isA<StorageSerializationError>());
         });
       });
 
@@ -133,11 +130,9 @@ void main() {
           );
         });
 
-        test('should return StorageSerializationError on json encoding error',
-            () async {
+        test('should return StorageSerializationError on json encoding error', () async {
           const key = 'test_key';
-          final value =
-              _UnencodableObject(); // This will throw JsonUnsupportedObjectError
+          final value = _UnencodableObject(); // This will throw JsonUnsupportedObjectError
 
           final result = await vaultStorage.set(BoxType.normal, key, value);
 
@@ -206,8 +201,8 @@ void main() {
         'fileId': fileId,
         'filePath': './$fileId.$fileExtension.enc',
         'secureKeyName': 'file_key_$fileId',
-        'nonce': base64Url.encode([4, 5, 6]),
-        'mac': base64Url.encode([7, 8, 9]),
+        'nonce': [4, 5, 6].encodeBase64(),
+        'mac': [7, 8, 9].encodeBase64(),
       };
 
       setUp(() {
@@ -216,9 +211,7 @@ void main() {
 
       group('saveSecureFile', () {
         test('should save file and return metadata on success', () async {
-          when(mockSecureStorage.write(
-                  key: anyNamed('key'), value: anyNamed('value')))
-              .thenAnswer((_) async {});
+          when(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value'))).thenAnswer((_) async {});
 
           final result = await vaultStorage.saveSecureFile(
             fileBytes: fileBytes,
@@ -229,9 +222,7 @@ void main() {
           final returnedMetadata = result.getOrElse((_) => {});
           expect(returnedMetadata['filePath'], endsWith('.enc'));
           expect(returnedMetadata['secureKeyName'], isA<String>());
-          verify(mockSecureStorage.write(
-                  key: anyNamed('key'), value: anyNamed('value')))
-              .called(1);
+          verify(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value'))).called(1);
 
           // Cleanup the created file
           final file = File(returnedMetadata['filePath'] as String);
@@ -241,8 +232,7 @@ void main() {
         });
 
         test('should return StorageWriteError on failure', () async {
-          when(mockSecureStorage.write(
-                  key: anyNamed('key'), value: anyNamed('value')))
+          when(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value')))
               .thenThrow(Exception('Storage write error'));
 
           final result = await vaultStorage.saveSecureFile(
@@ -260,35 +250,31 @@ void main() {
 
         test('should return file bytes on success', () async {
           // Prepare valid encrypted data
-          final originalData =
-              Uint8List.fromList(utf8.encode('some secret data'));
+          final originalData = Uint8List.fromList(utf8.encode('some secret data'));
           final secretKey = await algorithm.newSecretKey();
           final keyBytes = await secretKey.extractBytes();
-          final secretBox =
-              await algorithm.encrypt(originalData, secretKey: secretKey);
+          final secretBox = await algorithm.encrypt(originalData, secretKey: secretKey);
 
           // Setup mocks and file system with the valid data
           final file = File(metadata['filePath'] as String);
           await file.writeAsBytes(secretBox.cipherText, flush: true);
 
           when(mockSecureStorage.read(key: metadata['secureKeyName'] as String))
-              .thenAnswer((_) async => base64Url.encode(keyBytes));
+              .thenAnswer((_) async => keyBytes.encodeBase64());
 
           final validMetadata = {
             'fileId': fileId,
             'filePath': metadata['filePath'],
             'secureKeyName': metadata['secureKeyName'],
-            'nonce': base64Url.encode(secretBox.nonce),
-            'mac': base64Url.encode(secretBox.mac.bytes),
+            'nonce': secretBox.nonce.encodeBase64(),
+            'mac': secretBox.mac.bytes.encodeBase64(),
           };
 
           // Call the method under test
-          final result =
-              await vaultStorage.getSecureFile(fileMetadata: validMetadata);
+          final result = await vaultStorage.getSecureFile(fileMetadata: validMetadata);
 
           // Assert
-          expect(result.isRight(), isTrue,
-              reason: result.fold((l) => l.message, (r) => ''));
+          expect(result.isRight(), isTrue, reason: result.fold((l) => l.message, (r) => ''));
           result.fold(
             (l) => fail('getSecureFile should not have failed: ${l.message}'),
             (decryptedData) => expect(decryptedData, originalData),
@@ -298,16 +284,12 @@ void main() {
           await file.delete();
         });
 
-        test('should return StorageReadError if key not in secure storage',
-            () async {
+        test('should return StorageReadError if key not in secure storage', () async {
           final file = File(metadata['filePath'] as String);
-          await file.writeAsBytes(Uint8List.fromList([10, 11, 12]),
-              flush: true);
-          when(mockSecureStorage.read(key: metadata['secureKeyName'] as String))
-              .thenAnswer((_) async => null);
+          await file.writeAsBytes(Uint8List.fromList([10, 11, 12]), flush: true);
+          when(mockSecureStorage.read(key: metadata['secureKeyName'] as String)).thenAnswer((_) async => null);
 
-          final result =
-              await vaultStorage.getSecureFile(fileMetadata: metadata);
+          final result = await vaultStorage.getSecureFile(fileMetadata: metadata);
 
           expect(result.isLeft(), isTrue);
           expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
@@ -318,11 +300,9 @@ void main() {
         test('should return StorageReadError on file read failure', () async {
           // Don't create the file, so read will fail
           when(mockSecureStorage.read(key: metadata['secureKeyName'] as String))
-              .thenAnswer(
-                  (_) async => base64Url.encode(List.generate(32, (i) => i)));
+              .thenAnswer((_) async => List.generate(32, (i) => i).encodeBase64());
 
-          final result =
-              await vaultStorage.getSecureFile(fileMetadata: metadata);
+          final result = await vaultStorage.getSecureFile(fileMetadata: metadata);
 
           expect(result.isLeft(), isTrue);
           expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
@@ -333,27 +313,19 @@ void main() {
         test('should return unit on success', () async {
           final file = File(metadata['filePath'] as String);
           await file.create();
-          when(mockSecureStorage.delete(
-                  key: metadata['secureKeyName'] as String))
-              .thenAnswer((_) async {});
+          when(mockSecureStorage.delete(key: metadata['secureKeyName'] as String)).thenAnswer((_) async {});
 
-          final result =
-              await vaultStorage.deleteSecureFile(fileMetadata: metadata);
+          final result = await vaultStorage.deleteSecureFile(fileMetadata: metadata);
 
           expect(result.isRight(), isTrue);
           expect(await file.exists(), isFalse);
-          verify(mockSecureStorage.delete(
-                  key: metadata['secureKeyName'] as String))
-              .called(1);
+          verify(mockSecureStorage.delete(key: metadata['secureKeyName'] as String)).called(1);
         });
 
         test('should return StorageDeleteError on failure', () async {
-          when(mockSecureStorage.delete(
-                  key: metadata['secureKeyName'] as String))
-              .thenThrow(Exception('Delete error'));
+          when(mockSecureStorage.delete(key: metadata['secureKeyName'] as String)).thenThrow(Exception('Delete error'));
 
-          final result =
-              await vaultStorage.deleteSecureFile(fileMetadata: metadata);
+          final result = await vaultStorage.deleteSecureFile(fileMetadata: metadata);
 
           expect(result.isLeft(), isTrue);
           expect(result.fold((l) => l, (r) => r), isA<StorageDeleteError>());
@@ -369,20 +341,16 @@ void main() {
         const fileId = 'test-uuid';
         final secretKey = await AesGcm.with256bits().newSecretKey();
         final keyBytes = await secretKey.extractBytes();
-        final secretBox =
-            await AesGcm.with256bits().encrypt(fileBytes, secretKey: secretKey);
-        final encryptedContentBase64 = base64Url.encode(secretBox.cipherText);
+        final secretBox = await AesGcm.with256bits().encrypt(fileBytes, secretKey: secretKey);
+        final encryptedContentBase64 = secretBox.cipherText.encodeBase64();
 
         when(mockUuid.v4()).thenReturn(fileId);
-        when(mockSecureStorage.write(
-                key: 'file_key_$fileId', value: base64Url.encode(keyBytes)))
-            .thenAnswer((_) async {});
-        when(mockSecureFilesBox.put(fileId, encryptedContentBase64))
-            .thenAnswer((_) async {});
+        when(mockSecureStorage.write(key: 'file_key_$fileId', value: keyBytes.encodeBase64())).thenAnswer((_) async {});
+        when(mockSecureFilesBox.put(fileId, encryptedContentBase64)).thenAnswer((_) async {});
 
         // Act
-        final result = await vaultStorage.saveSecureFile(
-            fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
+        final result =
+            await vaultStorage.saveSecureFile(fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
 
         // Assert
         expect(result.isRight(), isTrue);
@@ -397,51 +365,44 @@ void main() {
       test('should retrieve file from Hive on web', () async {
         // Arrange
         const fileId = 'test-uuid';
-        final keyBytes =
-            List.generate(32, (index) => index % 256); // 32 bytes exactly
+        final keyBytes = List.generate(32, (index) => index % 256); // 32 bytes exactly
         final secretKey = SecretKey(keyBytes);
         final originalData = Uint8List.fromList(utf8.encode('secret data'));
-        final secretBox = await AesGcm.with256bits()
-            .encrypt(originalData, secretKey: secretKey);
-        final encryptedContentBase64 = base64Url.encode(secretBox.cipherText);
+        final secretBox = await AesGcm.with256bits().encrypt(originalData, secretKey: secretKey);
+        final encryptedContentBase64 = secretBox.cipherText.encodeBase64();
 
         final metadata = {
           'fileId': fileId,
           'secureKeyName': 'file_key_$fileId',
-          'nonce': base64Url.encode(secretBox.nonce),
-          'mac': base64Url.encode(secretBox.mac.bytes),
+          'nonce': secretBox.nonce.encodeBase64(),
+          'mac': secretBox.mac.bytes.encodeBase64(),
         };
 
         when(mockSecureFilesBox.get(fileId)).thenReturn(encryptedContentBase64);
-        when(mockSecureStorage.read(key: 'file_key_$fileId'))
-            .thenAnswer((_) async => base64Url.encode(keyBytes));
+        when(mockSecureStorage.read(key: 'file_key_$fileId')).thenAnswer((_) async => keyBytes.encodeBase64());
 
         // Act
-        final result = await vaultStorage.getSecureFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.getSecureFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
-        expect(result.isRight(), isTrue,
-            reason: result.fold((l) => l.message, (r) => ''));
+        expect(result.isRight(), isTrue, reason: result.fold((l) => l.message, (r) => ''));
         result.fold((l) => null, (r) => expect(r, originalData));
       });
 
-      test('should return StorageReadError when file not found in Hive on web',
-          () async {
+      test('should return StorageReadError when file not found in Hive on web', () async {
         // Arrange
         const fileId = 'test-uuid';
         final metadata = {
           'fileId': fileId,
           'secureKeyName': 'file_key_$fileId',
-          'nonce': base64Url.encode([1, 2, 3]),
-          'mac': base64Url.encode([4, 5, 6]),
+          'nonce': [1, 2, 3].encodeBase64(),
+          'mac': [4, 5, 6].encodeBase64(),
         };
 
         when(mockSecureFilesBox.get(fileId)).thenReturn(null);
 
         // Act
-        final result = await vaultStorage.getSecureFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.getSecureFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
         expect(result.isLeft(), isTrue);
@@ -459,12 +420,10 @@ void main() {
         };
 
         when(mockSecureFilesBox.delete(fileId)).thenAnswer((_) async {});
-        when(mockSecureStorage.delete(key: 'file_key_$fileId'))
-            .thenAnswer((_) async {});
+        when(mockSecureStorage.delete(key: 'file_key_$fileId')).thenAnswer((_) async {});
 
         // Act
-        final result = await vaultStorage.deleteSecureFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.deleteSecureFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
         expect(result.isRight(), isTrue);
@@ -507,8 +466,7 @@ void main() {
           }
         });
 
-        test('should return StorageWriteError on path_provider failure',
-            () async {
+        test('should return StorageWriteError on path_provider failure', () async {
           // Simulate path_provider throwing an exception
           const MethodChannel('plugins.flutter.io/path_provider')
               .setMockMethodCallHandler((MethodCall methodCall) async {
@@ -546,12 +504,10 @@ void main() {
           await file.writeAsBytes(originalData, flush: true);
 
           // Call the method under test
-          final result =
-              await vaultStorage.getNormalFile(fileMetadata: metadata);
+          final result = await vaultStorage.getNormalFile(fileMetadata: metadata);
 
           // Assert
-          expect(result.isRight(), isTrue,
-              reason: result.fold((l) => l.message, (r) => ''));
+          expect(result.isRight(), isTrue, reason: result.fold((l) => l.message, (r) => ''));
           result.fold(
             (l) => fail('getNormalFile should not have failed: ${l.message}'),
             (data) => expect(data, originalData),
@@ -561,27 +517,22 @@ void main() {
           await file.delete();
         });
 
-        test('should return StorageReadError when file does not exist',
-            () async {
+        test('should return StorageReadError when file does not exist', () async {
           // Don't create the file
-          final result =
-              await vaultStorage.getNormalFile(fileMetadata: metadata);
+          final result = await vaultStorage.getNormalFile(fileMetadata: metadata);
 
           expect(result.isLeft(), isTrue);
           expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
         });
 
-        test(
-            'should return StorageReadError when filePath is missing in metadata for native',
-            () async {
+        test('should return StorageReadError when filePath is missing in metadata for native', () async {
           final invalidMetadata = {
             'fileId': fileId,
             'extension': fileExtension,
             // No filePath
           };
 
-          final result = await vaultStorage.getNormalFile(
-              fileMetadata: invalidMetadata, isWeb: false);
+          final result = await vaultStorage.getNormalFile(fileMetadata: invalidMetadata, isWeb: false);
 
           expect(result.isLeft(), isTrue);
           expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
@@ -595,8 +546,7 @@ void main() {
           await file.create();
 
           // Call the method under test
-          final result =
-              await vaultStorage.deleteNormalFile(fileMetadata: metadata);
+          final result = await vaultStorage.deleteNormalFile(fileMetadata: metadata);
 
           // Assert
           expect(result.isRight(), isTrue);
@@ -605,23 +555,20 @@ void main() {
 
         test('should return unit even if file does not exist', () async {
           // Call the method under test without creating the file
-          final result =
-              await vaultStorage.deleteNormalFile(fileMetadata: metadata);
+          final result = await vaultStorage.deleteNormalFile(fileMetadata: metadata);
 
           // This should still succeed because deleting a non-existent file is not an error
           expect(result.isRight(), isTrue);
         });
 
-        test('should return StorageDeleteError on exceptional failure',
-            () async {
+        test('should return StorageDeleteError on exceptional failure', () async {
           // Create a corrupt metadata to cause an exception
           final invalidMetadata = {
             // Missing fileId
             'filePath': metadata['filePath'],
           };
 
-          final result = await vaultStorage.deleteNormalFile(
-              fileMetadata: invalidMetadata);
+          final result = await vaultStorage.deleteNormalFile(fileMetadata: invalidMetadata);
 
           expect(result.isLeft(), isTrue);
           expect(result.fold((l) => l, (r) => r), isA<StorageDeleteError>());
@@ -635,15 +582,14 @@ void main() {
         final fileBytes = Uint8List.fromList([1, 2, 3]);
         const fileExtension = 'txt';
         const fileId = 'test-uuid';
-        final contentBase64 = base64Url.encode(fileBytes);
+        final contentBase64 = fileBytes.encodeBase64();
 
         when(mockUuid.v4()).thenReturn(fileId);
-        when(mockNormalFilesBox.put(fileId, contentBase64))
-            .thenAnswer((_) async {});
+        when(mockNormalFilesBox.put(fileId, contentBase64)).thenAnswer((_) async {});
 
         // Act
-        final result = await vaultStorage.saveNormalFile(
-            fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
+        final result =
+            await vaultStorage.saveNormalFile(fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
 
         // Assert
         expect(result.isRight(), isTrue);
@@ -662,12 +608,11 @@ void main() {
         const fileId = 'test-uuid';
 
         when(mockUuid.v4()).thenReturn(fileId);
-        when(mockNormalFilesBox.put(any, any))
-            .thenThrow(Exception('Hive put error'));
+        when(mockNormalFilesBox.put(any, any)).thenThrow(Exception('Hive put error'));
 
         // Act
-        final result = await vaultStorage.saveNormalFile(
-            fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
+        final result =
+            await vaultStorage.saveNormalFile(fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
 
         // Assert
         expect(result.isLeft(), isTrue);
@@ -680,7 +625,7 @@ void main() {
         // Arrange
         const fileId = 'test-uuid';
         final originalData = Uint8List.fromList([1, 2, 3, 4, 5]);
-        final contentBase64 = base64Url.encode(originalData);
+        final contentBase64 = originalData.encodeBase64();
 
         final metadata = {
           'fileId': fileId,
@@ -690,18 +635,15 @@ void main() {
         when(mockNormalFilesBox.get(fileId)).thenReturn(contentBase64);
 
         // Act
-        final result = await vaultStorage.getNormalFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.getNormalFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
-        expect(result.isRight(), isTrue,
-            reason: result.fold((l) => l.message, (r) => ''));
+        expect(result.isRight(), isTrue, reason: result.fold((l) => l.message, (r) => ''));
         result.fold((l) => null, (r) => expect(r, originalData));
         verify(mockNormalFilesBox.get(fileId)).called(1);
       });
 
-      test('should return StorageReadError when file not found in Hive on web',
-          () async {
+      test('should return StorageReadError when file not found in Hive on web', () async {
         // Arrange
         const fileId = 'test-uuid';
         final metadata = {
@@ -712,8 +654,7 @@ void main() {
         when(mockNormalFilesBox.get(fileId)).thenReturn(null);
 
         // Act
-        final result = await vaultStorage.getNormalFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.getNormalFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
         expect(result.isLeft(), isTrue);
@@ -731,8 +672,7 @@ void main() {
         when(mockNormalFilesBox.get(fileId)).thenReturn('invalid base64');
 
         // Act
-        final result = await vaultStorage.getNormalFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.getNormalFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
         expect(result.isLeft(), isTrue);
@@ -752,8 +692,7 @@ void main() {
         when(mockNormalFilesBox.delete(fileId)).thenAnswer((_) async {});
 
         // Act
-        final result = await vaultStorage.deleteNormalFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.deleteNormalFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
         expect(result.isRight(), isTrue);
@@ -768,12 +707,10 @@ void main() {
           'extension': 'txt',
         };
 
-        when(mockNormalFilesBox.delete(fileId))
-            .thenThrow(Exception('Hive delete error'));
+        when(mockNormalFilesBox.delete(fileId)).thenThrow(Exception('Hive delete error'));
 
         // Act
-        final result = await vaultStorage.deleteNormalFile(
-            fileMetadata: metadata, isWeb: true);
+        final result = await vaultStorage.deleteNormalFile(fileMetadata: metadata, isWeb: true);
 
         // Assert
         expect(result.isLeft(), isTrue);
@@ -782,21 +719,16 @@ void main() {
     });
 
     group('Service State', () {
-      test(
-          'any operation should return StorageInitializationError if not initialized',
-          () async {
+      test('any operation should return StorageInitializationError if not initialized', () async {
         vaultStorage.isVaultStorageReady = false;
 
-        final getResult =
-            await vaultStorage.get<dynamic>(BoxType.normal, 'key');
-        expect(getResult.fold((l) => l, (r) => r),
-            isA<StorageInitializationError>());
+        final getResult = await vaultStorage.get<dynamic>(BoxType.normal, 'key');
+        expect(getResult.fold((l) => l, (r) => r), isA<StorageInitializationError>());
 
-        final setResult =
-            await vaultStorage.set(BoxType.normal, 'key', 'value');
+        final setResult = await vaultStorage.set(BoxType.normal, 'key', 'value');
         expect(setResult.isLeft(), isTrue);
-        setResult.fold((l) => expect(l, isA<StorageInitializationError>()),
-            (r) => fail('Expected a StorageInitializationError'));
+        setResult.fold(
+            (l) => expect(l, isA<StorageInitializationError>()), (r) => fail('Expected a StorageInitializationError'));
       });
 
       test('dispose should clear boxes and set ready flag to false', () async {
@@ -819,9 +751,7 @@ void main() {
         expect(result.isRight(), isTrue);
       });
 
-      test(
-          '_getBox being called for a non-existent box should result in an error',
-          () async {
+      test('_getBox being called for a non-existent box should result in an error', () async {
         vaultStorage.storageBoxes.remove(BoxType.secure);
         final result = await vaultStorage.get<dynamic>(BoxType.secure, 'key');
         expect(result.isLeft(), isTrue);
@@ -832,8 +762,8 @@ void main() {
     group('Initialization', () {
       test('init should succeed and set isVaultStorageReady to true', () async {
         vaultStorage.isVaultStorageReady = false;
-        when(mockSecureStorage.read(key: anyNamed('key'))).thenAnswer(
-            (_) async => base64UrlEncode(List.generate(32, (i) => i)));
+        when(mockSecureStorage.read(key: anyNamed('key')))
+            .thenAnswer((_) async => List.generate(32, (i) => i).encodeBase64());
 
         final result = await vaultStorage.init();
 
@@ -846,32 +776,24 @@ void main() {
         expect(result.isRight(), isTrue);
       });
 
-      test('getOrCreateSecureKey should create a key if one does not exist',
-          () async {
-        when(mockSecureStorage.read(key: anyNamed('key')))
-            .thenAnswer((_) async => null);
-        when(mockSecureStorage.write(
-                key: anyNamed('key'), value: anyNamed('value')))
-            .thenAnswer((_) async {});
+      test('getOrCreateSecureKey should create a key if one does not exist', () async {
+        when(mockSecureStorage.read(key: anyNamed('key'))).thenAnswer((_) async => null);
+        when(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value'))).thenAnswer((_) async {});
 
         final result = await vaultStorage.getOrCreateSecureKey().run();
 
         expect(result.isRight(), isTrue);
-        verify(mockSecureStorage.write(
-                key: anyNamed('key'), value: anyNamed('value')))
-            .called(1);
+        verify(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value'))).called(1);
       });
 
       test('getOrCreateSecureKey should return existing key', () async {
-        final key = base64UrlEncode(List.generate(32, (i) => i));
-        when(mockSecureStorage.read(key: anyNamed('key')))
-            .thenAnswer((_) async => key);
+        final key = List.generate(32, (i) => i).encodeBase64();
+        when(mockSecureStorage.read(key: anyNamed('key'))).thenAnswer((_) async => key);
 
         final result = await vaultStorage.getOrCreateSecureKey().run();
 
         expect(result.isRight(), isTrue);
-        result.fold((l) => fail('should not be left'),
-            (r) => expect(base64UrlEncode(r), key));
+        result.fold((l) => fail('should not be left'), (r) => expect(r.encodeBase64(), key));
         verify(mockSecureStorage.read(key: anyNamed('key'))).called(1);
       });
 
@@ -882,10 +804,8 @@ void main() {
         expect(result.isRight(), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
-        expect(
-            vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
-        expect(
-            vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
       });
 
       test('openBoxes should open all boxes with the right names', () async {
@@ -895,33 +815,25 @@ void main() {
         expect(result.isRight(), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
-        expect(
-            vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
-        expect(
-            vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
       });
 
-      test('init should return StorageInitializationError on failure',
-          () async {
+      test('init should return StorageInitializationError on failure', () async {
         vaultStorage.isVaultStorageReady = false;
-        when(mockSecureStorage.read(key: anyNamed('key')))
-            .thenThrow(Exception('Could not read key'));
+        when(mockSecureStorage.read(key: anyNamed('key'))).thenThrow(Exception('Could not read key'));
 
         final result = await vaultStorage.init();
 
         expect(result.isLeft(), isTrue);
-        expect(result.fold((l) => l, (r) => null),
-            isA<StorageInitializationError>());
+        expect(result.fold((l) => l, (r) => null), isA<StorageInitializationError>());
         expect(vaultStorage.isVaultStorageReady, isFalse);
       });
 
-      test(
-          'init should return StorageInitializationError on Hive.initFlutter failure',
-          () async {
+      test('init should return StorageInitializationError on Hive.initFlutter failure', () async {
         // Arrange
         vaultStorage.isVaultStorageReady = false;
-        const MethodChannel('plugins.flutter.io/path_provider')
-            .setMockMethodCallHandler((MethodCall methodCall) async {
+        const MethodChannel('plugins.flutter.io/path_provider').setMockMethodCallHandler((MethodCall methodCall) async {
           if (methodCall.method == 'getApplicationDocumentsDirectory') {
             // Simulate a failure in getting the directory, which Hive.initFlutter depends on.
             throw Exception('Failed to get directory');
@@ -936,55 +848,43 @@ void main() {
         expect(result.isLeft(), isTrue);
         final error = result.fold((l) => l, (r) => null);
         expect(error, isA<StorageInitializationError>());
-        expect((error as StorageInitializationError).message,
-            'Failed to initialize Hive');
+        expect((error as StorageInitializationError).message, 'Failed to initialize Hive');
         expect(vaultStorage.isVaultStorageReady, isFalse);
       });
 
-      test(
-          'getOrCreateSecureKey should return StorageInitializationError on read failure',
-          () async {
-        when(mockSecureStorage.read(key: anyNamed('key')))
-            .thenThrow(Exception('Could not read key'));
+      test('getOrCreateSecureKey should return StorageInitializationError on read failure', () async {
+        when(mockSecureStorage.read(key: anyNamed('key'))).thenThrow(Exception('Could not read key'));
 
         final result = await vaultStorage.getOrCreateSecureKey().run();
 
         expect(result.isLeft(), isTrue);
-        expect(result.fold((l) => l, (r) => null),
-            isA<StorageInitializationError>());
+        expect(result.fold((l) => l, (r) => null), isA<StorageInitializationError>());
       });
 
-      test(
-          'getOrCreateSecureKey should return StorageInitializationError on write failure',
-          () async {
-        when(mockSecureStorage.read(key: anyNamed('key')))
-            .thenAnswer((_) async => null);
-        when(mockSecureStorage.write(
-                key: anyNamed('key'), value: anyNamed('value')))
+      test('getOrCreateSecureKey should return StorageInitializationError on write failure', () async {
+        when(mockSecureStorage.read(key: anyNamed('key'))).thenAnswer((_) async => null);
+        when(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value')))
             .thenThrow(Exception('Could not write key'));
 
         final result = await vaultStorage.getOrCreateSecureKey().run();
 
         expect(result.isLeft(), isTrue);
-        expect(result.fold((l) => l, (r) => null),
-            isA<StorageInitializationError>());
+        expect(result.fold((l) => l, (r) => null), isA<StorageInitializationError>());
       });
 
-      test('openBoxes should return StorageInitializationError on failure',
-          () async {
+      test('openBoxes should return StorageInitializationError on failure', () async {
         final key = List.generate(16, (i) => i); // Invalid key
         final result = await vaultStorage.openBoxes(key).run();
 
         expect(result.isLeft(), isTrue);
-        expect(result.fold((l) => l, (r) => null),
-            isA<StorageInitializationError>());
+        expect(result.fold((l) => l, (r) => null), isA<StorageInitializationError>());
       });
 
       test('init should open all box types', () async {
         vaultStorage.isVaultStorageReady = false;
         vaultStorage.storageBoxes.clear();
-        when(mockSecureStorage.read(key: anyNamed('key'))).thenAnswer(
-            (_) async => base64UrlEncode(List.generate(32, (i) => i)));
+        when(mockSecureStorage.read(key: anyNamed('key')))
+            .thenAnswer((_) async => List.generate(32, (i) => i).encodeBase64());
 
         final result = await vaultStorage.init();
 
@@ -992,10 +892,8 @@ void main() {
         expect(vaultStorage.isVaultStorageReady, isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
-        expect(
-            vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
-        expect(
-            vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
       });
     });
 

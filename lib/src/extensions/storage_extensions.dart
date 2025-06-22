@@ -75,3 +75,34 @@ extension TaskEitherFileExtension<R> on TaskEither<StorageError, R> {
     });
   }
 }
+
+/// Utility class for safe JSON encoding and decoding
+class JsonSafe {
+  JsonSafe._(); // Private constructor to prevent instantiation
+
+  /// Safely encodes an object to JSON, returning Either<StorageSerializationError, String>
+  ///
+  /// - The left side contains a [StorageSerializationError] if encoding fails
+  /// - The right side contains the successfully encoded JSON string
+  static Either<StorageSerializationError, String> encode(Object? value) {
+    try {
+      final jsonString = json.encode(value);
+      return right(jsonString);
+    } catch (e) {
+      return left(StorageSerializationError('Failed to encode object to JSON', e));
+    }
+  }
+
+  /// Safely decodes a JSON string, returning Either<StorageSerializationError, T>
+  ///
+  /// - The left side contains a [StorageSerializationError] if decoding fails
+  /// - The right side contains the successfully decoded object of type T
+  static Either<StorageSerializationError, T> decode<T>(String jsonString) {
+    try {
+      final decoded = json.decode(jsonString) as T;
+      return right(decoded);
+    } catch (e) {
+      return left(StorageSerializationError('Failed to decode JSON string', e));
+    }
+  }
+}
