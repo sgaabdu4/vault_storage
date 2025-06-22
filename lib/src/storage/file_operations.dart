@@ -23,7 +23,8 @@ class FileOperations {
   final TaskExecutor _taskExecutor;
 
   /// Creates a new [FileOperations] instance
-  FileOperations({TaskExecutor? taskExecutor}) : _taskExecutor = taskExecutor ?? TaskExecutor();
+  FileOperations({TaskExecutor? taskExecutor})
+      : _taskExecutor = taskExecutor ?? TaskExecutor();
 
   /// Save a secure (encrypted) file
   ///
@@ -37,7 +38,8 @@ class FileOperations {
     required Box<dynamic> Function(BoxType) getBox,
     required bool isStorageReady,
   }) {
-    final operation = TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
+    final operation =
+        TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
       final fileId = uuid.v4();
       final secureKeyName = 'file_key_$fileId';
       final secretKey = await encryptionAlgorithm.newSecretKey();
@@ -61,7 +63,8 @@ class FileOperations {
         await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
       }
 
-      await secureStorage.write(key: secureKeyName, value: keyBytes.encodeBase64());
+      await secureStorage.write(
+          key: secureKeyName, value: keyBytes.encodeBase64());
 
       // Return unified metadata
       return {
@@ -92,8 +95,12 @@ class FileOperations {
       final secureKeyName = fileMetadata.getRequiredString('secureKeyName');
 
       // Decode base64 values from metadata
-      final nonceResult = fileMetadata.getRequiredString('nonce').decodeBase64Safely(context: 'nonce');
-      final macResult = fileMetadata.getRequiredString('mac').decodeBase64Safely(context: 'MAC bytes');
+      final nonceResult = fileMetadata
+          .getRequiredString('nonce')
+          .decodeBase64Safely(context: 'nonce');
+      final macResult = fileMetadata
+          .getRequiredString('mac')
+          .decodeBase64Safely(context: 'MAC bytes');
 
       // Extract the bytes using fold
       final nonce = nonceResult.fold((error) => throw error, (bytes) => bytes);
@@ -103,13 +110,16 @@ class FileOperations {
       Uint8List encryptedFileBytes;
       if (isWeb ?? kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
-        final encryptedContentBase64 = getBox(BoxType.secureFiles).get(fileId) as String?;
+        final encryptedContentBase64 =
+            getBox(BoxType.secureFiles).get(fileId) as String?;
         if (encryptedContentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive secure files box');
         }
 
-        final contentResult = encryptedContentBase64.decodeBase64Safely(context: 'encrypted content');
-        encryptedFileBytes = contentResult.fold((error) => throw error, (bytes) => bytes);
+        final contentResult = encryptedContentBase64.decodeBase64Safely(
+            context: 'encrypted content');
+        encryptedFileBytes =
+            contentResult.fold((error) => throw error, (bytes) => bytes);
       } else {
         // NATIVE: Retrieve from file system
         final filePath = fileMetadata.getOptionalString('filePath');
@@ -144,7 +154,10 @@ class FileOperations {
           macBytes: macBytes,
         ),
       );
-    }, (e, _) => e is StorageError ? e : StorageReadError('Failed to read secure file', e));
+    },
+        (e, _) => e is StorageError
+            ? e
+            : StorageReadError('Failed to read secure file', e));
 
     return _taskExecutor.executeTask(operation, isStorageReady: isStorageReady);
   }
@@ -195,7 +208,8 @@ class FileOperations {
     required Box<dynamic> Function(BoxType) getBox,
     required bool isStorageReady,
   }) {
-    final operation = TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
+    final operation =
+        TaskEither<StorageError, Map<String, dynamic>>.tryCatch(() async {
       final fileId = uuid.v4();
 
       // Platform-aware saving logic
@@ -238,15 +252,18 @@ class FileOperations {
       // Platform-aware retrieval logic
       if (isWeb ?? kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
-        final contentBase64 = getBox(BoxType.normalFiles).get(fileId) as String?;
+        final contentBase64 =
+            getBox(BoxType.normalFiles).get(fileId) as String?;
         if (contentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive normal files box');
         }
 
         // Use our extension method for cleaner code
-        final result = contentBase64.decodeBase64Safely(context: 'normal file content');
+        final result =
+            contentBase64.decodeBase64Safely(context: 'normal file content');
         return result.fold(
-          (error) => throw error, // Re-throw the Base64DecodeError to be caught by the outer tryCatch
+          (error) =>
+              throw error, // Re-throw the Base64DecodeError to be caught by the outer tryCatch
           (bytes) => bytes,
         );
       } else {
@@ -263,7 +280,10 @@ class FileOperations {
 
         return await file.readAsBytes();
       }
-    }, (e, _) => e is StorageError ? e : StorageReadError('Failed to retrieve normal file', e));
+    },
+        (e, _) => e is StorageError
+            ? e
+            : StorageReadError('Failed to retrieve normal file', e));
 
     return _taskExecutor.executeTask(operation, isStorageReady: isStorageReady);
   }

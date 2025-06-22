@@ -87,7 +87,8 @@ void main() {
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageSerializationError('Serialization failed', exception);
+        final error =
+            StorageSerializationError('Serialization failed', exception);
         expect(error.message, equals('Serialization failed'));
         expect(error.originalException, equals(exception));
       });

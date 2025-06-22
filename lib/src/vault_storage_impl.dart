@@ -72,7 +72,9 @@ class VaultStorageImpl implements IVaultStorage {
         final jsonString = _getBox(box).get(key) as String?;
         if (jsonString == null) return null;
 
-        return jsonString.decodeJsonSafely<T>().fold((error) => throw error, (value) => value);
+        return jsonString
+            .decodeJsonSafely<T>()
+            .fold((error) => throw error, (value) => value);
       },
       (e) => StorageReadError('Failed to read "$key" from ${box.name} box', e),
       isStorageReady: isVaultStorageReady,
@@ -97,7 +99,8 @@ class VaultStorageImpl implements IVaultStorage {
   Future<Either<StorageError, void>> delete(BoxType box, String key) {
     return _taskExecutor.execute(
       () => _getBox(box).delete(key),
-      (e) => StorageDeleteError('Failed to delete "$key" from ${box.name} box', e),
+      (e) =>
+          StorageDeleteError('Failed to delete "$key" from ${box.name} box', e),
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -230,7 +233,8 @@ class VaultStorageImpl implements IVaultStorage {
   Box<dynamic> _getBox(BoxType type) {
     final box = storageBoxes[type];
     if (box == null) {
-      throw StorageInitializationError('Box ${type.name} not opened. Ensure init() was called.');
+      throw StorageInitializationError(
+          'Box ${type.name} not opened. Ensure init() was called.');
     }
     return box;
   }
@@ -244,12 +248,17 @@ class VaultStorageImpl implements IVaultStorage {
       return TaskEither.tryCatch(() async {
         if (encodedKey == null) {
           final key = Hive.generateSecureKey();
-          await _secureStorage.write(key: StorageKeys.secureKey, value: key.encodeBase64());
+          await _secureStorage.write(
+              key: StorageKeys.secureKey, value: key.encodeBase64());
           return key;
         }
-        final decodeResult = encodedKey.decodeBase64Safely(context: 'secure storage key');
-        return decodeResult.fold((error) => throw error, (decodedKey) => decodedKey);
-      }, (e, _) => StorageInitializationError('Failed to create/decode secure key', e));
+        final decodeResult =
+            encodedKey.decodeBase64Safely(context: 'secure storage key');
+        return decodeResult.fold(
+            (error) => throw error, (decodedKey) => decodedKey);
+      },
+          (e, _) => StorageInitializationError(
+              'Failed to create/decode secure key', e));
     });
   }
 
@@ -261,14 +270,16 @@ class VaultStorageImpl implements IVaultStorage {
         StorageKeys.secureBox,
         encryptionCipher: cipher,
       );
-      storageBoxes[BoxType.normal] = await Hive.openBox<String>(StorageKeys.normalBox);
+      storageBoxes[BoxType.normal] =
+          await Hive.openBox<String>(StorageKeys.normalBox);
 
       storageBoxes[BoxType.secureFiles] = await Hive.openBox<String>(
         StorageKeys.secureFilesBox,
         encryptionCipher: cipher,
       );
 
-      storageBoxes[BoxType.normalFiles] = await Hive.openBox<String>(StorageKeys.normalFilesBox);
+      storageBoxes[BoxType.normalFiles] =
+          await Hive.openBox<String>(StorageKeys.normalFilesBox);
 
       return unit;
     }, (e, _) => StorageInitializationError('Failed to open storage boxes', e));

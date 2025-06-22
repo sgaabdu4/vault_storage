@@ -15,14 +15,16 @@ void main() {
         final result = base64String.decodeBase64Safely(context: 'test');
 
         expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid base64'), (bytes) {
+        result.fold((_) => fail('Should not return Left for valid base64'),
+            (bytes) {
           expect(bytes, equals(utf8.encode('Hello World')));
         });
       });
 
       test('should return Base64DecodeError for invalid base64 string', () {
         const invalidBase64 = 'not-valid-base64!';
-        final result = invalidBase64.decodeBase64Safely(context: 'test context');
+        final result =
+            invalidBase64.decodeBase64Safely(context: 'test context');
 
         expect(result.isLeft(), isTrue);
         result.fold((error) {
@@ -58,7 +60,8 @@ void main() {
         final result = jsonString.decodeJsonSafely<Map<String, dynamic>>();
 
         expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid JSON'), (map) {
+        result.fold((_) => fail('Should not return Left for valid JSON'),
+            (map) {
           expect(map, equals({"name": "test", "value": 123}));
         });
       });
@@ -91,7 +94,8 @@ void main() {
         final result = map.encodeJsonSafely();
 
         expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid object'), (jsonStr) {
+        result.fold((_) => fail('Should not return Left for valid object'),
+            (jsonStr) {
           expect(jsonDecode(jsonStr), equals(map));
         });
       });
@@ -101,12 +105,14 @@ void main() {
         final result = list.encodeJsonSafely();
 
         expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid object'), (jsonStr) {
+        result.fold((_) => fail('Should not return Left for valid object'),
+            (jsonStr) {
           expect(jsonDecode(jsonStr), equals(list));
         });
       });
 
-      test('should return StorageSerializationError for unencodable object', () {
+      test('should return StorageSerializationError for unencodable object',
+          () {
         final unencodable = _UnencodableObject();
         final result = unencodable.encodeJsonSafely();
 
@@ -127,17 +133,24 @@ void main() {
       expect(metadata.getRequiredString('key2'), equals('value2'));
     });
 
-    test('getRequiredString should throw InvalidMetadataError when key is missing', () {
+    test(
+        'getRequiredString should throw InvalidMetadataError when key is missing',
+        () {
       final metadata = {'key1': 'value1'};
 
-      expect(() => metadata.getRequiredString('missing'), throwsA(isA<InvalidMetadataError>()));
+      expect(() => metadata.getRequiredString('missing'),
+          throwsA(isA<InvalidMetadataError>()));
     });
 
-    test('getRequiredString should throw InvalidMetadataError when value is not a string', () {
+    test(
+        'getRequiredString should throw InvalidMetadataError when value is not a string',
+        () {
       final metadata = {'key1': 123, 'key2': true};
 
-      expect(() => metadata.getRequiredString('key1'), throwsA(isA<InvalidMetadataError>()));
-      expect(() => metadata.getRequiredString('key2'), throwsA(isA<InvalidMetadataError>()));
+      expect(() => metadata.getRequiredString('key1'),
+          throwsA(isA<InvalidMetadataError>()));
+      expect(() => metadata.getRequiredString('key2'),
+          throwsA(isA<InvalidMetadataError>()));
     });
 
     test('getOptionalString should return value when key exists', () {
@@ -162,8 +175,11 @@ void main() {
   });
 
   group('TaskEitherFileExtension', () {
-    test('mapBase64DecodeError should map Base64DecodeError to StorageReadError', () {
-      final base64Error = Base64DecodeError('test context', Exception('Invalid base64'));
+    test(
+        'mapBase64DecodeError should map Base64DecodeError to StorageReadError',
+        () {
+      final base64Error =
+          Base64DecodeError('test context', Exception('Invalid base64'));
       final task = TaskEither<StorageError, String>.left(base64Error);
 
       task.mapBase64DecodeError().run().then((result) {
@@ -171,13 +187,15 @@ void main() {
         result.fold((error) {
           expect(error, isA<StorageReadError>());
           expect(error.message, equals(base64Error.message));
-          expect(error.originalException, equals(base64Error.originalException));
+          expect(
+              error.originalException, equals(base64Error.originalException));
         }, (_) => fail('Should return Left'));
       });
     });
 
     test('mapBase64DecodeError should not change other errors', () {
-      final otherError = StorageWriteError('write error', Exception('Write failed'));
+      final otherError =
+          StorageWriteError('write error', Exception('Write failed'));
       final task = TaskEither<StorageError, String>.left(otherError);
 
       task.mapBase64DecodeError().run().then((result) {

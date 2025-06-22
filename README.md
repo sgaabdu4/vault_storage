@@ -90,7 +90,7 @@ class MyWidget extends ConsumerWidget {
 
     // Store a secure value (encrypted)
     final setResult = await vaultStorage.set(
-      StorageBoxType.secure, 
+      BoxType.secure, 
       'api_key', 
       'my_secret_key'
     );
@@ -102,14 +102,14 @@ class MyWidget extends ConsumerWidget {
 
     // Store a normal value (unencrypted, faster access)
     await vaultStorage.set(
-      StorageBoxType.normal, 
+      BoxType.normal, 
       'user_preference', 
       'dark_mode'
     );
 
     // Retrieve values
     final apiKeyResult = await vaultStorage.get<String>(
-      StorageBoxType.secure, 
+      BoxType.secure, 
       'api_key'
     );
 
@@ -148,7 +148,7 @@ Future<void> handleFileStorage(WidgetRef ref) async {
       
       // Store the metadata for later retrieval
       await vaultStorage.set(
-        StorageBoxType.secure,
+        BoxType.secure,
         'profile_image_metadata',
         metadata,
       );
@@ -181,9 +181,10 @@ Future<void> handleFileStorage(WidgetRef ref) async {
 
 The package provides different storage box types for different security and performance needs:
 
-- `StorageBoxType.secure`: Encrypted storage for sensitive data (passwords, tokens, etc.)
-- `StorageBoxType.normal`: Unencrypted storage for non-sensitive data (preferences, cache, etc.)
-- `StorageBoxType.secureFiles`: Used internally for encrypted file storage on web
+- `BoxType.secure`: Encrypted storage for sensitive data (passwords, tokens, etc.)
+- `BoxType.normal`: Unencrypted storage for non-sensitive data (preferences, cache, etc.)
+- `BoxType.secureFiles`: Used internally for encrypted file storage on web
+- `BoxType.normalFiles`: Used internally for normal file storage
 
 ### Web Compatibility
 
@@ -222,7 +223,7 @@ Future<void> main() async {
 // Use the service anywhere in your app
 Future<void> useStorage() async {
   final result = await vaultStorage.set(
-    StorageBoxType.secure, 
+    BoxType.secure, 
     'api_key', 
     'my_secret_key'
   );
@@ -236,7 +237,7 @@ Future<void> useStorage() async {
 The service uses functional error handling with `fpdart`'s `Either` type. All methods return `Either<StorageError, T>`:
 
 ```dart
-final result = await vaultStorage.get<String>(StorageBoxType.secure, 'key');
+final result = await vaultStorage.get<String>(BoxType.secure, 'key');
 
 result.fold(
   (error) {
@@ -266,10 +267,10 @@ result.fold(
 
 ```dart
 // Clear a specific box
-await vaultStorage.clear(StorageBoxType.normal);
+await vaultStorage.clear(BoxType.normal);
 
 // Delete a specific key
-await vaultStorage.delete(StorageBoxType.secure, 'api_key');
+await vaultStorage.delete(BoxType.secure, 'api_key');
 
 // Dispose of the service (usually in app shutdown)
 await vaultStorage.dispose();

@@ -31,7 +31,8 @@ class TaskExecutor {
     required bool isStorageReady,
   }) {
     if (!isStorageReady) {
-      return Future.value(left(const StorageInitializationError('Storage not initialized')));
+      return Future.value(
+          left(const StorageInitializationError('Storage not initialized')));
     }
 
     return task.mapLeft((l) {
@@ -43,7 +44,8 @@ class TaskExecutor {
       // Check if this is a serialization error from our extensions
       // by examining the original exception (which could be a FormatException)
       if (l.originalException is FormatException && !(l is Base64DecodeError)) {
-        return StorageSerializationError('${l.message}: ${l.originalException}');
+        return StorageSerializationError(
+            '${l.message}: ${l.originalException}');
       }
 
       return l;

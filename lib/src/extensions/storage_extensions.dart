@@ -20,7 +20,8 @@ extension Base64DecodingExtension on String {
   ///   (bytes) => print('Decoded ${bytes.length} bytes successfully')
   /// );
   /// ```
-  Either<Base64DecodeError, Uint8List> decodeBase64Safely({required String context}) {
+  Either<Base64DecodeError, Uint8List> decodeBase64Safely(
+      {required String context}) {
     try {
       final decoded = base64Url.decode(this);
       return right(decoded);
@@ -88,7 +89,8 @@ class JsonSafe {
       final jsonString = json.encode(value);
       return right(jsonString);
     } catch (e) {
-      return left(StorageSerializationError('Failed to encode object to JSON', e));
+      return left(
+          StorageSerializationError('Failed to encode object to JSON', e));
     }
   }
 
