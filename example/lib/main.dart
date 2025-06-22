@@ -208,12 +208,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
     _clearMessages();
     final vaultStorage = await ref.read(vaultStorageProvider.future);
-    final result = await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+    final result =
+        await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
 
     setState(() {
       result.fold(
         (error) => _errorMessage = 'File Get Error: ${error.message}',
-        (fileBytes) => _operationResult = 'File retrieved! Size: ${fileBytes.length} bytes',
+        (fileBytes) => _operationResult =
+            'File retrieved! Size: ${fileBytes.length} bytes',
       );
     });
   }
@@ -228,7 +230,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
     _clearMessages();
     final vaultStorage = await ref.read(vaultStorageProvider.future);
-    final result = await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
+    final result =
+        await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
 
     setState(() {
       result.fold(
@@ -258,7 +261,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   Future<void> _deleteKey() async {
     _clearMessages();
     final vaultStorage = await ref.read(vaultStorageProvider.future);
-    final result = await vaultStorage.delete(BoxType.secure, _keyController.text);
+    final result =
+        await vaultStorage.delete(BoxType.secure, _keyController.text);
 
     setState(() {
       result.fold(
@@ -287,7 +291,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Input', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Input',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _keyController,
@@ -318,7 +323,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Key-Value Storage', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Key-Value Storage',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -356,7 +362,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('File Storage', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('File Storage',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -394,7 +401,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Storage Management', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Storage Management',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -426,14 +434,17 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             const SizedBox(height: 16),
 
             // Results Section
-            if (_retrievedValue != null || _operationResult != null || _errorMessage != null)
+            if (_retrievedValue != null ||
+                _operationResult != null ||
+                _errorMessage != null)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Results', style: Theme.of(context).textTheme.headlineSmall),
+                      Text('Results',
+                          style: Theme.of(context).textTheme.headlineSmall),
                       const SizedBox(height: 8),
                       if (_retrievedValue != null)
                         Container(
