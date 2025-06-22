@@ -19,9 +19,50 @@ Future<void> main() async {
         child: const MyApp(),
       ),
     );
-  } catch (e) {
+  } catch (e, stackTrace) {
     print('Failed to initialize storage: $e');
-    // In a real app, you might show an error screen or retry mechanism
+    print('Stack trace: $stackTrace');
+
+    // Show error app instead of crashing
+    runApp(
+      MaterialApp(
+        title: 'Vault Storage Demo - Error',
+        home: Scaffold(
+          appBar: AppBar(title: const Text('Storage Initialization Error')),
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Failed to initialize vault storage:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    border: Border.all(color: Colors.red),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    e.toString(),
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'This might be due to missing platform permissions or entitlements. '
+                  'Please check the documentation for platform-specific setup requirements.',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
