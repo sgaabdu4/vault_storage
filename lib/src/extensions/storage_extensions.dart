@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fpdart/fpdart.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
 
 /// Extension on [String] to provide safe base64 decoding with proper error handling
 extension Base64DecodingExtension on String {
@@ -30,6 +31,17 @@ extension Base64DecodingExtension on String {
   }
 }
 
+/// Extension on [Uint8List] and [List<int>] to provide safe base64 encoding
+extension Base64EncodingExtension on List<int> {
+  /// Encodes bytes to a base64Url string safely
+  ///
+  /// This method doesn't use Either since base64 encoding doesn't typically fail
+  /// with valid input bytes, but it provides a consistent interface.
+  String encodeBase64() {
+    return base64Url.encode(this);
+  }
+}
+
 /// Extension on Maps to provide safer access to file metadata
 extension FileMetadataExtension on Map<String, dynamic> {
   /// Gets a string value from the metadata, throwing an [InvalidMetadataError] if it's missing
@@ -48,5 +60,18 @@ extension FileMetadataExtension on Map<String, dynamic> {
       return null;
     }
     return value;
+  }
+}
+
+/// Extension for TaskEither to handle common file operation patterns
+extension TaskEitherFileExtension<R> on TaskEither<StorageError, R> {
+  /// Maps a Base64DecodeError to a StorageReadError
+  TaskEither<StorageError, R> mapBase64DecodeError() {
+    return mapLeft((error) {
+      if (error is Base64DecodeError) {
+        return StorageReadError(error.message, error.originalException);
+      }
+      return error;
+    });
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mockito/mockito.dart';
+import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
@@ -21,6 +22,7 @@ void main() {
   late MockBox<String> mockSecureBox;
   late MockBox<String> mockNormalBox;
   late MockBox<String> mockSecureFilesBox;
+  late MockBox<String> mockNormalFilesBox;
 
   setUp(() {
     mockSecureStorage = MockFlutterSecureStorage();
@@ -28,6 +30,7 @@ void main() {
     mockSecureBox = MockBox<String>();
     mockNormalBox = MockBox<String>();
     mockSecureFilesBox = MockBox<String>();
+    mockNormalFilesBox = MockBox<String>();
 
     vaultStorage = VaultStorageImpl(
       secureStorage: mockSecureStorage,
@@ -38,6 +41,7 @@ void main() {
       BoxType.secure: mockSecureBox,
       BoxType.normal: mockNormalBox,
       BoxType.secureFiles: mockSecureFilesBox,
+      BoxType.normalFiles: mockNormalFilesBox,
     });
     vaultStorage.isVaultStorageReady = true;
 
@@ -469,6 +473,314 @@ void main() {
       });
     });
 
+    group('Normal File Storage', () {
+      final fileBytes = Uint8List.fromList([1, 2, 3]);
+      const fileExtension = 'txt';
+      const fileId = 'test-uuid';
+      final metadata = {
+        'fileId': fileId,
+        'filePath': './$fileId.$fileExtension',
+        'extension': fileExtension,
+      };
+
+      setUp(() {
+        when(mockUuid.v4()).thenReturn(fileId);
+      });
+
+      group('saveNormalFile', () {
+        test('should save file and return metadata on success', () async {
+          final result = await vaultStorage.saveNormalFile(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+          );
+
+          expect(result.isRight(), isTrue);
+          final returnedMetadata = result.getOrElse((_) => {});
+          expect(returnedMetadata['filePath'], endsWith('.$fileExtension'));
+          expect(returnedMetadata['fileId'], fileId);
+          expect(returnedMetadata['extension'], fileExtension);
+
+          // Cleanup the created file
+          final file = File(returnedMetadata['filePath'] as String);
+          if (file.existsSync()) {
+            file.deleteSync();
+          }
+        });
+
+        test('should return StorageWriteError on path_provider failure',
+            () async {
+          // Simulate path_provider throwing an exception
+          const MethodChannel('plugins.flutter.io/path_provider')
+              .setMockMethodCallHandler((MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              throw Exception('Failed to get directory');
+            }
+            return null;
+          });
+
+          final result = await vaultStorage.saveNormalFile(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            isWeb: false, // Force native path
+          );
+
+          expect(result.isLeft(), isTrue);
+          expect(result.fold((l) => l, (r) => r), isA<StorageWriteError>());
+
+          // Reset the mock handler
+          const MethodChannel('plugins.flutter.io/path_provider')
+              .setMockMethodCallHandler((MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return '.';
+            }
+            return null;
+          });
+        });
+      });
+
+      group('getNormalFile', () {
+        test('should return file bytes on success', () async {
+          // Create a test file
+          final originalData = Uint8List.fromList([1, 2, 3, 4, 5]);
+          final file = File(metadata['filePath'] as String);
+          await file.writeAsBytes(originalData, flush: true);
+
+          // Call the method under test
+          final result =
+              await vaultStorage.getNormalFile(fileMetadata: metadata);
+
+          // Assert
+          expect(result.isRight(), isTrue,
+              reason: result.fold((l) => l.message, (r) => ''));
+          result.fold(
+            (l) => fail('getNormalFile should not have failed: ${l.message}'),
+            (data) => expect(data, originalData),
+          );
+
+          // Cleanup
+          await file.delete();
+        });
+
+        test('should return StorageReadError when file does not exist',
+            () async {
+          // Don't create the file
+          final result =
+              await vaultStorage.getNormalFile(fileMetadata: metadata);
+
+          expect(result.isLeft(), isTrue);
+          expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
+        });
+
+        test(
+            'should return StorageReadError when filePath is missing in metadata for native',
+            () async {
+          final invalidMetadata = {
+            'fileId': fileId,
+            'extension': fileExtension,
+            // No filePath
+          };
+
+          final result = await vaultStorage.getNormalFile(
+              fileMetadata: invalidMetadata, isWeb: false);
+
+          expect(result.isLeft(), isTrue);
+          expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
+        });
+      });
+
+      group('deleteNormalFile', () {
+        test('should return unit on success', () async {
+          // Create a test file
+          final file = File(metadata['filePath'] as String);
+          await file.create();
+
+          // Call the method under test
+          final result =
+              await vaultStorage.deleteNormalFile(fileMetadata: metadata);
+
+          // Assert
+          expect(result.isRight(), isTrue);
+          expect(await file.exists(), isFalse);
+        });
+
+        test('should return unit even if file does not exist', () async {
+          // Call the method under test without creating the file
+          final result =
+              await vaultStorage.deleteNormalFile(fileMetadata: metadata);
+
+          // This should still succeed because deleting a non-existent file is not an error
+          expect(result.isRight(), isTrue);
+        });
+
+        test('should return StorageDeleteError on exceptional failure',
+            () async {
+          // Create a corrupt metadata to cause an exception
+          final invalidMetadata = {
+            // Missing fileId
+            'filePath': metadata['filePath'],
+          };
+
+          final result = await vaultStorage.deleteNormalFile(
+              fileMetadata: invalidMetadata);
+
+          expect(result.isLeft(), isTrue);
+          expect(result.fold((l) => l, (r) => r), isA<StorageDeleteError>());
+        });
+      });
+    });
+
+    group('saveNormalFile (Web)', () {
+      test('should save file to Hive on web', () async {
+        // Arrange
+        final fileBytes = Uint8List.fromList([1, 2, 3]);
+        const fileExtension = 'txt';
+        const fileId = 'test-uuid';
+        final contentBase64 = base64Url.encode(fileBytes);
+
+        when(mockUuid.v4()).thenReturn(fileId);
+        when(mockNormalFilesBox.put(fileId, contentBase64))
+            .thenAnswer((_) async {});
+
+        // Act
+        final result = await vaultStorage.saveNormalFile(
+            fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
+
+        // Assert
+        expect(result.isRight(), isTrue);
+        result.fold((l) => fail('should not return left'), (r) {
+          expect(r['fileId'], fileId);
+          expect(r['filePath'], isNull);
+          expect(r['extension'], fileExtension);
+        });
+        verify(mockNormalFilesBox.put(fileId, contentBase64)).called(1);
+      });
+
+      test('should return StorageWriteError on Hive put failure', () async {
+        // Arrange
+        final fileBytes = Uint8List.fromList([1, 2, 3]);
+        const fileExtension = 'txt';
+        const fileId = 'test-uuid';
+
+        when(mockUuid.v4()).thenReturn(fileId);
+        when(mockNormalFilesBox.put(any, any))
+            .thenThrow(Exception('Hive put error'));
+
+        // Act
+        final result = await vaultStorage.saveNormalFile(
+            fileBytes: fileBytes, fileExtension: fileExtension, isWeb: true);
+
+        // Assert
+        expect(result.isLeft(), isTrue);
+        expect(result.fold((l) => l, (r) => r), isA<StorageWriteError>());
+      });
+    });
+
+    group('getNormalFile (Web)', () {
+      test('should retrieve file from Hive on web', () async {
+        // Arrange
+        const fileId = 'test-uuid';
+        final originalData = Uint8List.fromList([1, 2, 3, 4, 5]);
+        final contentBase64 = base64Url.encode(originalData);
+
+        final metadata = {
+          'fileId': fileId,
+          'extension': 'txt',
+        };
+
+        when(mockNormalFilesBox.get(fileId)).thenReturn(contentBase64);
+
+        // Act
+        final result = await vaultStorage.getNormalFile(
+            fileMetadata: metadata, isWeb: true);
+
+        // Assert
+        expect(result.isRight(), isTrue,
+            reason: result.fold((l) => l.message, (r) => ''));
+        result.fold((l) => null, (r) => expect(r, originalData));
+        verify(mockNormalFilesBox.get(fileId)).called(1);
+      });
+
+      test('should return StorageReadError when file not found in Hive on web',
+          () async {
+        // Arrange
+        const fileId = 'test-uuid';
+        final metadata = {
+          'fileId': fileId,
+          'extension': 'txt',
+        };
+
+        when(mockNormalFilesBox.get(fileId)).thenReturn(null);
+
+        // Act
+        final result = await vaultStorage.getNormalFile(
+            fileMetadata: metadata, isWeb: true);
+
+        // Assert
+        expect(result.isLeft(), isTrue);
+        expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
+      });
+
+      test('should return StorageReadError on base64 decode failure', () async {
+        // Arrange
+        const fileId = 'test-uuid';
+        final metadata = {
+          'fileId': fileId,
+          'extension': 'txt',
+        };
+
+        when(mockNormalFilesBox.get(fileId)).thenReturn('invalid base64');
+
+        // Act
+        final result = await vaultStorage.getNormalFile(
+            fileMetadata: metadata, isWeb: true);
+
+        // Assert
+        expect(result.isLeft(), isTrue);
+        expect(result.fold((l) => l, (r) => r), isA<StorageReadError>());
+      });
+    });
+
+    group('deleteNormalFile (Web)', () {
+      test('should delete file from Hive on web', () async {
+        // Arrange
+        const fileId = 'test-uuid';
+        final metadata = {
+          'fileId': fileId,
+          'extension': 'txt',
+        };
+
+        when(mockNormalFilesBox.delete(fileId)).thenAnswer((_) async {});
+
+        // Act
+        final result = await vaultStorage.deleteNormalFile(
+            fileMetadata: metadata, isWeb: true);
+
+        // Assert
+        expect(result.isRight(), isTrue);
+        verify(mockNormalFilesBox.delete(fileId)).called(1);
+      });
+
+      test('should return StorageDeleteError on Hive delete failure', () async {
+        // Arrange
+        const fileId = 'test-uuid';
+        final metadata = {
+          'fileId': fileId,
+          'extension': 'txt',
+        };
+
+        when(mockNormalFilesBox.delete(fileId))
+            .thenThrow(Exception('Hive delete error'));
+
+        // Act
+        final result = await vaultStorage.deleteNormalFile(
+            fileMetadata: metadata, isWeb: true);
+
+        // Assert
+        expect(result.isLeft(), isTrue);
+        expect(result.fold((l) => l, (r) => r), isA<StorageDeleteError>());
+      });
+    });
+
     group('Service State', () {
       test(
           'any operation should return StorageInitializationError if not initialized',
@@ -484,7 +796,7 @@ void main() {
             await vaultStorage.set(BoxType.normal, 'key', 'value');
         expect(setResult.isLeft(), isTrue);
         setResult.fold((l) => expect(l, isA<StorageInitializationError>()),
-            (r) => fail('Expected a StorageInitializationError()'));
+            (r) => fail('Expected a StorageInitializationError'));
       });
 
       test('dispose should clear boxes and set ready flag to false', () async {
@@ -563,13 +875,30 @@ void main() {
         verify(mockSecureStorage.read(key: anyNamed('key'))).called(1);
       });
 
-      test('openBoxes should open secure and normal boxes', () async {
+      test('openBoxes should open all box types', () async {
         final key = List.generate(32, (i) => i);
         final result = await vaultStorage.openBoxes(key).run();
 
         expect(result.isRight(), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
         expect(vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
+        expect(
+            vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
+        expect(
+            vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
+      });
+
+      test('openBoxes should open all boxes with the right names', () async {
+        final key = List.generate(32, (i) => i);
+        final result = await vaultStorage.openBoxes(key).run();
+
+        expect(result.isRight(), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
+        expect(
+            vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
+        expect(
+            vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
       });
 
       test('init should return StorageInitializationError on failure',
@@ -649,6 +978,38 @@ void main() {
         expect(result.isLeft(), isTrue);
         expect(result.fold((l) => l, (r) => null),
             isA<StorageInitializationError>());
+      });
+
+      test('init should open all box types', () async {
+        vaultStorage.isVaultStorageReady = false;
+        vaultStorage.storageBoxes.clear();
+        when(mockSecureStorage.read(key: anyNamed('key'))).thenAnswer(
+            (_) async => base64UrlEncode(List.generate(32, (i) => i)));
+
+        final result = await vaultStorage.init();
+
+        expect(result.isRight(), isTrue);
+        expect(vaultStorage.isVaultStorageReady, isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
+        expect(vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
+        expect(
+            vaultStorage.storageBoxes.containsKey(BoxType.secureFiles), isTrue);
+        expect(
+            vaultStorage.storageBoxes.containsKey(BoxType.normalFiles), isTrue);
+      });
+    });
+
+    group('Box Names', () {
+      test('box types should map to the correct storage keys', () {
+        expect(BoxType.secure.name, equals('secure'));
+        expect(BoxType.normal.name, equals('normal'));
+        expect(BoxType.secureFiles.name, equals('secureFiles'));
+        expect(BoxType.normalFiles.name, equals('normalFiles'));
+
+        expect(StorageKeys.secureBox, equals('secure_box'));
+        expect(StorageKeys.normalBox, equals('normal_box'));
+        expect(StorageKeys.secureFilesBox, equals('secure_files_box'));
+        expect(StorageKeys.normalFilesBox, equals('normal_files_box'));
       });
     });
   });
