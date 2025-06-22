@@ -20,8 +20,7 @@ extension Base64DecodingExtension on String {
   ///   (bytes) => print('Decoded ${bytes.length} bytes successfully')
   /// );
   /// ```
-  Either<Base64DecodeError, Uint8List> decodeBase64Safely(
-      {required String context}) {
+  Either<Base64DecodeError, Uint8List> decodeBase64Safely({required String context}) {
     try {
       final decoded = base64Url.decode(this);
       return right(decoded);
