@@ -177,33 +177,30 @@ void main() {
   group('TaskEitherFileExtension', () {
     test(
         'mapBase64DecodeError should map Base64DecodeError to StorageReadError',
-        () {
+        () async {
       final base64Error =
           Base64DecodeError('test context', Exception('Invalid base64'));
       final task = TaskEither<StorageError, String>.left(base64Error);
 
-      task.mapBase64DecodeError().run().then((result) {
-        expect(result.isLeft(), isTrue);
-        result.fold((error) {
-          expect(error, isA<StorageReadError>());
-          expect(error.message, equals(base64Error.message));
-          expect(
-              error.originalException, equals(base64Error.originalException));
-        }, (_) => fail('Should return Left'));
-      });
+      final result = await task.mapBase64DecodeError().run();
+      expect(result.isLeft(), isTrue);
+      result.fold((error) {
+        expect(error, isA<StorageReadError>());
+        expect(error.message, equals(base64Error.message));
+        expect(error.originalException, equals(base64Error.originalException));
+      }, (_) => fail('Should return Left'));
     });
 
-    test('mapBase64DecodeError should not change other errors', () {
+    test('mapBase64DecodeError should not change other errors', () async {
       final otherError =
           StorageWriteError('write error', Exception('Write failed'));
       final task = TaskEither<StorageError, String>.left(otherError);
 
-      task.mapBase64DecodeError().run().then((result) {
-        expect(result.isLeft(), isTrue);
-        result.fold((error) {
-          expect(error, same(otherError));
-        }, (_) => fail('Should return Left'));
-      });
+      final result = await task.mapBase64DecodeError().run();
+      expect(result.isLeft(), isTrue);
+      result.fold((error) {
+        expect(error, same(otherError));
+      }, (_) => fail('Should return Left'));
     });
   });
 
