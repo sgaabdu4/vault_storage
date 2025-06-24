@@ -1,6 +1,6 @@
 ## 0.1.1
 
-* refactor: Remove export of unused storage_keys constant from vault_storage.dartdart format 
+* refactor: Remove export of unused storage_keys constant from vault_storage.dart
 * chore: Update build_runner dependency to version 2.5.4 in pubspec.yaml
 * chore: Update _fe_analyzer_shared and analyzer versions in pubspec.lock
 * test: Refactor error handling tests to use async/await for improved readability
