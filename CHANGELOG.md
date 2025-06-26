@@ -1,3 +1,40 @@
+## 1.0.0
+
+### Breaking Changes
+* **BREAKING: Remove built-in Riverpod provider** - The package no longer includes a built-in Riverpod provider to remain framework-agnostic
+* **BREAKING: Hide implementation details** - Use `VaultStorage.create()` factory method instead
+* **feat: Framework-agnostic design** - Users can now integrate with any state management solution or use the service directly
+
+### New Features
+* **feat: Add VaultStorage.create() factory method** - Clean API that returns `IVaultStorage` interface, hiding implementation details
+* **feat: Improved API design** - Only the interface (`IVaultStorage`) is exposed to users, making the API cleaner and less confusing
+
+### Documentation Improvements
+* **docs: Add comprehensive state management integration examples** - Includes examples for Riverpod and direct usage
+* **docs: Update initialisation examples** - Show how to initialise the service without Riverpod dependency
+* **docs: Clarify framework-agnostic approach** - Emphasise that the package works with any state management solution
+* **docs: Update all examples to use factory method** - Consistent API usage throughout documentation
+
+###  Migration Guide
+**From built-in Riverpod provider:**
+If you were using the built-in `vaultStorageProvider`, you can easily recreate it in your own project:
+
+1. Add Riverpod dependencies to your `pubspec.yaml`
+2. Create your own provider file following the examples in the README
+3. Update your initialisation code to use your custom provider
+
+**From VaultStorageImpl():**
+Replace direct instantiation with the factory method:
+```dart
+// Before
+final storage = VaultStorageImpl();
+
+// After
+final storage = VaultStorage.create();
+```
+
+This change makes the package more flexible, reduces its dependency footprint, and provides a cleaner API.
+
 ## 0.1.1
 
 * refactor: Remove export of unused storage_keys constant from vault_storage.dart
@@ -7,33 +44,33 @@
 
 ## 0.1.0
 
-### ✨ Major Features
+### Major Features
 * **feat: Add support for normal file storage** - Complete implementation with save, retrieve, and delete functionalities
 * **feat: Add JsonSafe utility** - Safe JSON encoding and decoding with comprehensive error handling
 * **feat: Enhance storage functionality** - New task execution system with improved error handling architecture
 
-### 🔧 Core Improvements
+### Core Improvements
 * **feat: Add safe JSON encoding and decoding extensions** - Improved error handling for JSON operations
 * **feat: Implement normal file storage** - Full file storage capabilities with proper error handling
-* **feat: Improve error handling during storage initialization** - Detailed error display and better user feedback
+* **feat: Improve error handling during storage initialisation** - Detailed error display and better user feedback
 
-### 🧪 Testing & Quality
+### Testing & Quality
 * **test: Add comprehensive unit tests for VaultStorage service lifecycle** - Complete lifecycle management testing
 * **test: Add TaskExecutor mock for testing** - Enhanced testing capabilities for task execution logic
 * **test: Implement comprehensive StorageError class tests** - Ensures proper error handling across the package
 * **test: Add tests for FileOperations and Encryption Helpers** - Validates core functionality with thorough coverage
-* **test: Update VaultStorageImpl tests** - Utilize new extensions for JSON operations
+* **test: Update VaultStorageImpl tests** - Utilise new extensions for JSON operations
 * **refactor: Remove outdated test files** - Streamlined test suite by removing `vault_storage_impl_test.dart`
-* **refactor: Consolidate storage keys tests** - Improved test organization
+* **refactor: Consolidate storage keys tests** - Improved test organisation
 
-### 📚 Documentation & Examples
+### Documentation & Examples
 * **docs: Add comprehensive use cases section** - Healthcare, financial, enterprise, and consumer app examples
 * **docs: Add production use disclaimers** - Important security and legal considerations for production apps
 * **docs: Add platform setup requirements** - Detailed setup instructions for all supported platforms
-* **docs: Enhance troubleshooting section** - Common issues and solutions for initialization problems
+* **docs: Enhance troubleshooting section** - Common issues and solutions for initialisation problems
 * **example: Improve error handling in example app** - Better error display and recovery mechanisms
 
-### 🔒 Security & Compliance
+### Security & Compliance
 * **security: Add production use disclaimers** - Clear security limitations and audit requirements
 * **platform: Add macOS entitlements documentation** - Required keychain access setup for macOS apps
 

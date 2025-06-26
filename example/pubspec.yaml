@@ -9,10 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^3.0.0-dev.16
-  riverpod_annotation: ^3.0.0-dev.16
   vault_storage:
     path: ../
+  file_picker: ^10.2.0
 
 dev_dependencies:
   flutter_test:

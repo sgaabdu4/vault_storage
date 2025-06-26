@@ -1,17 +1,15 @@
 # Vault Storage
 
-A secure and performant local storage solution for Flutter applications, built with Hive, Flutter Secure Storage, and Riverpod. It provides both key-value storage and encrypted file storage with web compatibility, and intensive cryptographic operations are offloaded to background isolates to ensure a smooth UI.
-
-> **Note**: This package uses Riverpod with code generation. Make sure to run `dart run build_runner build` after adding this package to generate the necessary provider files.
+A secure and performant local storage solution for Flutter applications, built with Hive and Flutter Secure Storage. It provides both key-value storage and encrypted file storage with web compatibility, and intensive cryptographic operations are offloaded to background isolates to ensure a smooth UI.
 
 ## Features
 
 -   **Dual Storage Model**: Simple key-value storage via Hive and secure file storage for larger data blobs (e.g., images, documents).
 -   **Web Compatible**: Full support for both native platforms and web with platform-aware storage strategies.
--   **Robust Security**: Utilizes `flutter_secure_storage` to protect the master encryption key, encrypted Hive boxes for sensitive data, and AES-GCM encryption for files.
+-   **Robust Security**: Utilises `flutter_secure_storage` to protect the master encryption key, encrypted Hive boxes for sensitive data, and AES-GCM encryption for files.
 -   **High Performance**: Cryptographic operations (AES-GCM) are executed in background isolates using `compute` to prevent UI jank.
 -   **Type-Safe Error Handling**: Leverages `fpdart`'s `Either` and `TaskEither` for explicit, functional-style error management.
--   **Ready for Dependency Injection**: Comes with a pre-configured Riverpod provider for easy integration and lifecycle management.
+-   **Framework Agnostic**: Use with any state management solution (Riverpod, Bloc, Provider, GetX, or none at all).
 
 ## Use Cases
 
@@ -63,7 +61,7 @@ A secure and performant local storage solution for Flutter applications, built w
 
 #### **Developer Experience**
 - **🎨 Clean API**: Simple, intuitive methods that handle complex security behind the scenes
-- **📦 Batteries Included**: Riverpod providers, error types, and utilities included
+- **📦 Batteries Included**: Error types, utilities, and comprehensive documentation
 - **🧪 Well Tested**: 97.5% test coverage gives you confidence in reliability
 - **📚 Complete Documentation**: Examples, use cases, and troubleshooting guides
 
@@ -96,7 +94,7 @@ A secure and performant local storage solution for Flutter applications, built w
 ### **🛡️ Best Practices**
 - **Regular Updates**: Keep the package and dependencies updated for security patches
 - **Error Handling**: Implement comprehensive error handling for storage failures
-- **Data Minimization**: Only store data that you actually need
+- **Data Minimisation**: Only store data that you actually need
 - **Access Control**: Implement proper access controls in your application layer
 
 > **📋 Recommendation**: For mission-critical applications, consider additional security measures such as certificate pinning, runtime application self-protection (RASP), and regular penetration testing.
@@ -108,7 +106,7 @@ Add `vault_storage` to your `pubspec.yaml` file:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^0.0.4 # Replace with the latest version
+  vault_storage: ^1.0.0 # Replace with the latest version
   
 ```
 
@@ -117,7 +115,25 @@ Then, run:
 flutter pub get
 ```
 
-> **Note**: This package uses the development version of Riverpod (3.0.0-dev.16) for the latest features. The generated provider files are already included, so you don't need to run code generation yourself.
+## Quick Start
+
+The easiest way to get started is using the factory method:
+
+```dart
+import 'package:vault_storage/vault_storage.dart';
+
+// Create a vault storage instance
+final storage = VaultStorage.create();
+
+// Initialise it
+final initResult = await storage.init();
+initResult.fold(
+  (error) => print('Failed to initialise: ${error.message}'),
+  (_) => print('Ready to use!'),
+);
+```
+
+The factory method returns the `IVaultStorage` interface, keeping the implementation details hidden and providing a clean, simple API.
 
 ## Platform Setup
 
@@ -198,112 +214,236 @@ For production web apps, add these headers:
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 ```
 
-Before running your app, you must initialize the service. This is typically done in your `main.dart`:
+Before running your app, you must initialise the service. This is typically done in your `main.dart`:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vault_storage/vault_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Create a ProviderContainer to access the provider
-  final container = ProviderContainer();
+  // Initialise the vault storage
+  final storage = VaultStorage.create();
+  final initResult = await storage.init();
+  
+  initResult.fold(
+    (error) {
+      print('Failed to initialise storage: ${error.message}');
+      // Handle initialisation error appropriately
+    },
+    (_) {
+      runApp(MyApp(storage: storage));
+    },
+  );
+}
 
-  try {
-    // Initialize the vault storage
-    await container.read(vaultStorageProvider.future);
-    
-    runApp(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MyApp(),
-      ),
+class MyApp extends StatelessWidget {
+  final IVaultStorage storage;
+  
+  const MyApp({super.key, required this.storage});
+  
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'My App',
+      home: MyHomePage(storage: storage),
     );
-  } catch (e) {
-    print('Failed to initialize storage: $e');
-    // Handle initialization error appropriately
   }
 }
 ```
 
 ## Usage
 
-### Using with Riverpod (Recommended)
+### Basic Usage (No Dependencies)
 
-#### Key-Value Storage
+You can use Vault Storage directly without any state management framework:
 
-Store and retrieve simple key-value pairs using different box types for security levels:
+```dart
+import 'package:vault_storage/vault_storage.dart';
+
+class StorageManager {
+  static IVaultStorage? _instance;
+  
+  static Future<IVaultStorage> get instance async {
+    if (_instance != null) return _instance!;
+    
+    _instance = VaultStorage.create();
+    final initResult = await _instance!.init();
+    
+    return initResult.fold(
+      (error) => throw Exception('Failed to initialise storage: ${error.message}'),
+      (_) => _instance!,
+    );
+  }
+}
+
+// Usage example
+Future<void> example() async {
+  final storage = await StorageManager.instance;
+  
+  // Store a secure value (encrypted)
+  final setResult = await storage.set(
+    BoxType.secure, 
+    'api_key', 
+    'my_secret_key'
+  );
+  
+  setResult.fold(
+    (error) => print('Error storing key: ${error.message}'),
+    (_) => print('Key stored successfully'),
+  );
+
+  // Retrieve the value
+  final getResult = await storage.get<String>(BoxType.secure, 'api_key');
+  getResult.fold(
+    (error) => print('Error retrieving key: ${error.message}'),
+    (value) => print('Retrieved API key: $value'),
+  );
+}
+```
+
+### Using with Riverpod
+
+If you prefer to use Riverpod, you can create your own provider. First, add the Riverpod dependencies to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  # ... other dependencies
+  vault_storage: ^0.1.1
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+dev_dependencies:
+  # ... other dev dependencies  
+  build_runner: ^2.4.7
+  riverpod_generator: ^2.3.9
+```
+
+Then create your own provider file: `lib/providers/storage_provider.dart`
+
+```dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vault_storage/vault_storage.dart';
+
+part 'storage_provider.g.dart';
+
+@Riverpod(keepAlive: true)
+Future<IVaultStorage> vaultStorage(VaultStorageRef ref) async {
+  final implementation = VaultStorage.create();
+  final initResult = await implementation.init();
+
+  return initResult.fold(
+    (error) => throw Exception('Failed to initialise storage: ${error.message}'),
+    (_) {
+      ref.onDispose(() async => implementation.dispose());
+      return implementation;
+    },
+  );
+}
+```
+
+Don't forget to run code generation:
+```bash
+dart run build_runner build
+```
+
+Then use it in your widgets:
 
 ```dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vault_storage/vault_storage.dart';
+import 'providers/storage_provider.dart';
 
 class MyWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder(
-      future: _handleStorage(ref),
-      builder: (context, snapshot) {
-        // Handle UI based on storage operations
-        return Container();
-      },
-    );
-  }
-
-  Future<void> _handleStorage(WidgetRef ref) async {
-    final vaultStorage = await ref.read(vaultStorageProvider.future);
-
-    // Store a secure value (encrypted)
-    final setResult = await vaultStorage.set(
-      BoxType.secure, 
-      'api_key', 
-      'my_secret_key'
-    );
-    
-    setResult.fold(
-      (error) => print('Error storing key: ${error.message}'),
-      (_) => print('Key stored successfully'),
-    );
-
-    // Store a normal value (unencrypted, faster access)
-    await vaultStorage.set(
-      BoxType.normal, 
-      'user_preference', 
-      'dark_mode'
-    );
-
-    // Retrieve values
-    final apiKeyResult = await vaultStorage.get<String>(
-      BoxType.secure, 
-      'api_key'
-    );
-
-    apiKeyResult.fold(
-      (error) => print('Error retrieving key: ${error.message}'),
-      (key) => print('Retrieved API key: $key'),
+    return ref.watch(vaultStorageProvider).when(
+      data: (storage) => YourWidget(storage: storage),
+      loading: () => CircularProgressIndicator(),
+      error: (error, stack) => Text('Error: $error'),
     );
   }
 }
 ```
 
-#### Secure File Storage
+And update your main.dart:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'providers/storage_provider.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Create a ProviderContainer to access the provider
+  final container = ProviderContainer();
+  
+  // Initialise the vault storage provider first
+  final initResult = await container.read(vaultStorageProvider.future);
+  
+  // Handle initialisation result
+  initResult.fold(
+    (error) {
+      print('Failed to initialise storage: ${error.message}');
+      // Show error screen
+      runApp(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Text('Storage initialisation failed: ${error.message}'),
+            ),
+          ),
+        ),
+      );
+    },
+    (storage) {
+      runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MyApp(),
+        ),
+      );
+    },
+  );
+  }
+}
+```
+
+### Key-Value Storage
+
+Store and retrieve simple key-value pairs using different box types for security levels:
+
+```dart
+// Store secure data (encrypted)
+await storage.set(BoxType.secure, 'user_token', 'jwt_token_here');
+await storage.set(BoxType.secure, 'user_credentials', {
+  'username': 'john_doe',
+  'password': 'hashed_password'
+});
+
+// Store normal data (faster, unencrypted)
+await storage.set(BoxType.normal, 'theme_mode', 'dark');
+await storage.set(BoxType.normal, 'language', 'en');
+
+// Retrieve data
+final tokenResult = await storage.get<String>(BoxType.secure, 'user_token');
+final themeResult = await storage.get<String>(BoxType.normal, 'theme_mode');
+```
+
+### Secure File Storage
 
 For larger data like images, documents, or any binary data:
 
 ```dart
 import 'dart:typed_data';
-import 'package:vault_storage/vault_storage.dart';
 
-Future<void> handleFileStorage(WidgetRef ref) async {
-  final vaultStorage = await ref.read(vaultStorageProvider.future);
-  
+Future<void> handleFileStorage(IVaultStorage storage) async {
   // Assume 'imageData' is a Uint8List from an image picker or network
   final Uint8List imageData = ...; 
 
   // Save a file (automatically encrypted)
-  final saveResult = await vaultStorage.saveSecureFile(
+  final saveResult = await storage.saveSecureFile(
     fileBytes: imageData,
     fileExtension: 'jpg',
   );
@@ -314,30 +454,18 @@ Future<void> handleFileStorage(WidgetRef ref) async {
       print('File saved successfully. ID: ${metadata['fileId']}');
       
       // Store the metadata for later retrieval
-      await vaultStorage.set(
+      await storage.set(
         BoxType.secure,
         'profile_image_metadata',
         metadata,
       );
 
-      // Retrieve the file
-      final getResult = await vaultStorage.getSecureFile(
-        fileMetadata: metadata,
-      );
-
-      getResult.fold(
-        (error) => print('Error retrieving file: ${error.message}'),
-        (fileBytes) => print('Retrieved file with ${fileBytes.length} bytes'),
-      );
-
-      // Delete the file when no longer needed
-      final deleteResult = await vaultStorage.deleteSecureFile(
-        fileMetadata: metadata,
-      );
+      // Later, retrieve the file using the metadata
+      final fileResult = await storage.getSecureFile(metadata: metadata);
       
-      deleteResult.fold(
-        (error) => print('Error deleting file: ${error.message}'),
-        (_) => print('File deleted successfully'),
+      fileResult.fold(
+        (error) => print('Error retrieving file: ${error.message}'),
+        (fileBytes) => print('Retrieved file of ${fileBytes.length} bytes'),
       );
     },
   );
@@ -362,26 +490,24 @@ The package automatically handles platform differences:
 
 No code changes are required - the package handles platform detection automatically.
 
-## Manual Usage (Without Riverpod)
-
-If you prefer not to use Riverpod, you can manage the service directly:
+### Initialisation in main()
 
 ```dart
-import 'package:vault_storage/src/vault_storage_impl.dart';
+import 'package:flutter/material.dart';
+import 'package:vault_storage/vault_storage.dart';
 
-// Global instance (or use your preferred DI solution)
 late final IVaultStorage vaultStorage;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Create and initialize the service
-  vaultStorage = VaultStorageImpl();
+  // Initialise storage
+  vaultStorage = VaultStorage.create();
   final initResult = await vaultStorage.init();
   
   initResult.fold(
-    (error) => throw Exception('Failed to initialize storage: ${error.message}'),
-    (_) => print('Storage initialized successfully'),
+    (error) => throw Exception('Failed to initialise storage: ${error.message}'),
+    (_) => print('Storage initialised successfully'),
   );
 
   runApp(const MyApp());
@@ -411,7 +537,7 @@ result.fold(
     // Handle different error types
     switch (error.runtimeType) {
       case StorageInitializationError:
-        print('Storage not initialized: ${error.message}');
+        print('Storage not initialised: ${error.message}');
         break;
       case StorageReadError:
         print('Failed to read data: ${error.message}');
@@ -445,7 +571,7 @@ await vaultStorage.dispose();
 
 ## Troubleshooting
 
-### Common Initialization Errors
+### Common Initialisation Errors
 
 #### "Failed to create/decode secure key"
 
@@ -459,7 +585,7 @@ This error typically occurs when `flutter_secure_storage` cannot access the plat
 
 #### App Crashes on First Launch
 
-If the app crashes during storage initialization:
+If the app crashes during storage initialisation:
 
 1. Check that all platform requirements are met
 2. Ensure proper error handling in your `main()` function:
@@ -468,25 +594,23 @@ If the app crashes during storage initialization:
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  final container = ProviderContainer();
+  final storage = VaultStorage.create();
+  final initResult = await storage.init();
   
-  try {
-    await container.read(vaultStorageProvider.future);
-    runApp(UncontrolledProviderScope(
-      container: container,
-      child: const MyApp(),
-    ));
-  } catch (e) {
-    print('Storage initialization failed: $e');
-    // Show error screen or fallback UI
-    runApp(MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Storage initialization failed: $e'),
+  initResult.fold(
+    (error) {
+      print('Storage initialisation failed: ${error.message}');
+      // Show error screen or fallback UI
+      runApp(MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Storage initialisation failed: ${error.message}'),
+          ),
         ),
-      ),
-    ));
-  }
+      ));
+    },
+    (_) => runApp(MyApp(storage: storage)),
+  );
 }
 ```
 
@@ -499,7 +623,7 @@ For web applications:
 
 ### Debug Mode
 
-To get more detailed error information, check the console output when initialization fails. The package provides detailed error messages for different failure scenarios.
+To get more detailed error information, check the console output when initialisation fails. The package provides detailed error messages for different failure scenarios.
 
 ## Testing
 
@@ -519,7 +643,6 @@ Key dependencies used by this package:
 - `flutter_secure_storage`: Secure key storage
 - `cryptography`: AES-GCM encryption
 - `fpdart`: Functional programming utilities
-- `riverpod_annotation`: Code generation for providers
 
 ## Platform Support
 
