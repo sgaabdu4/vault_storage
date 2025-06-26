@@ -199,7 +199,8 @@ Future<void> main() async {
     final initResult = await vaultStorage.init();
 
     initResult.fold(
-      (error) => throw Exception('Failed to initialize storage: ${error.message}'),
+      (error) =>
+          throw Exception('Failed to initialize storage: ${error.message}'),
       (_) => print('Storage initialized successfully'),
     );
 
@@ -388,14 +389,16 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     _clearMessages();
-    final result = await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+    final result =
+        await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
 
     setState(() {
       result.fold(
         (error) => _errorMessage = 'File Get Error: ${error.message}',
         (fileBytes) {
           String fileName = _uploadedFileName ?? 'Unknown file';
-          _operationResult = 'File "$fileName" retrieved!\nSize: ${fileBytes.length} bytes';
+          _operationResult =
+              'File "$fileName" retrieved!\nSize: ${fileBytes.length} bytes';
         },
       );
     });
@@ -410,7 +413,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     _clearMessages();
-    final result = await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
+    final result =
+        await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
 
     setState(() {
       result.fold(
@@ -450,11 +454,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
           setState(() {
             saveResult.fold(
-              (error) => _errorMessage = 'Secure Upload Error: ${error.message}',
+              (error) =>
+                  _errorMessage = 'Secure Upload Error: ${error.message}',
               (metadata) {
                 _fileMetadata = metadata;
                 _uploadedFileName = file.name;
-                _operationResult = 'File "${file.name}" uploaded and saved securely!\n'
+                _operationResult =
+                    'File "${file.name}" uploaded and saved securely!\n'
                     'Size: ${file.bytes!.length} bytes\n'
                     'File ID: ${metadata['fileId']}';
               },
@@ -489,7 +495,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       // Retrieve the file from secure storage
-      final result = await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+      final result =
+          await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
 
       result.fold(
         (error) {
@@ -550,7 +557,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _deleteKey() async {
     _clearMessages();
-    final result = await vaultStorage.delete(BoxType.secure, _keyController.text);
+    final result =
+        await vaultStorage.delete(BoxType.secure, _keyController.text);
 
     setState(() {
       result.fold(
@@ -579,7 +587,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Input', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Input',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _keyController,
@@ -610,7 +619,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Key-Value Storage', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Key-Value Storage',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -648,7 +658,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('File Storage', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('File Storage',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -706,7 +717,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Storage Management', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Storage Management',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -738,14 +750,17 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 16),
 
             // Results Section
-            if (_retrievedValue != null || _operationResult != null || _errorMessage != null)
+            if (_retrievedValue != null ||
+                _operationResult != null ||
+                _errorMessage != null)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Results', style: Theme.of(context).textTheme.headlineSmall),
+                      Text('Results',
+                          style: Theme.of(context).textTheme.headlineSmall),
                       const SizedBox(height: 8),
                       if (_retrievedValue != null)
                         Container(
