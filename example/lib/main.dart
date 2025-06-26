@@ -11,7 +11,7 @@ Future<void> main() async {
 
   try {
     // Initialize vault storage
-    vaultStorage = VaultStorageImpl();
+    vaultStorage = VaultStorage.create();
     final initResult = await vaultStorage.init();
 
     initResult.fold(

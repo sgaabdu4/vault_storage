@@ -106,7 +106,7 @@ Add `vault_storage` to your `pubspec.yaml` file:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^0.1.1 # Replace with the latest version
+  vault_storage: ^1.0.0 # Replace with the latest version
   
 ```
 
@@ -114,6 +114,26 @@ Then, run:
 ```bash
 flutter pub get
 ```
+
+## Quick Start
+
+The easiest way to get started is using the factory method:
+
+```dart
+import 'package:vault_storage/vault_storage.dart';
+
+// Create a vault storage instance
+final storage = VaultStorage.create();
+
+// Initialize it
+final initResult = await storage.init();
+initResult.fold(
+  (error) => print('Failed to initialize: ${error.message}'),
+  (_) => print('Ready to use!'),
+);
+```
+
+The factory method returns the `IVaultStorage` interface, keeping the implementation details hidden and providing a clean, simple API.
 
 ## Platform Setup
 
@@ -204,7 +224,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize the vault storage
-  final storage = VaultStorageImpl();
+  final storage = VaultStorage.create();
   final initResult = await storage.init();
   
   initResult.fold(
@@ -219,7 +239,7 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  final VaultStorageImpl storage;
+  final IVaultStorage storage;
   
   const MyApp({super.key, required this.storage});
   
@@ -243,12 +263,12 @@ You can use Vault Storage directly without any state management framework:
 import 'package:vault_storage/vault_storage.dart';
 
 class StorageManager {
-  static VaultStorageImpl? _instance;
+  static IVaultStorage? _instance;
   
-  static Future<VaultStorageImpl> get instance async {
+  static Future<IVaultStorage> get instance async {
     if (_instance != null) return _instance!;
     
-    _instance = VaultStorageImpl();
+    _instance = VaultStorage.create();
     final initResult = await _instance!.init();
     
     return initResult.fold(
@@ -310,7 +330,7 @@ part 'storage_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 Future<IVaultStorage> vaultStorage(VaultStorageRef ref) async {
-  final implementation = VaultStorageImpl();
+  final implementation = VaultStorage.create();
   final initResult = await implementation.init();
 
   return initResult.fold(
@@ -477,7 +497,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize storage
-  vaultStorage = VaultStorageImpl();
+  vaultStorage = VaultStorage.create();
   final initResult = await vaultStorage.init();
   
   initResult.fold(
@@ -570,7 +590,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    final storage = VaultStorageImpl();
+    final storage = VaultStorage.create();
     final initResult = await storage.init();
     
     initResult.fold(

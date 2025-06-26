@@ -2,21 +2,38 @@
 
 ### Breaking Changes
 * **BREAKING: Remove built-in Riverpod provider** - The package no longer includes a built-in Riverpod provider to remain framework-agnostic
+* **BREAKING: Hide implementation details** - `VaultStorageImpl` is no longer exported. Use `VaultStorage.create()` factory method instead
 * **feat: Framework-agnostic design** - Users can now integrate with any state management solution or use the service directly
+
+### New Features
+* **feat: Add VaultStorage.create() factory method** - Clean API that returns `IVaultStorage` interface, hiding implementation details
+* **feat: Improved API design** - Only the interface (`IVaultStorage`) is exposed to users, making the API cleaner and less confusing
 
 ### Documentation Improvements
 * **docs: Add comprehensive state management integration examples** - Includes examples for Riverpod and direct usage
 * **docs: Update initialisation examples** - Show how to initialise the service without Riverpod dependency
 * **docs: Clarify framework-agnostic approach** - Emphasize that the package works with any state management solution
+* **docs: Update all examples to use factory method** - Consistent API usage throughout documentation
 
 ###  Migration Guide
+**From built-in Riverpod provider:**
 If you were using the built-in `vaultStorageProvider`, you can easily recreate it in your own project:
 
 1. Add Riverpod dependencies to your `pubspec.yaml`
 2. Create your own provider file following the examples in the README
 3. Update your initialization code to use your custom provider
 
-This change makes the package more flexible and reduces its dependency footprint.
+**From VaultStorageImpl():**
+Replace direct instantiation with the factory method:
+```dart
+// Before
+final storage = VaultStorageImpl();
+
+// After
+final storage = VaultStorage.create();
+```
+
+This change makes the package more flexible, reduces its dependency footprint, and provides a cleaner API.
 
 ## 0.1.1
 
