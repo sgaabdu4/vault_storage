@@ -1,7 +1,191 @@
+/*
+ * Vault Storage Demo - Platform Setup Requirements
+ * 
+ * This example demonstrates secure storage capabilities using vault_storage package.
+ * Below are the platform-specific configurations required for each platform:
+ * 
+ * ============================================================================
+ * 🍎 macOS Setup
+ * ============================================================================
+ * 
+ * 1. ENTITLEMENTS (Required for Keychain & File Access):
+ *    Add to macos/Runner/DebugProfile.entitlements:
+ *    ```xml
+ *    <key>com.apple.security.app-sandbox</key>
+ *    <true/>
+ *    <key>com.apple.security.cs.allow-jit</key>
+ *    <true/>
+ *    <key>com.apple.security.network.server</key>
+ *    <true/>
+ *    <key>com.apple.security.files.user-selected.read-write</key>
+ *    <true/>
+ *    <key>com.apple.security.files.downloads.read-write</key>
+ *    <true/>
+ *    <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+ *    <array>
+ *      <string>/</string>
+ *    </array>
+ *    <key>keychain-access-groups</key>
+ *    <array>
+ *      <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+ *    </array>
+ *    ```
+ * 
+ *    Add to macos/Runner/Release.entitlements:
+ *    ```xml
+ *    <key>com.apple.security.app-sandbox</key>
+ *    <true/>
+ *    <key>com.apple.security.files.user-selected.read-write</key>
+ *    <true/>
+ *    <key>com.apple.security.files.downloads.read-write</key>
+ *    <true/>
+ *    <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+ *    <array>
+ *      <string>/</string>
+ *    </array>
+ *    <key>keychain-access-groups</key>
+ *    <array>
+ *      <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+ *    </array>
+ *    ```
+ * 
+ * ============================================================================
+ * 📱 iOS Setup
+ * ============================================================================
+ * 
+ * 1. KEYCHAIN ACCESS:
+ *    Add to ios/Runner/Runner.entitlements:
+ *    ```xml
+ *    <key>keychain-access-groups</key>
+ *    <array>
+ *      <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+ *    </array>
+ *    ```
+ * 
+ * 2. FILE ACCESS (if using file operations):
+ *    Add to ios/Runner/Info.plist:
+ *    ```xml
+ *    <key>NSDocumentsFolderUsageDescription</key>
+ *    <string>This app needs access to documents folder to save files securely.</string>
+ *    <key>NSDownloadsFolderUsageDescription</key>
+ *    <string>This app needs access to downloads folder to save files.</string>
+ *    ```
+ * 
+ * ============================================================================
+ * 🤖 Android Setup
+ * ============================================================================
+ * 
+ * 1. PERMISSIONS:
+ *    Add to android/app/src/main/AndroidManifest.xml:
+ *    ```xml
+ *    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+ *    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+ *    <uses-permission android:name="android.permission.INTERNET" />
+ *    ```
+ * 
+ * 2. MINIMUM SDK:
+ *    In android/app/build.gradle, ensure:
+ *    ```gradle
+ *    minSdkVersion 21  // Required for secure storage APIs
+ *    ```
+ * 
+ * 3. PROGUARD (if using):
+ *    Add to android/app/proguard-rules.pro:
+ *    ```
+ *    -keep class io.flutter.plugins.** { *; }
+ *    -keep class androidx.biometric.** { *; }
+ *    ```
+ * 
+ * ============================================================================
+ * 🪟 Windows Setup
+ * ============================================================================
+ * 
+ * 1. MINIMUM VERSION:
+ *    In windows/runner/CMakeLists.txt, ensure:
+ *    ```cmake
+ *    set(CMAKE_CXX_STANDARD 17)
+ *    ```
+ * 
+ * 2. DEPENDENCIES:
+ *    Windows uses Windows Credential Manager for secure storage.
+ *    No additional setup required for basic functionality.
+ * 
+ * 3. FILE PERMISSIONS:
+ *    For file operations, ensure app has write permissions to selected directories.
+ *    This is handled automatically by the file_picker package.
+ * 
+ * ============================================================================
+ * 🌐 Web Setup
+ * ============================================================================
+ * 
+ * 1. LIMITATIONS:
+ *    - Web platform uses browser's localStorage for storage
+ *    - Security level is lower than native platforms
+ *    - Large files may cause memory issues
+ * 
+ * 2. CORS (if accessing external resources):
+ *    Add to web/index.html if needed:
+ *    ```html
+ *    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+ *    ```
+ * 
+ * 3. HTTPS REQUIREMENT:
+ *    - Secure storage APIs require HTTPS in production
+ *    - Use `flutter run -d web-server --web-hostname localhost --web-port 8080` for local testing
+ * 
+ * ============================================================================
+ * 📦 Package Dependencies
+ * ============================================================================
+ * 
+ * Add to pubspec.yaml:
+ * ```yaml
+ * dependencies:
+ *   vault_storage: ^x.x.x  # Check latest version
+ *   file_picker: ^8.0.0+1  # For file upload/download functionality
+ * ```
+ * 
+ * ============================================================================
+ * 🔧 Common Issues & Solutions
+ * ============================================================================
+ * 
+ * 1. "Failed to initialize storage: Failed to create/decode secure key"
+ *    - Missing keychain entitlements (macOS/iOS)
+ *    - Run: flutter clean && flutter pub get && flutter run
+ * 
+ * 2. File picker not working:
+ *    - Missing file access permissions
+ *    - Check platform-specific file access setup above
+ * 
+ * 3. Build failures:
+ *    - Ensure minimum SDK versions are met
+ *    - Clean build: flutter clean && flutter pub get
+ * 
+ * 4. Web storage issues:
+ *    - Check browser console for errors
+ *    - Ensure HTTPS in production
+ *    - Clear browser storage/cache
+ * 
+ * ============================================================================
+ * 🚀 Quick Start Commands
+ * ============================================================================
+ * 
+ * 1. Get dependencies: flutter pub get
+ * 2. Run on macOS: flutter run -d macos
+ * 3. Run on iOS: flutter run -d ios
+ * 4. Run on Android: flutter run -d android
+ * 5. Run on Windows: flutter run -d windows
+ * 6. Run on Web: flutter run -d web
+ * 
+ * For any platform-specific issues, refer to the setup sections above.
+ * 
+ */
+
 import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:vault_storage/vault_storage.dart';
+import 'package:file_picker/file_picker.dart';
 
 // Global storage instance
 late IVaultStorage vaultStorage;
@@ -97,6 +281,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String? _errorMessage;
   String? _operationResult;
   Map<String, dynamic>? _fileMetadata;
+  String? _uploadedFileName;
 
   void _clearMessages() {
     setState(() {
@@ -208,7 +393,10 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       result.fold(
         (error) => _errorMessage = 'File Get Error: ${error.message}',
-        (fileBytes) => _operationResult = 'File retrieved! Size: ${fileBytes.length} bytes',
+        (fileBytes) {
+          String fileName = _uploadedFileName ?? 'Unknown file';
+          _operationResult = 'File "$fileName" retrieved!\nSize: ${fileBytes.length} bytes';
+        },
       );
     });
   }
@@ -233,6 +421,118 @@ class _MyHomePageState extends State<MyHomePage> {
         },
       );
     });
+  }
+
+  // File Storage Operations - Secure Upload/Download
+  Future<void> _secureFileUpload() async {
+    _clearMessages();
+
+    try {
+      // Pick a file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+        withData: true, // Important: This loads the file data into memory
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        PlatformFile file = result.files.first;
+
+        if (file.bytes != null) {
+          // Get file extension from file name
+          String extension = file.extension ?? 'bin';
+
+          // Save the file securely
+          final saveResult = await vaultStorage.saveSecureFile(
+            fileBytes: file.bytes!,
+            fileExtension: extension,
+          );
+
+          setState(() {
+            saveResult.fold(
+              (error) => _errorMessage = 'Secure Upload Error: ${error.message}',
+              (metadata) {
+                _fileMetadata = metadata;
+                _uploadedFileName = file.name;
+                _operationResult = 'File "${file.name}" uploaded and saved securely!\n'
+                    'Size: ${file.bytes!.length} bytes\n'
+                    'File ID: ${metadata['fileId']}';
+              },
+            );
+          });
+        } else {
+          setState(() {
+            _errorMessage = 'Failed to read file data. Please try again.';
+          });
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'No file selected for upload.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'File picker error: $e';
+      });
+    }
+  }
+
+  Future<void> _secureFileDownload() async {
+    if (_fileMetadata == null) {
+      setState(() {
+        _errorMessage = 'No file saved yet. Upload a file first.';
+      });
+      return;
+    }
+
+    _clearMessages();
+
+    try {
+      // Retrieve the file from secure storage
+      final result = await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+
+      result.fold(
+        (error) {
+          setState(() {
+            _errorMessage = 'Secure Download Error: ${error.message}';
+          });
+        },
+        (fileBytes) async {
+          // Let user choose where to save the downloaded file
+          String? outputFile = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save downloaded file',
+            fileName: _uploadedFileName ?? 'downloaded_file',
+          );
+
+          if (outputFile != null) {
+            try {
+              // Write the file to the selected location
+              final file = File(outputFile);
+              await file.writeAsBytes(fileBytes);
+
+              setState(() {
+                String fileName = _uploadedFileName ?? 'Downloaded file';
+                _operationResult = 'File "$fileName" downloaded successfully!\n'
+                    'Size: ${fileBytes.length} bytes\n'
+                    'Saved to: $outputFile';
+              });
+            } catch (e) {
+              setState(() {
+                _errorMessage = 'Failed to save file: $e';
+              });
+            }
+          } else {
+            setState(() {
+              _errorMessage = 'Download cancelled - no save location selected.';
+            });
+          }
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Download error: $e';
+      });
+    }
   }
 
   // Storage Management Operations
@@ -354,13 +654,33 @@ class _MyHomePageState extends State<MyHomePage> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        // Secure File Operations
+                        ElevatedButton.icon(
+                          onPressed: _secureFileUpload,
+                          icon: const Icon(Icons.upload_file),
+                          label: const Text('Secure Upload'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _secureFileDownload,
+                          icon: const Icon(Icons.download),
+                          label: const Text('Secure Download'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        // Sample/Test Operations
                         ElevatedButton(
                           onPressed: _saveSecureFile,
-                          child: const Text('Save File'),
+                          child: const Text('Save Sample File'),
                         ),
                         ElevatedButton(
                           onPressed: _getSecureFile,
-                          child: const Text('Get File'),
+                          child: const Text('Get File Info'),
                         ),
                         ElevatedButton(
                           onPressed: _deleteSecureFile,
