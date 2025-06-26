@@ -6,7 +6,7 @@ A secure and performant local storage solution for Flutter applications, built w
 
 -   **Dual Storage Model**: Simple key-value storage via Hive and secure file storage for larger data blobs (e.g., images, documents).
 -   **Web Compatible**: Full support for both native platforms and web with platform-aware storage strategies.
--   **Robust Security**: Utilizes `flutter_secure_storage` to protect the master encryption key, encrypted Hive boxes for sensitive data, and AES-GCM encryption for files.
+-   **Robust Security**: Utilises `flutter_secure_storage` to protect the master encryption key, encrypted Hive boxes for sensitive data, and AES-GCM encryption for files.
 -   **High Performance**: Cryptographic operations (AES-GCM) are executed in background isolates using `compute` to prevent UI jank.
 -   **Type-Safe Error Handling**: Leverages `fpdart`'s `Either` and `TaskEither` for explicit, functional-style error management.
 -   **Framework Agnostic**: Use with any state management solution (Riverpod, Bloc, Provider, GetX, or none at all).
@@ -94,7 +94,7 @@ A secure and performant local storage solution for Flutter applications, built w
 ### **🛡️ Best Practices**
 - **Regular Updates**: Keep the package and dependencies updated for security patches
 - **Error Handling**: Implement comprehensive error handling for storage failures
-- **Data Minimization**: Only store data that you actually need
+- **Data Minimisation**: Only store data that you actually need
 - **Access Control**: Implement proper access controls in your application layer
 
 > **📋 Recommendation**: For mission-critical applications, consider additional security measures such as certificate pinning, runtime application self-protection (RASP), and regular penetration testing.
@@ -125,10 +125,10 @@ import 'package:vault_storage/vault_storage.dart';
 // Create a vault storage instance
 final storage = VaultStorage.create();
 
-// Initialize it
+// Initialise it
 final initResult = await storage.init();
 initResult.fold(
-  (error) => print('Failed to initialize: ${error.message}'),
+  (error) => print('Failed to initialise: ${error.message}'),
   (_) => print('Ready to use!'),
 );
 ```
@@ -214,7 +214,7 @@ For production web apps, add these headers:
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 ```
 
-Before running your app, you must initialize the service. This is typically done in your `main.dart`:
+Before running your app, you must initialise the service. This is typically done in your `main.dart`:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -223,14 +223,14 @@ import 'package:vault_storage/vault_storage.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the vault storage
+  // Initialise the vault storage
   final storage = VaultStorage.create();
   final initResult = await storage.init();
   
   initResult.fold(
     (error) {
-      print('Failed to initialize storage: ${error.message}');
-      // Handle initialization error appropriately
+      print('Failed to initialise storage: ${error.message}');
+      // Handle initialisation error appropriately
     },
     (_) {
       runApp(MyApp(storage: storage));
@@ -272,7 +272,7 @@ class StorageManager {
     final initResult = await _instance!.init();
     
     return initResult.fold(
-      (error) => throw Exception('Failed to initialize storage: ${error.message}'),
+      (error) => throw Exception('Failed to initialise storage: ${error.message}'),
       (_) => _instance!,
     );
   }
@@ -334,7 +334,7 @@ Future<IVaultStorage> vaultStorage(VaultStorageRef ref) async {
   final initResult = await implementation.init();
 
   return initResult.fold(
-    (error) => throw Exception('Failed to initialize storage: ${error.message}'),
+    (error) => throw Exception('Failed to initialise storage: ${error.message}'),
     (_) {
       ref.onDispose(() async => implementation.dispose());
       return implementation;
@@ -379,28 +379,33 @@ Future<void> main() async {
   // Create a ProviderContainer to access the provider
   final container = ProviderContainer();
   
-  try {
-    // Initialize the vault storage provider first
-    await container.read(vaultStorageProvider.future);
-    
-    runApp(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MyApp(),
-      ),
-    );
-  } catch (e) {
-    print('Failed to initialize storage: $e');
-    // Handle initialization error appropriately
-    runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Storage initialization failed: $e'),
+  // Initialise the vault storage provider first
+  final initResult = await container.read(vaultStorageProvider.future);
+  
+  // Handle initialisation result
+  initResult.fold(
+    (error) {
+      print('Failed to initialise storage: ${error.message}');
+      // Show error screen
+      runApp(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Text('Storage initialisation failed: ${error.message}'),
+            ),
           ),
         ),
-      ),
-    );
+      );
+    },
+    (storage) {
+      runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MyApp(),
+        ),
+      );
+    },
+  );
   }
 }
 ```
@@ -485,7 +490,7 @@ The package automatically handles platform differences:
 
 No code changes are required - the package handles platform detection automatically.
 
-### Initialization in main()
+### Initialisation in main()
 
 ```dart
 import 'package:flutter/material.dart';
@@ -496,13 +501,13 @@ late final IVaultStorage vaultStorage;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize storage
+  // Initialise storage
   vaultStorage = VaultStorage.create();
   final initResult = await vaultStorage.init();
   
   initResult.fold(
-    (error) => throw Exception('Failed to initialize storage: ${error.message}'),
-    (_) => print('Storage initialized successfully'),
+    (error) => throw Exception('Failed to initialise storage: ${error.message}'),
+    (_) => print('Storage initialised successfully'),
   );
 
   runApp(const MyApp());
@@ -532,7 +537,7 @@ result.fold(
     // Handle different error types
     switch (error.runtimeType) {
       case StorageInitializationError:
-        print('Storage not initialized: ${error.message}');
+        print('Storage not initialised: ${error.message}');
         break;
       case StorageReadError:
         print('Failed to read data: ${error.message}');
@@ -566,7 +571,7 @@ await vaultStorage.dispose();
 
 ## Troubleshooting
 
-### Common Initialization Errors
+### Common Initialisation Errors
 
 #### "Failed to create/decode secure key"
 
@@ -580,7 +585,7 @@ This error typically occurs when `flutter_secure_storage` cannot access the plat
 
 #### App Crashes on First Launch
 
-If the app crashes during storage initialization:
+If the app crashes during storage initialisation:
 
 1. Check that all platform requirements are met
 2. Ensure proper error handling in your `main()` function:
@@ -589,34 +594,23 @@ If the app crashes during storage initialization:
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  try {
-    final storage = VaultStorage.create();
-    final initResult = await storage.init();
-    
-    initResult.fold(
-      (error) {
-        print('Storage initialization failed: ${error.message}');
-        // Show error screen or fallback UI
-        runApp(MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: Text('Storage initialization failed: ${error.message}'),
-            ),
+  final storage = VaultStorage.create();
+  final initResult = await storage.init();
+  
+  initResult.fold(
+    (error) {
+      print('Storage initialisation failed: ${error.message}');
+      // Show error screen or fallback UI
+      runApp(MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Storage initialisation failed: ${error.message}'),
           ),
-        ));
-      },
-      (_) => runApp(MyApp(storage: storage)),
-    );
-  } catch (e) {
-    print('Unexpected error: $e');
-    runApp(MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Unexpected error: $e'),
         ),
-      ),
-    ));
-  }
+      ));
+    },
+    (_) => runApp(MyApp(storage: storage)),
+  );
 }
 ```
 
@@ -629,7 +623,7 @@ For web applications:
 
 ### Debug Mode
 
-To get more detailed error information, check the console output when initialization fails. The package provides detailed error messages for different failure scenarios.
+To get more detailed error information, check the console output when initialisation fails. The package provides detailed error messages for different failure scenarios.
 
 ## Testing
 
