@@ -310,7 +310,7 @@ If you prefer to use Riverpod, you can create your own provider. First, add the 
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^0.1.1
+  vault_storage: ^1.0.0
   flutter_riverpod: ^2.4.9
   riverpod_annotation: ^2.3.3
 
@@ -380,32 +380,27 @@ Future<void> main() async {
   final container = ProviderContainer();
   
   // Initialise the vault storage provider first
-  final initResult = await container.read(vaultStorageProvider.future);
-  
-  // Handle initialisation result
-  initResult.fold(
-    (error) {
-      print('Failed to initialise storage: ${error.message}');
-      // Show error screen
-      runApp(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: Text('Storage initialisation failed: ${error.message}'),
-            ),
+  try {
+    await container.read(vaultStorageProvider.future);
+    
+    runApp(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MyApp(),
+      ),
+    );
+  } catch (error) {
+    print('Failed to initialise storage: $error');
+    // Show error screen
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Storage initialisation failed: $error'),
           ),
         ),
-      );
-    },
-    (storage) {
-      runApp(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MyApp(),
-        ),
-      );
-    },
-  );
+      ),
+    );
   }
 }
 ```
@@ -461,7 +456,7 @@ Future<void> handleFileStorage(IVaultStorage storage) async {
       );
 
       // Later, retrieve the file using the metadata
-      final fileResult = await storage.getSecureFile(metadata: metadata);
+      final fileResult = await storage.getSecureFile(fileMetadata: metadata);
       
       fileResult.fold(
         (error) => print('Error retrieving file: ${error.message}'),

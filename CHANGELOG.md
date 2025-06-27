@@ -1,3 +1,15 @@
+## 1.0.1
+
+### Documentation Improvements
+* **docs: Fix incorrect parameter name in README.md** - Corrected `metadata:` to `fileMetadata:` in `getSecureFile` method example
+* **docs: Fix version inconsistencies** - Updated all version references from `^0.1.1` to `^1.0.0` to match current package version
+* **docs: Fix Riverpod integration example** - Corrected error handling in main.dart to use try-catch instead of incorrect `.fold()` usage
+* **docs: Fix syntax errors** - Removed duplicate closing braces and fixed code formatting issues
+
+### Technical Fixes
+* **fix: Correct API usage examples** - All code examples now use the correct method signatures and parameter names
+* **fix: Improve error handling patterns** - Better distinction between functional error handling (Either) and exception-based error handling (try-catch)
+
 ## 1.0.0
 
 ### Breaking Changes
