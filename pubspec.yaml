@@ -9,10 +9,10 @@ environment:
   flutter: ">=3.29.0"
 
 dependencies:
-  cryptography: ^2.7.0
+  cryptography_plus: ^2.7.1
   flutter:
     sdk: flutter
-  flutter_secure_storage: ^9.2.4
+  flutter_secure_storage: ^10.0.0-beta.4
   fpdart: ^1.1.1
   hive_ce: ^2.11.3
   hive_ce_flutter: ^2.3.1

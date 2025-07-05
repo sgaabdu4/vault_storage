@@ -1,4 +1,4 @@
-import 'package:cryptography/cryptography.dart';
+import 'package:cryptography_plus/cryptography_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
