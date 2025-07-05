@@ -1,4 +1,4 @@
-import 'package:cryptography/cryptography.dart';
+import 'package:cryptography_plus/cryptography_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
@@ -24,7 +24,6 @@ Future<Uint8List> decryptInIsolate(DecryptRequest request) async {
     nonce: request.nonce,
     mac: Mac(request.macBytes),
   );
-  final decryptedData =
-      await encryptionAlgorithm.decrypt(secretBox, secretKey: secretKey);
+  final decryptedData = await encryptionAlgorithm.decrypt(secretBox, secretKey: secretKey);
   return Uint8List.fromList(decryptedData);
 }

@@ -636,7 +636,7 @@ Key dependencies used by this package:
 
 - `hive_ce_flutter`: Local storage database
 - `flutter_secure_storage`: Secure key storage
-- `cryptography`: AES-GCM encryption
+- `cryptography_plus`: AES-GCM encryption
 - `fpdart`: Functional programming utilities
 
 ## Platform Support

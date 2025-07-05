@@ -1,3 +1,18 @@
+## 1.1.0
+
+### Bug Fixes
+* **fix: Android compilation issues** - Fixed Android build failures by migrating from unmaintained `cryptography` package to actively maintained `cryptography_plus` 
+* **fix: AGP 8.x compatibility** - Resolved Android Gradle Plugin 8.x compatibility issues that prevented compilation on newer Android projects
+
+### Dependency Updates
+* **feat: Replace cryptography with cryptography_plus** - Migrated from `cryptography: ^2.7.0` to `cryptography_plus: ^2.7.1` to ensure ongoing maintenance and Android compatibility
+* **feat: Upgrade flutter_secure_storage** - Updated from `^9.2.4` to `^10.0.0-beta.4` for latest security improvements and bug fixes
+
+### Migration Notes
+* **Automatic migration**: No code changes required - the package handles the cryptography library migration internally
+* **Android compatibility**: Projects that previously failed to compile on Android with AGP 8.x will now work correctly
+* **Breaking changes**: None for end users - all public APIs remain the same
+
 ## 1.0.1
 
 ### Documentation Improvements
