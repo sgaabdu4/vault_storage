@@ -199,7 +199,8 @@ Future<void> main() async {
     final initResult = await vaultStorage.init();
 
     initResult.fold(
-      (error) => throw Exception('Failed to initialize storage: ${error.message}'),
+      (error) =>
+          throw Exception('Failed to initialize storage: ${error.message}'),
       (_) => print('Storage initialized successfully'),
     );
 
@@ -396,14 +397,16 @@ class _MyHomePageState extends State<MyHomePage> {
     //   fileMetadata: _fileMetadata!,
     //   downloadFileName: 'my_custom_filename.txt',
     // );
-    final result = await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+    final result =
+        await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
 
     setState(() {
       result.fold(
         (error) => _errorMessage = 'File Get Error: ${error.message}',
         (fileBytes) {
           String fileName = _uploadedFileName ?? 'Unknown file';
-          _operationResult = 'File "$fileName" retrieved!\nSize: ${fileBytes.length} bytes';
+          _operationResult =
+              'File "$fileName" retrieved!\nSize: ${fileBytes.length} bytes';
         },
       );
     });
@@ -418,7 +421,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     _clearMessages();
-    final result = await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
+    final result =
+        await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
 
     setState(() {
       result.fold(
@@ -458,11 +462,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
           setState(() {
             saveResult.fold(
-              (error) => _errorMessage = 'Secure Upload Error: ${error.message}',
+              (error) =>
+                  _errorMessage = 'Secure Upload Error: ${error.message}',
               (metadata) {
                 _fileMetadata = metadata;
                 _uploadedFileName = file.name;
-                _operationResult = 'File "${file.name}" uploaded and saved securely!\n'
+                _operationResult =
+                    'File "${file.name}" uploaded and saved securely!\n'
                     'Size: ${file.bytes!.length} bytes\n'
                     'File ID: ${metadata['fileId']}';
               },
@@ -497,7 +503,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       // Retrieve the file from secure storage
-      final result = await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+      final result =
+          await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
 
       result.fold(
         (error) {
@@ -558,7 +565,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _deleteKey() async {
     _clearMessages();
-    final result = await vaultStorage.delete(BoxType.secure, _keyController.text);
+    final result =
+        await vaultStorage.delete(BoxType.secure, _keyController.text);
 
     setState(() {
       result.fold(
@@ -569,7 +577,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // Helper method to create buttons with optional styling
-  Widget _buildButton(String text, VoidCallback onPressed, {Color? color, IconData? icon}) {
+  Widget _buildButton(String text, VoidCallback onPressed,
+      {Color? color, IconData? icon}) {
     if (icon != null) {
       return ElevatedButton.icon(
         onPressed: onPressed,
@@ -631,16 +640,19 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Input', style: Theme.of(context).textTheme.headlineSmall),
+                    Text('Input',
+                        style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _keyController,
-                      decoration: const InputDecoration(labelText: 'Key', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Key', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _valueController,
-                      decoration: const InputDecoration(labelText: 'Value', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Value', border: OutlineInputBorder()),
                     ),
                   ],
                 ),
@@ -650,17 +662,21 @@ class _MyHomePageState extends State<MyHomePage> {
 
             // Key-Value Operations
             _buildButtonSection('Key-Value Storage', [
-              _buildButton('Save Encrypted Text', _saveSecureValue, color: Colors.green),
+              _buildButton('Save Encrypted Text', _saveSecureValue,
+                  color: Colors.green),
               _buildButton('Save Plain Text', _saveNormalValue),
-              _buildButton('Get Encrypted Text', _getSecureValue, color: Colors.green),
+              _buildButton('Get Encrypted Text', _getSecureValue,
+                  color: Colors.green),
               _buildButton('Get Plain Text', _getNormalValue),
             ]),
             const SizedBox(height: 16),
 
             // File Operations
             _buildButtonSection('File Storage', [
-              _buildButton('Pick & Upload File', _secureFileUpload, color: Colors.green, icon: Icons.upload_file),
-              _buildButton('Download to Device', _secureFileDownload, color: Colors.blue, icon: Icons.download),
+              _buildButton('Pick & Upload File', _secureFileUpload,
+                  color: Colors.green, icon: Icons.upload_file),
+              _buildButton('Download to Device', _secureFileDownload,
+                  color: Colors.blue, icon: Icons.download),
               _buildButton('Create Test File', _saveSecureFile),
               _buildButton('View File Info', _getSecureFile),
               _buildButton('Delete File', _deleteSecureFile, color: Colors.red),
@@ -669,21 +685,26 @@ class _MyHomePageState extends State<MyHomePage> {
 
             // Management Operations
             _buildButtonSection('Storage Management', [
-              _buildButton('Delete Current Key', _deleteKey, color: Colors.orange, icon: Icons.delete_outline),
-              _buildButton('Clear All Encrypted Data', _clearSecureBox, color: Colors.red, icon: Icons.delete_sweep),
+              _buildButton('Delete Current Key', _deleteKey,
+                  color: Colors.orange, icon: Icons.delete_outline),
+              _buildButton('Clear All Encrypted Data', _clearSecureBox,
+                  color: Colors.red, icon: Icons.delete_sweep),
             ]),
 
             const SizedBox(height: 16),
 
             // Results Section
-            if (_retrievedValue != null || _operationResult != null || _errorMessage != null)
+            if (_retrievedValue != null ||
+                _operationResult != null ||
+                _errorMessage != null)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Results', style: Theme.of(context).textTheme.headlineSmall),
+                      Text('Results',
+                          style: Theme.of(context).textTheme.headlineSmall),
                       const SizedBox(height: 8),
                       if (_retrievedValue != null)
                         Container(

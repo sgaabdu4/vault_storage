@@ -1,4 +1,4 @@
-import 'storage_box_type.dart';
+import 'package:vault_storage/vault_storage.dart';
 
 /// Internal enum that includes all box types including file storage boxes.
 ///
