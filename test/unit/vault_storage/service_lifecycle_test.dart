@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/enum/internal_storage_box_type.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/extensions/storage_extensions.dart';
 import '../../test_context.dart';
@@ -51,7 +52,7 @@ void main() {
       test(
           '_getBox being called for a non-existent box should result in an error',
           () async {
-        ctx.vaultStorage.storageBoxes.remove(BoxType.secure);
+        ctx.vaultStorage.storageBoxes.remove(InternalBoxType.secure);
         final result =
             await ctx.vaultStorage.get<dynamic>(BoxType.secure, 'key');
         expect(result.isLeft(), isTrue);
@@ -111,12 +112,18 @@ void main() {
 
         expect(result.isRight(), isTrue);
         expect(
-            ctx.vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
-        expect(
-            ctx.vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(BoxType.secureFiles),
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secure),
             isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(BoxType.normalFiles),
+        expect(
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normal),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.secureFiles),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.normalFiles),
             isTrue);
       });
 
@@ -184,12 +191,18 @@ void main() {
         expect(result.isRight(), isTrue);
         expect(ctx.vaultStorage.isVaultStorageReady, isTrue);
         expect(
-            ctx.vaultStorage.storageBoxes.containsKey(BoxType.secure), isTrue);
-        expect(
-            ctx.vaultStorage.storageBoxes.containsKey(BoxType.normal), isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(BoxType.secureFiles),
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secure),
             isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(BoxType.normalFiles),
+        expect(
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normal),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.secureFiles),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.normalFiles),
             isTrue);
       });
     });

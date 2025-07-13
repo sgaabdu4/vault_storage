@@ -389,6 +389,14 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     _clearMessages();
+
+    // For web platforms, this will automatically trigger a download
+    // For native platforms, it just returns the file bytes
+    // You can optionally specify a custom filename:
+    // await vaultStorage.getSecureFile(
+    //   fileMetadata: _fileMetadata!,
+    //   downloadFileName: 'my_custom_filename.txt',
+    // );
     final result =
         await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
 
@@ -568,6 +576,51 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  // Helper method to create buttons with optional styling
+  Widget _buildButton(String text, VoidCallback onPressed,
+      {Color? color, IconData? icon}) {
+    if (icon != null) {
+      return ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(text),
+        style: color != null
+            ? ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+              )
+            : null,
+      );
+    }
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: color != null
+          ? ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+            )
+          : null,
+      child: Text(text),
+    );
+  }
+
+  // Helper method to create button sections
+  Widget _buildButtonSection(String title, List<Widget> buttons) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: buttons),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -593,159 +646,50 @@ class _MyHomePageState extends State<MyHomePage> {
                     TextField(
                       controller: _keyController,
                       decoration: const InputDecoration(
-                        labelText: 'Key',
-                        border: OutlineInputBorder(),
-                      ),
+                          labelText: 'Key', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _valueController,
                       decoration: const InputDecoration(
-                        labelText: 'Value',
-                        border: OutlineInputBorder(),
-                      ),
+                          labelText: 'Value', border: OutlineInputBorder()),
                     ),
                   ],
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
 
             // Key-Value Operations
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Key-Value Storage',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ElevatedButton(
-                          onPressed: _saveSecureValue,
-                          child: const Text('Save Secure'),
-                        ),
-                        ElevatedButton(
-                          onPressed: _saveNormalValue,
-                          child: const Text('Save Normal'),
-                        ),
-                        ElevatedButton(
-                          onPressed: _getSecureValue,
-                          child: const Text('Get Secure'),
-                        ),
-                        ElevatedButton(
-                          onPressed: _getNormalValue,
-                          child: const Text('Get Normal'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
+            _buildButtonSection('Key-Value Storage', [
+              _buildButton('Save Encrypted Text', _saveSecureValue,
+                  color: Colors.green),
+              _buildButton('Save Plain Text', _saveNormalValue),
+              _buildButton('Get Encrypted Text', _getSecureValue,
+                  color: Colors.green),
+              _buildButton('Get Plain Text', _getNormalValue),
+            ]),
             const SizedBox(height: 16),
 
             // File Operations
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('File Storage',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        // Secure File Operations
-                        ElevatedButton.icon(
-                          onPressed: _secureFileUpload,
-                          icon: const Icon(Icons.upload_file),
-                          label: const Text('Secure Upload'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: _secureFileDownload,
-                          icon: const Icon(Icons.download),
-                          label: const Text('Secure Download'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                        // Sample/Test Operations
-                        ElevatedButton(
-                          onPressed: _saveSecureFile,
-                          child: const Text('Save Sample File'),
-                        ),
-                        ElevatedButton(
-                          onPressed: _getSecureFile,
-                          child: const Text('Get File Info'),
-                        ),
-                        ElevatedButton(
-                          onPressed: _deleteSecureFile,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Delete File'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
+            _buildButtonSection('File Storage', [
+              _buildButton('Pick & Upload File', _secureFileUpload,
+                  color: Colors.green, icon: Icons.upload_file),
+              _buildButton('Download to Device', _secureFileDownload,
+                  color: Colors.blue, icon: Icons.download),
+              _buildButton('Create Test File', _saveSecureFile),
+              _buildButton('View File Info', _getSecureFile),
+              _buildButton('Delete File', _deleteSecureFile, color: Colors.red),
+            ]),
             const SizedBox(height: 16),
 
             // Management Operations
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Storage Management',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ElevatedButton(
-                          onPressed: _deleteKey,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Delete Key'),
-                        ),
-                        ElevatedButton(
-                          onPressed: _clearSecureBox,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Clear Secure Box'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildButtonSection('Storage Management', [
+              _buildButton('Delete Current Key', _deleteKey,
+                  color: Colors.orange, icon: Icons.delete_outline),
+              _buildButton('Clear All Encrypted Data', _clearSecureBox,
+                  color: Colors.red, icon: Icons.delete_sweep),
+            ]),
 
             const SizedBox(height: 16),
 

@@ -8,10 +8,4 @@ enum BoxType {
 
   /// For sensitive data like auth tokens and user credentials, stored encrypted.
   secure,
-
-  /// For storing file data, such as images or documents.
-  secureFiles, // WEB-COMPAT: Add this for storing file data
-
-  /// For storing non-sensitive file data without encryption.
-  normalFiles,
 }

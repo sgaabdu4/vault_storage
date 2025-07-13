@@ -83,6 +83,7 @@ abstract class IVaultStorage {
   Future<Either<StorageError, Uint8List>> getSecureFile({
     required Map<String, dynamic> fileMetadata,
     @visibleForTesting bool? isWeb,
+    String? downloadFileName,
   });
 
   /// Deletes a secure file from storage using its [fileMetadata].
@@ -120,6 +121,7 @@ abstract class IVaultStorage {
   Future<Either<StorageError, Uint8List>> getNormalFile({
     required Map<String, dynamic> fileMetadata,
     @visibleForTesting bool? isWeb,
+    String? downloadFileName,
   });
 
   /// Deletes a normal file from storage using its [fileMetadata].

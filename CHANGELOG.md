@@ -1,3 +1,35 @@
+## 1.2.1
+
+### New Features
+* **feat: Automatic file downloads on web platforms** - `getSecureFile()` and `getNormalFile()` now automatically trigger downloads in web browsers while maintaining native platform behavior
+* **feat: Custom download filenames** - Added optional `downloadFileName` parameter to file retrieval methods for custom web download names
+* **feat: Smart filename generation** - Automatically generates appropriate filenames using stored file extensions (e.g., `document.pdf`, `image.jpg`)
+* **feat: MIME type detection** - Automatic MIME type detection for 15+ common file formats ensures proper browser handling
+
+### Technical Improvements
+* **feat: Modern web standards** - Migrated from deprecated `dart:html` to modern `package:web` APIs for future WebAssembly (Wasm) compatibility
+* **feat: Enhanced metadata storage** - File extensions are now stored in metadata for both secure and normal files
+* **feat: Conditional imports optimization** - Updated to use `dart.library.js_interop` for better web/native platform detection
+
+### Documentation Updates
+* **docs: Enhanced README with web download examples** - Added comprehensive examples showing platform-specific behavior
+* **docs: Platform behavior comparison table** - Clear documentation of differences between web and native platforms
+* **docs: MIME type support documentation** - Listed all supported file types and their automatic MIME type mappings
+
+### 🔄 Backward Compatibility
+* **No breaking changes** - All existing code continues to work without modifications
+* **Optional parameters** - New features use optional parameters to maintain API compatibility
+* **Same return types** - Methods still return `Either<StorageError, Uint8List>` as before
+
+### Web Platform Enhancements
+* **Web downloads**: Files automatically download when retrieved on web platforms
+* **Smart filenames**: Uses original file extensions for meaningful download names
+* **MIME type support**: PDF, images, documents, audio, video, and more
+* **Custom naming**: Optional custom filenames for downloads
+
+### Dependencies
+* **Added**: `web: ^1.1.1` for modern web API access
+
 ## 1.1.0
 
 ### Bug Fixes

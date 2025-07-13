@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/enum/internal_storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
 import 'package:vault_storage/src/interface/i_vault_storage.dart';
@@ -23,7 +24,7 @@ class VaultStorageImpl implements IVaultStorage {
   final FileOperations _fileOperations;
 
   @visibleForTesting
-  final Map<BoxType, Box<dynamic>> storageBoxes = {};
+  final Map<InternalBoxType, Box<dynamic>> storageBoxes = {};
 
   @visibleForTesting
   bool isVaultStorageReady = false;
@@ -130,7 +131,7 @@ class VaultStorageImpl implements IVaultStorage {
       isWeb: isWeb,
       secureStorage: _secureStorage,
       uuid: _uuid,
-      getBox: _getBox,
+      getBox: _getInternalBox,
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -139,12 +140,14 @@ class VaultStorageImpl implements IVaultStorage {
   Future<Either<StorageError, Uint8List>> getSecureFile({
     required Map<String, dynamic> fileMetadata,
     @visibleForTesting bool? isWeb,
+    String? downloadFileName,
   }) {
     return _fileOperations.getSecureFile(
       fileMetadata: fileMetadata,
       isWeb: isWeb,
+      downloadFileName: downloadFileName,
       secureStorage: _secureStorage,
-      getBox: _getBox,
+      getBox: _getInternalBox,
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -158,7 +161,7 @@ class VaultStorageImpl implements IVaultStorage {
       fileMetadata: fileMetadata,
       isWeb: isWeb,
       secureStorage: _secureStorage,
-      getBox: _getBox,
+      getBox: _getInternalBox,
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -178,7 +181,7 @@ class VaultStorageImpl implements IVaultStorage {
       fileExtension: fileExtension,
       isWeb: isWeb,
       uuid: _uuid,
-      getBox: _getBox,
+      getBox: _getInternalBox,
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -187,11 +190,13 @@ class VaultStorageImpl implements IVaultStorage {
   Future<Either<StorageError, Uint8List>> getNormalFile({
     required Map<String, dynamic> fileMetadata,
     @visibleForTesting bool? isWeb,
+    String? downloadFileName,
   }) {
     return _fileOperations.getNormalFile(
       fileMetadata: fileMetadata,
       isWeb: isWeb,
-      getBox: _getBox,
+      downloadFileName: downloadFileName,
+      getBox: _getInternalBox,
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -204,7 +209,7 @@ class VaultStorageImpl implements IVaultStorage {
     return _fileOperations.deleteNormalFile(
       fileMetadata: fileMetadata,
       isWeb: isWeb,
-      getBox: _getBox,
+      getBox: _getInternalBox,
       isStorageReady: isVaultStorageReady,
     );
   }
@@ -231,6 +236,17 @@ class VaultStorageImpl implements IVaultStorage {
 
   /// Get a box from storage, throwing an error if it's not opened
   Box<dynamic> _getBox(BoxType type) {
+    final internalType = type.toInternal();
+    final box = storageBoxes[internalType];
+    if (box == null) {
+      throw StorageInitializationError(
+          'Box ${type.name} not opened. Ensure init() was called.');
+    }
+    return box;
+  }
+
+  /// Get a box from storage using InternalBoxType for file operations
+  Box<dynamic> _getInternalBox(InternalBoxType type) {
     final box = storageBoxes[type];
     if (box == null) {
       throw StorageInitializationError(
@@ -266,19 +282,19 @@ class VaultStorageImpl implements IVaultStorage {
   TaskEither<StorageError, Unit> openBoxes(List<int> encryptionKey) {
     return TaskEither.tryCatch(() async {
       final cipher = HiveAesCipher(encryptionKey);
-      storageBoxes[BoxType.secure] = await Hive.openBox<String>(
+      storageBoxes[InternalBoxType.secure] = await Hive.openBox<String>(
         StorageKeys.secureBox,
         encryptionCipher: cipher,
       );
-      storageBoxes[BoxType.normal] =
+      storageBoxes[InternalBoxType.normal] =
           await Hive.openBox<String>(StorageKeys.normalBox);
 
-      storageBoxes[BoxType.secureFiles] = await Hive.openBox<String>(
+      storageBoxes[InternalBoxType.secureFiles] = await Hive.openBox<String>(
         StorageKeys.secureFilesBox,
         encryptionCipher: cipher,
       );
 
-      storageBoxes[BoxType.normalFiles] =
+      storageBoxes[InternalBoxType.normalFiles] =
           await Hive.openBox<String>(StorageKeys.normalFilesBox);
 
       return unit;

@@ -5,8 +5,12 @@ void main() {
   group('StorageKeys', () {
     test('should not be instantiable (private constructor)', () {
       // This test ensures that StorageKeys._() is covered
-      // We can't actually instantiate it, but we can verify the constants work
-      expect(StorageKeys.secureKey, isNotNull);
+      // We verify that the class exists and constants are accessible
+      expect(() => StorageKeys.secureKey, returnsNormally);
+      expect(() => StorageKeys.secureBox, returnsNormally);
+      expect(() => StorageKeys.normalBox, returnsNormally);
+      expect(() => StorageKeys.secureFilesBox, returnsNormally);
+      expect(() => StorageKeys.normalFilesBox, returnsNormally);
     });
 
     test('secureKey should have the correct value', () {
