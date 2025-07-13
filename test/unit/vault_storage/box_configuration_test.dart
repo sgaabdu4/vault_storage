@@ -9,7 +9,7 @@ void main() {
     test('box types should map to the correct storage keys', () {
       expect(BoxType.secure.name, equals('secure'));
       expect(BoxType.normal.name, equals('normal'));
-      
+
       // Test internal box types that are used for file storage
       expect(InternalBoxType.secureFiles.name, equals('secureFiles'));
       expect(InternalBoxType.normalFiles.name, equals('normalFiles'));

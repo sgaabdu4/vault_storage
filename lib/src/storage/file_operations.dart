@@ -58,7 +58,8 @@ class FileOperations {
       if (isWeb ?? kIsWeb) {
         // WEB: Store the encrypted bytes directly in Hive as a base64 string
         final encryptedContentBase64 = secretBox.cipherText.encodeBase64();
-        await getBox(InternalBoxType.secureFiles).put(fileId, encryptedContentBase64);
+        await getBox(InternalBoxType.secureFiles)
+            .put(fileId, encryptedContentBase64);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();

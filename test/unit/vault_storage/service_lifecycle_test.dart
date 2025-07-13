@@ -112,12 +112,18 @@ void main() {
 
         expect(result.isRight(), isTrue);
         expect(
-            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secure), isTrue);
-        expect(
-            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normal), isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secureFiles),
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secure),
             isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normalFiles),
+        expect(
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normal),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.secureFiles),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.normalFiles),
             isTrue);
       });
 
@@ -185,12 +191,18 @@ void main() {
         expect(result.isRight(), isTrue);
         expect(ctx.vaultStorage.isVaultStorageReady, isTrue);
         expect(
-            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secure), isTrue);
-        expect(
-            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normal), isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secureFiles),
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.secure),
             isTrue);
-        expect(ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normalFiles),
+        expect(
+            ctx.vaultStorage.storageBoxes.containsKey(InternalBoxType.normal),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.secureFiles),
+            isTrue);
+        expect(
+            ctx.vaultStorage.storageBoxes
+                .containsKey(InternalBoxType.normalFiles),
             isTrue);
       });
     });
