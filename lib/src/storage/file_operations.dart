@@ -1,4 +1,5 @@
-import 'dart:io' if (dart.library.js_interop) 'dart:html' show File;
+import 'dart:io'
+    if (dart.library.js_interop) 'package:vault_storage/src/mock/file_io_mock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fpdart/fpdart.dart';
@@ -6,10 +7,12 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart'
     if (dart.library.js_interop) 'package:vault_storage/src/mock/path_provider_mock.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vault_storage/src/storage/web_download_helper.dart'
+    if (dart.library.io) 'package:vault_storage/src/mock/web_download_stub.dart';
 
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/enum/internal_storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
 import 'package:vault_storage/src/storage/encryption_helpers.dart';
@@ -35,7 +38,7 @@ class FileOperations {
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
     required Uuid uuid,
-    required Box<dynamic> Function(BoxType) getBox,
+    required Box<dynamic> Function(InternalBoxType) getBox,
     required bool isStorageReady,
   }) {
     final operation =
@@ -55,7 +58,7 @@ class FileOperations {
       if (isWeb ?? kIsWeb) {
         // WEB: Store the encrypted bytes directly in Hive as a base64 string
         final encryptedContentBase64 = secretBox.cipherText.encodeBase64();
-        await getBox(BoxType.secureFiles).put(fileId, encryptedContentBase64);
+        await getBox(InternalBoxType.secureFiles).put(fileId, encryptedContentBase64);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -73,6 +76,7 @@ class FileOperations {
         'secureKeyName': secureKeyName,
         'nonce': secretBox.nonce.encodeBase64(),
         'mac': secretBox.mac.bytes.encodeBase64(),
+        'extension': fileExtension, // Store the original extension
       };
     }, (e, _) => StorageWriteError('Failed to save secure file', e));
 
@@ -82,12 +86,14 @@ class FileOperations {
   /// Retrieve a secure (encrypted) file using its metadata
   ///
   /// Returns the decrypted file contents as a byte array.
+  /// On web platforms, also triggers an automatic download.
   Future<Either<StorageError, Uint8List>> getSecureFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
-    required Box<dynamic> Function(BoxType) getBox,
+    required Box<dynamic> Function(InternalBoxType) getBox,
     required bool isStorageReady,
+    String? downloadFileName, // Optional filename for web downloads
   }) {
     final operation = TaskEither<StorageError, Uint8List>.tryCatch(() async {
       // Extract required fields from metadata
@@ -111,7 +117,7 @@ class FileOperations {
       if (isWeb ?? kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
         final encryptedContentBase64 =
-            getBox(BoxType.secureFiles).get(fileId) as String?;
+            getBox(InternalBoxType.secureFiles).get(fileId) as String?;
         if (encryptedContentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive secure files box');
         }
@@ -145,7 +151,7 @@ class FileOperations {
       final keyBytes = keyResult.fold((error) => throw error, (bytes) => bytes);
 
       // Decrypt the file data
-      return compute(
+      final decryptedBytes = await compute(
         decryptInIsolate,
         DecryptRequest(
           encryptedBytes: encryptedFileBytes,
@@ -154,6 +160,22 @@ class FileOperations {
           macBytes: macBytes,
         ),
       );
+
+      // Trigger download on web platforms
+      if (isWeb ?? kIsWeb) {
+        final extension = fileMetadata.getOptionalString('extension') ?? '';
+        final fileName = downloadFileName ??
+            (extension.isNotEmpty
+                ? '${fileId}_secure_file.$extension'
+                : '${fileId}_secure_file.bin');
+        downloadFileOnWeb(
+          fileBytes: decryptedBytes,
+          fileName: fileName,
+          mimeType: _getMimeTypeFromExtension(extension),
+        );
+      }
+
+      return decryptedBytes;
     },
         (e, _) => e is StorageError
             ? e
@@ -167,7 +189,7 @@ class FileOperations {
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
-    required Box<dynamic> Function(BoxType) getBox,
+    required Box<dynamic> Function(InternalBoxType) getBox,
     required bool isStorageReady,
   }) {
     final operation = TaskEither<StorageError, Unit>.tryCatch(() async {
@@ -177,7 +199,7 @@ class FileOperations {
       // Platform-aware deletion logic
       if (isWeb ?? kIsWeb) {
         // WEB: Delete from Hive
-        await getBox(BoxType.secureFiles).delete(fileId);
+        await getBox(InternalBoxType.secureFiles).delete(fileId);
       } else {
         // NATIVE: Delete from file system
         final filePath = fileMetadata.getOptionalString('filePath');
@@ -205,7 +227,7 @@ class FileOperations {
     required String fileExtension,
     required bool? isWeb,
     required Uuid uuid,
-    required Box<dynamic> Function(BoxType) getBox,
+    required Box<dynamic> Function(InternalBoxType) getBox,
     required bool isStorageReady,
   }) {
     final operation =
@@ -217,7 +239,7 @@ class FileOperations {
       if (isWeb ?? kIsWeb) {
         // WEB: Store the bytes directly in Hive as a base64 string
         final contentBase64 = fileBytes.encodeBase64();
-        await getBox(BoxType.normalFiles).put(fileId, contentBase64);
+        await getBox(InternalBoxType.normalFiles).put(fileId, contentBase64);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -239,11 +261,13 @@ class FileOperations {
   /// Retrieve a normal (unencrypted) file using its metadata
   ///
   /// Returns the file contents as a byte array.
+  /// On web platforms, also triggers an automatic download.
   Future<Either<StorageError, Uint8List>> getNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required Box<dynamic> Function(BoxType) getBox,
+    required Box<dynamic> Function(InternalBoxType) getBox,
     required bool isStorageReady,
+    String? downloadFileName, // Optional filename for web downloads
   }) {
     final operation = TaskEither<StorageError, Uint8List>.tryCatch(() async {
       // Extract required fields from metadata
@@ -253,7 +277,7 @@ class FileOperations {
       if (isWeb ?? kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
         final contentBase64 =
-            getBox(BoxType.normalFiles).get(fileId) as String?;
+            getBox(InternalBoxType.normalFiles).get(fileId) as String?;
         if (contentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive normal files box');
         }
@@ -261,11 +285,25 @@ class FileOperations {
         // Use our extension method for cleaner code
         final result =
             contentBase64.decodeBase64Safely(context: 'normal file content');
-        return result.fold(
+        final fileBytes = result.fold(
           (error) =>
               throw error, // Re-throw the Base64DecodeError to be caught by the outer tryCatch
           (bytes) => bytes,
         );
+
+        // Trigger download on web
+        final extension = fileMetadata.getOptionalString('extension') ?? '';
+        final fileName = downloadFileName ??
+            (extension.isNotEmpty
+                ? '${fileId}_file.$extension'
+                : '${fileId}_file.bin');
+        downloadFileOnWeb(
+          fileBytes: fileBytes,
+          fileName: fileName,
+          mimeType: _getMimeTypeFromExtension(extension),
+        );
+
+        return fileBytes;
       } else {
         // NATIVE: Retrieve from file system
         final filePath = fileMetadata.getOptionalString('filePath');
@@ -292,7 +330,7 @@ class FileOperations {
   Future<Either<StorageError, Unit>> deleteNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required Box<dynamic> Function(BoxType) getBox,
+    required Box<dynamic> Function(InternalBoxType) getBox,
     required bool isStorageReady,
   }) {
     final operation = TaskEither<StorageError, Unit>.tryCatch(() async {
@@ -301,7 +339,7 @@ class FileOperations {
       // Platform-aware deletion
       if (isWeb ?? kIsWeb) {
         // WEB: Remove from Hive
-        await getBox(BoxType.normalFiles).delete(fileId);
+        await getBox(InternalBoxType.normalFiles).delete(fileId);
       } else {
         // NATIVE: Delete the file from the file system
         final filePath = fileMetadata.getOptionalString('filePath');
@@ -317,5 +355,48 @@ class FileOperations {
     }, (e, _) => StorageDeleteError('Failed to delete normal file', e));
 
     return _taskExecutor.executeTask(operation, isStorageReady: isStorageReady);
+  }
+
+  /// Helper method to determine MIME type from file extension
+  String _getMimeTypeFromExtension(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'txt':
+        return 'text/plain';
+      case 'json':
+        return 'application/json';
+      case 'xml':
+        return 'application/xml';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'svg':
+        return 'image/svg+xml';
+      case 'mp4':
+        return 'video/mp4';
+      case 'avi':
+        return 'video/x-msvideo';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'zip':
+        return 'application/zip';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      default:
+        return 'application/octet-stream';
+    }
   }
 }

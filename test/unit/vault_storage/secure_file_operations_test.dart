@@ -47,6 +47,8 @@ void main() {
         final returnedMetadata = result.getOrElse((_) => {});
         expect(returnedMetadata['filePath'], endsWith('.enc'));
         expect(returnedMetadata['secureKeyName'], isA<String>());
+        expect(returnedMetadata['extension'],
+            equals(fileExtension)); // Verify extension is stored
         verify(ctx.mockSecureStorage
                 .write(key: anyNamed('key'), value: anyNamed('value')))
             .called(1);
@@ -286,6 +288,71 @@ void main() {
           verify(ctx.mockSecureFilesBox.delete(fileId)).called(1);
           verify(ctx.mockSecureStorage.delete(key: 'file_key_$fileId'))
               .called(1);
+        });
+      });
+
+      group('Download Functionality', () {
+        test('getSecureFile with custom filename should work on web', () async {
+          // Arrange
+          final keyBytes =
+              List.generate(32, (index) => index % 256); // 32 bytes exactly
+          final secretKey = SecretKey(keyBytes);
+          final originalData = Uint8List.fromList(utf8.encode('secret data'));
+          final secretBox = await AesGcm.with256bits()
+              .encrypt(originalData, secretKey: secretKey);
+          final encryptedContentBase64 = secretBox.cipherText.encodeBase64();
+
+          final webMetadata = {
+            'fileId': fileId,
+            'secureKeyName': 'file_key_$fileId',
+            'nonce': secretBox.nonce.encodeBase64(),
+            'mac': secretBox.mac.bytes.encodeBase64(),
+            'extension': 'pdf',
+          };
+
+          when(ctx.mockSecureFilesBox.get(fileId))
+              .thenReturn(encryptedContentBase64);
+          when(ctx.mockSecureStorage.read(key: 'file_key_$fileId'))
+              .thenAnswer((_) async => keyBytes.encodeBase64());
+
+          // Act - Test with custom filename
+          final result = await ctx.vaultStorage.getSecureFile(
+            fileMetadata: webMetadata,
+            isWeb: true,
+            downloadFileName: 'custom_document.pdf',
+          );
+
+          // Assert
+          expect(result.isRight(), isTrue);
+          result.fold(
+            (error) => fail('Should not have failed: ${error.message}'),
+            (fileBytes) => expect(fileBytes, originalData),
+          );
+        });
+
+        test('getNormalFile with extension should work on web', () async {
+          // Arrange
+          final contentBase64 = [1, 2, 3].encodeBase64();
+          final webMetadata = {
+            'fileId': fileId,
+            'extension': 'png',
+          };
+
+          when(ctx.mockNormalFilesBox.get(fileId)).thenReturn(contentBase64);
+
+          // Act
+          final result = await ctx.vaultStorage.getNormalFile(
+            fileMetadata: webMetadata,
+            isWeb: true,
+          );
+
+          // Assert
+          expect(result.isRight(), isTrue);
+          result.fold(
+            (error) => fail('Should not have failed: ${error.message}'),
+            (fileBytes) =>
+                expect(fileBytes, equals(Uint8List.fromList([1, 2, 3]))),
+          );
         });
       });
     });

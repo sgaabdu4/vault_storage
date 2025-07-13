@@ -106,7 +106,7 @@ Add `vault_storage` to your `pubspec.yaml` file:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^1.0.0 # Replace with the latest version
+  vault_storage: ^1.2.0 # Replace with the latest version
   
 ```
 
@@ -456,6 +456,8 @@ Future<void> handleFileStorage(IVaultStorage storage) async {
       );
 
       // Later, retrieve the file using the metadata
+      // On web: automatically downloads the file to user's device
+      // On native: returns file bytes for your app to handle
       final fileResult = await storage.getSecureFile(fileMetadata: metadata);
       
       fileResult.fold(
@@ -467,23 +469,83 @@ Future<void> handleFileStorage(IVaultStorage storage) async {
 }
 ```
 
+#### Custom Download Filenames (Web)
+
+For web platforms, you can specify a custom filename for downloads:
+
+```dart
+// Custom filename for web downloads (ignored on native platforms)
+final fileResult = await storage.getSecureFile(
+  fileMetadata: metadata,
+  downloadFileName: 'my_profile_picture.jpg',
+);
+
+// Or for normal files
+final normalFileResult = await storage.getNormalFile(
+  fileMetadata: normalFileMetadata,
+  downloadFileName: 'document.pdf',
+);
+```
+
 ### Storage Box Types
 
 The package provides different storage box types for different security and performance needs:
 
 - `BoxType.secure`: Encrypted storage for sensitive data (passwords, tokens, etc.)
 - `BoxType.normal`: Unencrypted storage for non-sensitive data (preferences, cache, etc.)
-- `BoxType.secureFiles`: Used internally for encrypted file storage on web
-- `BoxType.normalFiles`: Used internally for normal file storage
+
+### Platform-Specific Behavior
+
+The package automatically handles platform differences to provide the best user experience:
+
+#### File Retrieval Behavior
+
+| Platform | `getSecureFile()` / `getNormalFile()` Behavior |
+|----------|-----------------------------------------------|
+| **Web** | ✅ Auto-downloads file + Returns `Uint8List` |
+| **Native** | ✅ Returns `Uint8List` only (no download) |
+
+#### File Storage Implementation
+
+- **Native platforms** (iOS, Android, macOS, Windows, Linux): Files are stored in the app's documents directory using the file system
+- **Web**: Files are stored as base64-encoded strings in encrypted Hive boxes (browser storage)
+
+#### Automatic MIME Type Detection (Web)
+
+For web downloads, the package automatically detects MIME types based on file extensions:
+
+- **Documents**: PDF, DOC, DOCX, XLS, XLSX
+- **Images**: JPG, PNG, GIF, SVG  
+- **Audio**: MP3, WAV
+- **Video**: MP4, AVI
+- **Archives**: ZIP
+- **Text**: TXT, JSON, XML
+- **Default**: `application/octet-stream`
+
+No code changes are required - the package handles platform detection and optimization automatically.
 
 ### Web Compatibility
 
-The package automatically handles platform differences:
+The package provides enhanced web compatibility with automatic file downloads:
 
 - **Native platforms**: Files are stored in the app's documents directory
-- **Web**: Files are stored as base64-encoded strings in encrypted Hive boxes
+- **Web**: Files are stored as base64-encoded strings in encrypted Hive boxes, and automatically download when retrieved
 
-No code changes are required - the package handles platform detection automatically.
+#### Web-Specific Features
+
+- **Automatic Downloads**: When you call `getSecureFile()` or `getNormalFile()` on web, files automatically download to the user's device
+- **Smart Filenames**: Uses stored file extensions to generate appropriate download filenames (e.g., `fileId_secure_file.pdf`)
+- **MIME Type Detection**: Automatically sets correct MIME types for better browser handling
+- **Custom Filenames**: Optional `downloadFileName` parameter for custom download names
+
+```dart
+// Web: Downloads as "my_document.pdf"
+// Native: Just returns bytes
+final result = await storage.getSecureFile(
+  fileMetadata: metadata,
+  downloadFileName: 'my_document.pdf',
+);
+```
 
 ### Initialisation in main()
 
@@ -638,6 +700,7 @@ Key dependencies used by this package:
 - `flutter_secure_storage`: Secure key storage
 - `cryptography_plus`: AES-GCM encryption
 - `fpdart`: Functional programming utilities
+- `web`: Modern web APIs for file downloads (web platform only)
 
 ## Platform Support
 

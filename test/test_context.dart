@@ -4,7 +4,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/enum/internal_storage_box_type.dart';
 import 'mocks.mocks.dart';
 
 class TestContext {
@@ -32,10 +32,10 @@ class TestContext {
     );
 
     vaultStorage.storageBoxes.addAll({
-      BoxType.secure: mockSecureBox,
-      BoxType.normal: mockNormalBox,
-      BoxType.secureFiles: mockSecureFilesBox,
-      BoxType.normalFiles: mockNormalFilesBox,
+      InternalBoxType.secure: mockSecureBox,
+      InternalBoxType.normal: mockNormalBox,
+      InternalBoxType.secureFiles: mockSecureFilesBox,
+      InternalBoxType.normalFiles: mockNormalFilesBox,
     });
     vaultStorage.isVaultStorageReady = true;
 

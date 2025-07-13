@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
