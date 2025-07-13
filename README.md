@@ -106,7 +106,7 @@ Add `vault_storage` to your `pubspec.yaml` file:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^1.2.0 # Replace with the latest version
+  vault_storage: ^1.2.1 # Replace with the latest version
   
 ```
 

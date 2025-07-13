@@ -1,4 +1,4 @@
-## 1.2.0
+## 1.2.1
 
 ### New Features
 * **feat: Automatic file downloads on web platforms** - `getSecureFile()` and `getNormalFile()` now automatically trigger downloads in web browsers while maintaining native platform behavior
