@@ -327,7 +327,9 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
             children: [
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
-                  labelText: _availableKeys.isNotEmpty ? 'Select from available keys' : 'No keys available',
+                  labelText: _availableKeys.isNotEmpty
+                      ? 'Select from available keys'
+                      : 'No keys available',
                 ),
                 value: selectedKey,
                 items: _availableKeys.isNotEmpty
@@ -386,7 +388,9 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     _clearMessages();
     try {
       final result = await _getKeyValueInput('Enter Key and Value');
-      if (result == null || result['key']?.isEmpty == true || result['value']?.isEmpty == true) {
+      if (result == null ||
+          result['key']?.isEmpty == true ||
+          result['value']?.isEmpty == true) {
         setState(() => _operationResult = 'Cancelled');
         return;
       }
@@ -401,7 +405,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() {
-        _operationResult = '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
+        _operationResult =
+            '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
         if (!_availableKeys.contains(key)) _availableKeys.add(key);
       });
     } catch (e) {
@@ -464,13 +469,16 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       setState(() => _operationResult = 'Saving file...');
 
       if (isSecure) {
-        await vaultStorage.saveSecureFile(key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+        await vaultStorage.saveSecureFile(
+            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
       } else {
-        await vaultStorage.saveNormalFile(key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+        await vaultStorage.saveNormalFile(
+            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
       }
 
       setState(() {
-        _operationResult = '${isSecure ? 'Secure' : 'Normal'} file "$fileName" saved with key "$fileKey"!';
+        _operationResult =
+            '${isSecure ? 'Secure' : 'Normal'} file "$fileName" saved with key "$fileKey"!';
         _fileKey = fileKey;
         if (!_availableKeys.contains(fileKey)) _availableKeys.add(fileKey);
       });
@@ -481,7 +489,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
   Future<void> _getFile({bool? isSecure}) async {
     _clearMessages();
-    final key = await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
+    final key =
+        await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
     if (key?.isEmpty ?? true) {
       setState(() => _operationResult = 'Cancelled');
       return;
@@ -618,11 +627,14 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 const SizedBox(height: 16),
                 const Text('File Storage:'),
                 const SizedBox(height: 8),
-                _buildButton('Save Secure File', () => _saveFile(isSecure: true)),
-                _buildButton('Save Normal File', () => _saveFile(isSecure: false)),
+                _buildButton(
+                    'Save Secure File', () => _saveFile(isSecure: true)),
+                _buildButton(
+                    'Save Normal File', () => _saveFile(isSecure: false)),
                 _buildButton('Get File', () => _getFile()),
                 _buildButton('Get Secure File', () => _getFile(isSecure: true)),
-                _buildButton('Get Normal File', () => _getFile(isSecure: false)),
+                _buildButton(
+                    'Get Normal File', () => _getFile(isSecure: false)),
                 const SizedBox(height: 16),
                 const Text('Delete:'),
                 _buildButton('Delete Value', _delete),

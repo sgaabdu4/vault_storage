@@ -19,8 +19,7 @@ void main() {
 
     test('returns unique, sorted keys from all boxes by default', () async {
       // Arrange
-      when(() => testContext.mockNormalBox.keys)
-          .thenReturn(<Object>['a', 'b']);
+      when(() => testContext.mockNormalBox.keys).thenReturn(<Object>['a', 'b']);
       when(() => testContext.mockSecureBox.keys)
           .thenReturn(<Object>['b', 's1']);
       when(() => testContext.mockNormalFilesBox.keys)
@@ -37,8 +36,7 @@ void main() {
 
     test('respects includeFiles=false (key-value only)', () async {
       // Arrange
-      when(() => testContext.mockNormalBox.keys)
-          .thenReturn(<Object>['a', 'b']);
+      when(() => testContext.mockNormalBox.keys).thenReturn(<Object>['a', 'b']);
       when(() => testContext.mockSecureBox.keys)
           .thenReturn(<Object>['b', 's1']);
 
@@ -65,8 +63,7 @@ void main() {
 
     test('filters normal-only when isSecure=false', () async {
       // Arrange
-      when(() => testContext.mockNormalBox.keys)
-          .thenReturn(<Object>['a', 'b']);
+      when(() => testContext.mockNormalBox.keys).thenReturn(<Object>['a', 'b']);
       when(() => testContext.mockNormalFilesBox.keys)
           .thenReturn(<Object>['f1']);
 
