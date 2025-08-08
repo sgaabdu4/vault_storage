@@ -1,7 +1,7 @@
 name: vault_storage
 description: A package for secure key-value and file storage using Hive and
   flutter_secure_storage.
-version: 1.2.1
+version: 2.0.0
 repository: https://github.com/sgaabdu4/vault_storage
 
 environment:
@@ -13,7 +13,6 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^10.0.0-beta.4
-  fpdart: ^1.1.1
   hive_ce: ^2.11.3
   hive_ce_flutter: ^2.3.1
   path_provider: ^2.1.5
@@ -24,4 +23,4 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  mockito: ^5.4.6
+  mocktail: ^1.0.4

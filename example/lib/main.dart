@@ -1,3 +1,9 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:vault_storage/vault_storage.dart';
+import 'package:file_picker/file_picker.dart';
+
 /*
  * Vault Storage Demo - Platform Setup Requirements
  * 
@@ -179,77 +185,8 @@
  * For any platform-specific issues, refer to the setup sections above.
  * 
  */
-
-import 'dart:typed_data';
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:vault_storage/vault_storage.dart';
-import 'package:file_picker/file_picker.dart';
-
-// Global storage instance
-late IVaultStorage vaultStorage;
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    // Initialize vault storage
-    vaultStorage = VaultStorage.create();
-    final initResult = await vaultStorage.init();
-
-    initResult.fold(
-      (error) =>
-          throw Exception('Failed to initialize storage: ${error.message}'),
-      (_) => print('Storage initialized successfully'),
-    );
-
-    runApp(const MyApp());
-  } catch (e, stackTrace) {
-    print('Failed to initialize storage: $e');
-    print('Stack trace: $stackTrace');
-
-    // Show error app instead of crashing
-    runApp(
-      MaterialApp(
-        title: 'Vault Storage Demo - Error',
-        home: Scaffold(
-          appBar: AppBar(title: const Text('Storage Initialization Error')),
-          body: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Failed to initialize vault storage:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    border: Border.all(color: Colors.red),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    e.toString(),
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'This might be due to missing platform permissions or entitlements. '
-                  'Please check the documentation for platform-specific setup requirements.',
-                  style: TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -263,360 +200,381 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: const MyHomePage(),
+      home: const VaultStorageDemo(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+class VaultStorageDemo extends StatefulWidget {
+  const VaultStorageDemo({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<VaultStorageDemo> createState() => _VaultStorageDemoState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final _keyController = TextEditingController(text: 'my_secret_key');
-  final _valueController = TextEditingController(text: 'my secret value');
-  String? _retrievedValue;
-  String? _errorMessage;
+class _VaultStorageDemoState extends State<VaultStorageDemo> {
+  final vaultStorage = VaultStorage.create();
   String? _operationResult;
-  Map<String, dynamic>? _fileMetadata;
-  String? _uploadedFileName;
+  String? _errorMessage;
+  String? _fileKey;
+  bool _isInitialized = false;
+  final List<String> _availableKeys = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeStorage();
+  }
+
+  Future<void> _initializeStorage() async {
+    try {
+      await vaultStorage.init();
+      // Load existing keys (both normal and secure; include file keys)
+      final keys = await vaultStorage.keys();
+      setState(() {
+        _isInitialized = true;
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Initialization Error: $e';
+      });
+    }
+  }
 
   void _clearMessages() {
     setState(() {
-      _errorMessage = null;
-      _retrievedValue = null;
       _operationResult = null;
+      _errorMessage = null;
     });
   }
 
-  // Key-Value Storage Operations
-  Future<void> _saveSecureValue() async {
-    _clearMessages();
-    final result = await vaultStorage.set(
-      BoxType.secure,
-      _keyController.text,
-      _valueController.text,
+  Future<String?> _getInput(String title, String label) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(labelText: label),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'Save Error: ${error.message}',
-        (_) => _operationResult = 'Secure value saved successfully!',
-      );
-    });
   }
 
-  Future<void> _saveNormalValue() async {
-    _clearMessages();
-    final result = await vaultStorage.set(
-      BoxType.normal,
-      _keyController.text,
-      _valueController.text,
+  Future<Map<String, String>?> _getKeyValueInput(String title) async {
+    final keyController = TextEditingController();
+    final valueController = TextEditingController();
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: keyController,
+              decoration: const InputDecoration(labelText: 'Key'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: valueController,
+              decoration: const InputDecoration(labelText: 'Value'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, {
+              'key': keyController.text,
+              'value': valueController.text,
+            }),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'Save Error: ${error.message}',
-        (_) => _operationResult = 'Normal value saved successfully!',
-      );
-    });
   }
 
-  Future<void> _getSecureValue() async {
-    _clearMessages();
-    final result = await vaultStorage.get<String>(
-      BoxType.secure,
-      _keyController.text,
+  Future<String?> _getKeyWithDropdown(String title, String label) async {
+    final controller = TextEditingController();
+    String? selectedKey;
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: _availableKeys.isNotEmpty
+                      ? 'Select from available keys'
+                      : 'No keys available',
+                ),
+                value: selectedKey,
+                items: _availableKeys.isNotEmpty
+                    ? _availableKeys
+                        .map((key) => DropdownMenuItem(
+                              value: key,
+                              child: Text(key),
+                            ))
+                        .toList()
+                    : [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('No keys stored yet'),
+                        ),
+                      ],
+                onChanged: _availableKeys.isNotEmpty
+                    ? (value) {
+                        setState(() {
+                          selectedKey = value;
+                          controller.text = value ?? '';
+                        });
+                      }
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              const Text('OR', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(labelText: label),
+                onChanged: (value) {
+                  setState(() {
+                    selectedKey = null;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
     );
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'Get Error: ${error.message}',
-        (value) => _retrievedValue = 'Secure: ${value ?? 'Key not found'}',
-      );
-    });
   }
 
-  Future<void> _getNormalValue() async {
+  // Consolidated operations
+  Future<void> _saveValue({required bool isSecure}) async {
     _clearMessages();
-    final result = await vaultStorage.get<String>(
-      BoxType.normal,
-      _keyController.text,
-    );
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'Get Error: ${error.message}',
-        (value) => _retrievedValue = 'Normal: ${value ?? 'Key not found'}',
-      );
-    });
-  }
-
-  // File Storage Operations
-  Future<void> _saveSecureFile() async {
-    _clearMessages();
-
-    // Create sample file data (1KB of sequential bytes)
-    final sampleData = Uint8List.fromList(
-      List.generate(1024, (index) => index % 256),
-    );
-
-    final result = await vaultStorage.saveSecureFile(
-      fileBytes: sampleData,
-      fileExtension: 'dat',
-    );
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'File Save Error: ${error.message}',
-        (metadata) {
-          _fileMetadata = metadata;
-          _operationResult = 'Secure file saved! ID: ${metadata['fileId']}';
-        },
-      );
-    });
-  }
-
-  Future<void> _getSecureFile() async {
-    if (_fileMetadata == null) {
-      setState(() {
-        _errorMessage = 'No file saved yet. Save a file first.';
-      });
-      return;
-    }
-
-    _clearMessages();
-
-    // For web platforms, this will automatically trigger a download
-    // For native platforms, it just returns the file bytes
-    // You can optionally specify a custom filename:
-    // await vaultStorage.getSecureFile(
-    //   fileMetadata: _fileMetadata!,
-    //   downloadFileName: 'my_custom_filename.txt',
-    // );
-    final result =
-        await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'File Get Error: ${error.message}',
-        (fileBytes) {
-          String fileName = _uploadedFileName ?? 'Unknown file';
-          _operationResult =
-              'File "$fileName" retrieved!\nSize: ${fileBytes.length} bytes';
-        },
-      );
-    });
-  }
-
-  Future<void> _deleteSecureFile() async {
-    if (_fileMetadata == null) {
-      setState(() {
-        _errorMessage = 'No file saved yet. Save a file first.';
-      });
-      return;
-    }
-
-    _clearMessages();
-    final result =
-        await vaultStorage.deleteSecureFile(fileMetadata: _fileMetadata!);
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'File Delete Error: ${error.message}',
-        (_) {
-          _operationResult = 'File deleted successfully!';
-          _fileMetadata = null;
-        },
-      );
-    });
-  }
-
-  // File Storage Operations - Secure Upload/Download
-  Future<void> _secureFileUpload() async {
-    _clearMessages();
-
     try {
-      // Pick a file
+      final result = await _getKeyValueInput('Enter Key and Value');
+      if (result == null ||
+          result['key']?.isEmpty == true ||
+          result['value']?.isEmpty == true) {
+        setState(() => _operationResult = 'Cancelled');
+        return;
+      }
+
+      final key = result['key']!;
+      final value = result['value']!;
+
+      if (isSecure) {
+        await vaultStorage.saveSecure(key: key, value: value);
+      } else {
+        await vaultStorage.saveNormal(key: key, value: value);
+      }
+
+      setState(() {
+        _operationResult =
+            '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
+        if (!_availableKeys.contains(key)) _availableKeys.add(key);
+      });
+    } catch (e) {
+      setState(() => _errorMessage = 'Save Error: $e');
+    }
+  }
+
+  Future<void> _getValue({bool? isSecure}) async {
+    _clearMessages();
+    try {
+      final key = await _getKeyWithDropdown('Enter Key to Retrieve', 'Key');
+      if (key?.isEmpty ?? true) {
+        setState(() => _operationResult = 'Cancelled');
+        return;
+      }
+
+      final value = await vaultStorage.get<String>(key!, isSecure: isSecure);
+      setState(() {
+        _operationResult = value != null ? 'Value: $value' : 'Key not found';
+      });
+    } catch (e) {
+      setState(() => _errorMessage = 'Get Error: $e');
+    }
+  }
+
+  Future<void> _saveFile({required bool isSecure}) async {
+    _clearMessages();
+    try {
+      setState(() => _operationResult = 'Opening file picker...');
+
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
         allowMultiple: false,
-        withData: true, // Important: This loads the file data into memory
       );
 
-      if (result != null && result.files.isNotEmpty) {
-        PlatformFile file = result.files.first;
-
-        if (file.bytes != null) {
-          // Get file extension from file name
-          String extension = file.extension ?? 'bin';
-
-          // Save the file securely
-          final saveResult = await vaultStorage.saveSecureFile(
-            fileBytes: file.bytes!,
-            fileExtension: extension,
-          );
-
-          setState(() {
-            saveResult.fold(
-              (error) =>
-                  _errorMessage = 'Secure Upload Error: ${error.message}',
-              (metadata) {
-                _fileMetadata = metadata;
-                _uploadedFileName = file.name;
-                _operationResult =
-                    'File "${file.name}" uploaded and saved securely!\n'
-                    'Size: ${file.bytes!.length} bytes\n'
-                    'File ID: ${metadata['fileId']}';
-              },
-            );
-          });
-        } else {
-          setState(() {
-            _errorMessage = 'Failed to read file data. Please try again.';
-          });
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'No file selected for upload.';
-        });
+      if (result == null) {
+        setState(() => _operationResult = 'No file selected');
+        return;
       }
-    } catch (e) {
+
+      final file = result.files.first;
+      final fileName = file.name;
+
+      final fileKey = await _getInput('Enter File Key', 'File Key');
+      if (fileKey?.isEmpty ?? true) {
+        setState(() => _operationResult = 'Cancelled');
+        return;
+      }
+
+      setState(() => _operationResult = 'Reading file...');
+      late Uint8List bytes;
+      if (file.bytes != null) {
+        bytes = file.bytes!;
+      } else if (file.path != null) {
+        bytes = Uint8List.fromList(await File(file.path!).readAsBytes());
+      } else {
+        throw Exception('Cannot read file');
+      }
+
+      setState(() => _operationResult = 'Saving file...');
+
+      if (isSecure) {
+        await vaultStorage.saveSecureFile(
+            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+      } else {
+        await vaultStorage.saveNormalFile(
+            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+      }
+
       setState(() {
-        _errorMessage = 'File picker error: $e';
+        _operationResult =
+            '${isSecure ? 'Secure' : 'Normal'} file "$fileName" saved with key "$fileKey"!';
+        _fileKey = fileKey;
+        if (!_availableKeys.contains(fileKey)) _availableKeys.add(fileKey);
       });
+    } catch (e) {
+      setState(() => _errorMessage = 'File Save Error: $e');
     }
   }
 
-  Future<void> _secureFileDownload() async {
-    if (_fileMetadata == null) {
-      setState(() {
-        _errorMessage = 'No file saved yet. Upload a file first.';
-      });
+  Future<void> _getFile({bool? isSecure}) async {
+    _clearMessages();
+    final key =
+        await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
+    if (key?.isEmpty ?? true) {
+      setState(() => _operationResult = 'Cancelled');
       return;
     }
 
+    try {
+      final fileBytes = await vaultStorage.getFile(key!, isSecure: isSecure);
+      setState(() {
+        if (fileBytes != null) {
+          final content = String.fromCharCodes(fileBytes);
+          _operationResult = 'File content: $content';
+          _fileKey = key;
+        } else {
+          _operationResult = 'File not found';
+        }
+      });
+    } catch (e) {
+      setState(() => _errorMessage = 'File Get Error: $e');
+    }
+  }
+
+  Future<void> _delete() async {
     _clearMessages();
+    final key = await _getKeyWithDropdown('Enter Key to Delete', 'Key');
+    if (key?.isEmpty ?? true) {
+      setState(() => _operationResult = 'Cancelled');
+      return;
+    }
 
     try {
-      // Retrieve the file from secure storage
-      final result =
-          await vaultStorage.getSecureFile(fileMetadata: _fileMetadata!);
+      await vaultStorage.delete(key!);
+      setState(() {
+        _operationResult = 'Value deleted successfully!';
+        _availableKeys.remove(key);
+      });
+    } catch (e) {
+      setState(() => _errorMessage = 'Delete Error: $e');
+    }
+  }
 
-      result.fold(
-        (error) {
-          setState(() {
-            _errorMessage = 'Secure Download Error: ${error.message}';
-          });
-        },
-        (fileBytes) async {
-          // Let user choose where to save the downloaded file
-          String? outputFile = await FilePicker.platform.saveFile(
-            dialogTitle: 'Save downloaded file',
-            fileName: _uploadedFileName ?? 'downloaded_file',
-          );
-
-          if (outputFile != null) {
-            try {
-              // Write the file to the selected location
-              final file = File(outputFile);
-              await file.writeAsBytes(fileBytes);
-
-              setState(() {
-                String fileName = _uploadedFileName ?? 'Downloaded file';
-                _operationResult = 'File "$fileName" downloaded successfully!\n'
-                    'Size: ${fileBytes.length} bytes\n'
-                    'Saved to: $outputFile';
-              });
-            } catch (e) {
-              setState(() {
-                _errorMessage = 'Failed to save file: $e';
-              });
-            }
-          } else {
-            setState(() {
-              _errorMessage = 'Download cancelled - no save location selected.';
-            });
-          }
-        },
-      );
+  Future<void> _clearSecureStorage() async {
+    _clearMessages();
+    try {
+      await vaultStorage.clearSecure();
+      // Refresh keys after clear
+      final keys = await vaultStorage.keys();
+      setState(() {
+        _operationResult = 'Secure storage cleared successfully!';
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Download error: $e';
+        _errorMessage = 'Clear Error: $e';
       });
     }
   }
 
-  // Storage Management Operations
-  Future<void> _clearSecureBox() async {
+  Future<void> _clearNormalStorage() async {
     _clearMessages();
-    final result = await vaultStorage.clear(BoxType.secure);
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'Clear Error: ${error.message}',
-        (_) => _operationResult = 'Secure box cleared!',
-      );
-    });
-  }
-
-  Future<void> _deleteKey() async {
-    _clearMessages();
-    final result =
-        await vaultStorage.delete(BoxType.secure, _keyController.text);
-
-    setState(() {
-      result.fold(
-        (error) => _errorMessage = 'Delete Error: ${error.message}',
-        (_) => _operationResult = 'Key deleted!',
-      );
-    });
-  }
-
-  // Helper method to create buttons with optional styling
-  Widget _buildButton(String text, VoidCallback onPressed,
-      {Color? color, IconData? icon}) {
-    if (icon != null) {
-      return ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(text),
-        style: color != null
-            ? ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-              )
-            : null,
-      );
+    try {
+      await vaultStorage.clearNormal();
+      // Refresh keys after clear
+      final keys = await vaultStorage.keys();
+      setState(() {
+        _operationResult = 'Normal storage cleared successfully!';
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Clear Error: $e';
+      });
     }
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: color != null
-          ? ElevatedButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-            )
-          : null,
-      child: Text(text),
-    );
   }
 
-  // Helper method to create button sections
-  Widget _buildButtonSection(String title, List<Widget> buttons) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: buttons),
-          ],
-        ),
+  Widget _buildButton(String text, VoidCallback? onPressed) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: ElevatedButton(
+        onPressed: _isInitialized ? onPressed : null,
+        child: Text(text),
       ),
     );
   }
@@ -626,146 +584,85 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vault Storage Demo'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Input Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Input',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _keyController,
-                      decoration: const InputDecoration(
-                          labelText: 'Key', border: OutlineInputBorder()),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _valueController,
-                      decoration: const InputDecoration(
-                          labelText: 'Value', border: OutlineInputBorder()),
-                    ),
-                  ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_isInitialized)
+            const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text('Initializing storage...'),
+                ],
+              ),
+            ),
+          if (_operationResult != null || _errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                _errorMessage ?? _operationResult!,
+                style: TextStyle(
+                  color: _errorMessage != null ? Colors.red : Colors.green,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Key-Value Operations
-            _buildButtonSection('Key-Value Storage', [
-              _buildButton('Save Encrypted Text', _saveSecureValue,
-                  color: Colors.green),
-              _buildButton('Save Plain Text', _saveNormalValue),
-              _buildButton('Get Encrypted Text', _getSecureValue,
-                  color: Colors.green),
-              _buildButton('Get Plain Text', _getNormalValue),
-            ]),
-            const SizedBox(height: 16),
-
-            // File Operations
-            _buildButtonSection('File Storage', [
-              _buildButton('Pick & Upload File', _secureFileUpload,
-                  color: Colors.green, icon: Icons.upload_file),
-              _buildButton('Download to Device', _secureFileDownload,
-                  color: Colors.blue, icon: Icons.download),
-              _buildButton('Create Test File', _saveSecureFile),
-              _buildButton('View File Info', _getSecureFile),
-              _buildButton('Delete File', _deleteSecureFile, color: Colors.red),
-            ]),
-            const SizedBox(height: 16),
-
-            // Management Operations
-            _buildButtonSection('Storage Management', [
-              _buildButton('Delete Current Key', _deleteKey,
-                  color: Colors.orange, icon: Icons.delete_outline),
-              _buildButton('Clear All Encrypted Data', _clearSecureBox,
-                  color: Colors.red, icon: Icons.delete_sweep),
-            ]),
-
-            const SizedBox(height: 16),
-
-            // Results Section
-            if (_retrievedValue != null ||
-                _operationResult != null ||
-                _errorMessage != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Results',
-                          style: Theme.of(context).textTheme.headlineSmall),
-                      const SizedBox(height: 8),
-                      if (_retrievedValue != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            border: Border.all(color: Colors.green),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Retrieved: $_retrievedValue',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      if (_operationResult != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            border: Border.all(color: Colors.blue),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _operationResult!,
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      if (_errorMessage != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            border: Border.all(color: Colors.red),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(12.0),
+              children: [
+                const Text('Key-Value Storage:'),
+                const SizedBox(height: 8),
+                _buildButton('Save Secure', () => _saveValue(isSecure: true)),
+                _buildButton('Save Normal', () => _saveValue(isSecure: false)),
+                _buildButton('Get (Auto-detect)', () => _getValue()),
+                _buildButton('Get Secure', () => _getValue(isSecure: true)),
+                _buildButton('Get Normal', () => _getValue(isSecure: false)),
+                const SizedBox(height: 16),
+                const Text('File Storage:'),
+                const SizedBox(height: 8),
+                _buildButton(
+                    'Save Secure File', () => _saveFile(isSecure: true)),
+                _buildButton(
+                    'Save Normal File', () => _saveFile(isSecure: false)),
+                _buildButton('Get File', () => _getFile()),
+                _buildButton('Get Secure File', () => _getFile(isSecure: true)),
+                _buildButton(
+                    'Get Normal File', () => _getFile(isSecure: false)),
+                const SizedBox(height: 16),
+                const Text('Delete:'),
+                _buildButton('Delete Value', _delete),
+                const SizedBox(height: 16),
+                const Text('Clear Storage:'),
+                _buildButton('Clear Secure Storage', _clearSecureStorage),
+                _buildButton('Clear Normal Storage', _clearNormalStorage),
+                if (_availableKeys.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Available Keys:'),
+                  ..._availableKeys.map((key) => Text('• $key')),
+                ],
+                if (_fileKey != null) ...[
+                  const SizedBox(height: 16),
+                  const Text('Current File Key:'),
+                  Text(_fileKey!),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    vaultStorage.dispose();
+    super.dispose();
   }
 }

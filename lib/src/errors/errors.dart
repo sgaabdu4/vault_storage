@@ -1,3 +1,4 @@
-/// This barrel file exports all error types for easier importing
+library vault_storage.errors;
+
 export 'file_errors.dart';
 export 'storage_error.dart';

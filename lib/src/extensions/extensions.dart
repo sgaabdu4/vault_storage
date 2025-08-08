@@ -1,2 +1,3 @@
-/// This barrel file exports all storage-related extensions for easier importing
+library vault_storage.extensions;
+
 export 'storage_extensions.dart';

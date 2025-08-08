@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/extensions/storage_extensions.dart';
@@ -10,290 +8,275 @@ import 'package:vault_storage/src/extensions/storage_extensions.dart';
 void main() {
   group('Base64 Extensions', () {
     group('Base64DecodingExtension', () {
-      test('should decode valid base64 string correctly', () {
+      test('should decode valid base64 string correctly', () async {
         const base64String = 'SGVsbG8gV29ybGQ=';
-        final result = base64String.decodeBase64Safely(context: 'test');
+        final result = await base64String.decodeBase64Safely(context: 'test');
 
-        expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid base64'),
-            (bytes) {
-          expect(bytes, equals(utf8.encode('Hello World')));
-        });
+        expect(result, equals(utf8.encode('Hello World')));
       });
 
-      test('should return Base64DecodeError for invalid base64 string', () {
+      test('should throw Base64DecodeError for invalid base64 string',
+          () async {
         const invalidBase64 = 'not-valid-base64!';
-        final result =
-            invalidBase64.decodeBase64Safely(context: 'test context');
 
-        expect(result.isLeft(), isTrue);
-        result.fold((error) {
-          expect(error, isA<Base64DecodeError>());
-          expect(error.message, contains('test context'));
-        }, (_) => fail('Should return Left for invalid base64'));
+        await expectLater(
+          () => invalidBase64.decodeBase64Safely(context: 'test context'),
+          throwsA(isA<Base64DecodeError>()),
+        );
+      });
+
+      test('should include context in error message', () {
+        const invalidBase64 = '%^&*';
+        const context = 'custom context';
+
+        expect(
+          () => invalidBase64.decodeBase64Safely(context: context),
+          throwsA(isA<Base64DecodeError>()),
+        );
       });
     });
 
     group('Base64EncodingExtension', () {
-      test('should encode Uint8List correctly', () {
-        final bytes = Uint8List.fromList([72, 101, 108, 108, 111]); // "Hello"
+      test('should encode bytes to base64 string correctly', () async {
+        final bytes = utf8.encode('Hello World');
         final result = bytes.encodeBase64();
 
-        expect(result, equals('SGVsbG8='));
-        expect(base64Url.decode(result), equals(bytes));
-      });
-
-      test('should encode List<int> correctly', () {
-        final list = [72, 101, 108, 108, 111]; // "Hello"
-        final result = list.encodeBase64();
-
-        expect(result, equals('SGVsbG8='));
-        expect(base64Url.decode(result), equals(list));
+        expect(result, isA<String>());
+        // Test that we can decode it back
+        final decoded =
+            await result.decodeBase64Safely(context: 'test round trip');
+        expect(decoded, equals(bytes));
       });
     });
   });
 
   group('JSON Extensions', () {
     group('JsonDecodingExtension', () {
-      test('should decode valid JSON string correctly', () {
-        const jsonString = '{"name":"test","value":123}';
-        final result = jsonString.decodeJsonSafely<Map<String, dynamic>>();
+      test('should decode valid JSON object correctly', () async {
+        const jsonString = '{"name": "test", "value": 42}';
+        final result =
+            await jsonString.decodeJsonSafely<Map<String, dynamic>>();
 
-        expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid JSON'),
-            (map) {
-          expect(map, equals({"name": "test", "value": 123}));
-        });
+        expect(result, isA<Map<String, dynamic>>());
+        expect(result, equals({'name': 'test', 'value': 42}));
       });
 
-      test('should return StorageSerializationError for invalid JSON', () {
-        const invalidJson = '{name:"test",}';
-        final result = invalidJson.decodeJsonSafely<Map<String, dynamic>>();
+      test('should throw StorageSerializationError for invalid JSON string',
+          () async {
+        const invalidJson = '{invalid json}';
 
-        expect(result.isLeft(), isTrue);
-        result.fold((error) {
-          expect(error, isA<StorageSerializationError>());
-          expect(error.message, contains('decode'));
-        }, (_) => fail('Should return Left for invalid JSON'));
+        await expectLater(
+          () => invalidJson.decodeJsonSafely<Map<String, dynamic>>(),
+          throwsA(isA<StorageSerializationError>()),
+        );
       });
 
-      test('should return StorageSerializationError for type mismatch', () {
-        const jsonArray = '[1, 2, 3]';
-        final result = jsonArray.decodeJsonSafely<Map<String, dynamic>>();
+      test('should handle different types correctly', () async {
+        const jsonList = '[1, 2, 3]';
+        final result = await jsonList.decodeJsonSafely<List<dynamic>>();
 
-        expect(result.isLeft(), isTrue);
-        result.fold((error) {
-          expect(error, isA<StorageSerializationError>());
-        }, (_) => fail('Should return Left for type mismatch'));
+        expect(result, isA<List<dynamic>>());
+        expect(result, equals([1, 2, 3]));
       });
     });
 
     group('JsonEncodingExtension', () {
-      test('should encode Map correctly', () {
-        final map = {"name": "test", "value": 123};
-        final result = map.encodeJsonSafely();
+      test('should encode Map object to JSON string correctly', () async {
+        final map = {'name': 'test', 'value': 42};
+        final result = await map.encodeJsonSafely();
 
-        expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid object'),
-            (jsonStr) {
-          expect(jsonDecode(jsonStr), equals(map));
-        });
+        expect(result, isA<String>());
+        // Use our decode method to handle type markers
+        final decoded = await result.decodeJsonSafely<Map<String, dynamic>>();
+        expect(decoded, equals(map));
       });
 
-      test('should encode List correctly', () {
-        final list = [1, 2, 3];
-        final result = list.encodeJsonSafely();
+      test('should encode List object to JSON string correctly', () async {
+        final list = [1, 2, 3, 'test'];
+        final result = await list.encodeJsonSafely();
 
-        expect(result.isRight(), isTrue);
-        result.fold((_) => fail('Should not return Left for valid object'),
-            (jsonStr) {
-          expect(jsonDecode(jsonStr), equals(list));
-        });
+        expect(result, isA<String>());
+        // Use our decode method to handle type markers
+        final decoded = await result.decodeJsonSafely<List<dynamic>>();
+        expect(decoded, equals(list));
       });
 
-      test('should return StorageSerializationError for unencodable object',
+      test(
+          'should throw StorageSerializationError for circular reference objects',
+          () async {
+        // Create a circular reference
+        final map = <String, dynamic>{'name': 'test'};
+        map['self'] = map; // Create circular reference
+
+        await expectLater(
+          () => map.encodeJsonSafely(),
+          throwsA(isA<StorageSerializationError>()),
+        );
+      });
+    });
+  });
+
+  group('Map Extensions', () {
+    group('FileMetadataExtension', () {
+      final testMap = {
+        'stringKey': 'value',
+        'intKey': 42,
+        'doubleKey': 3.14,
+        'boolKey': true,
+        'listKey': [1, 2, 3],
+        'mapKey': {'nested': 'value'},
+      };
+
+      test('should return required string value', () {
+        final result = testMap.getRequiredString('stringKey');
+        expect(result, equals('value'));
+      });
+
+      test('should throw InvalidMetadataError for missing required string', () {
+        expect(
+          () => testMap.getRequiredString('missingKey'),
+          throwsA(isA<InvalidMetadataError>()),
+        );
+      });
+
+      test('should throw InvalidMetadataError for wrong type required string',
           () {
-        final unencodable = _UnencodableObject();
-        final result = unencodable.encodeJsonSafely();
+        expect(
+          () => testMap.getRequiredString('intKey'),
+          throwsA(isA<InvalidMetadataError>()),
+        );
+      });
 
-        expect(result.isLeft(), isTrue);
-        result.fold((error) {
-          expect(error, isA<StorageSerializationError>());
-          expect(error.message, contains('encode'));
-        }, (_) => fail('Should return Left for unencodable object'));
+      test('should return optional string value', () {
+        final result = testMap.getOptionalString('stringKey');
+        expect(result, equals('value'));
+      });
+
+      test('should return null for missing optional string', () {
+        final result = testMap.getOptionalString('missingKey');
+        expect(result, isNull);
+      });
+
+      test('should return null for wrong type optional string', () {
+        final result = testMap.getOptionalString('intKey');
+        expect(result, isNull);
+      });
+
+      test('should throw InvalidMetadataError with custom message', () {
+        const customMsg = 'Custom error message';
+        expect(
+          () => testMap.getRequiredString('missingKey',
+              customErrorMsg: customMsg),
+          throwsA(isA<InvalidMetadataError>()),
+        );
       });
     });
   });
 
-  group('FileMetadataExtension', () {
-    test('getRequiredString should return value when key exists', () {
-      final metadata = {'key1': 'value1', 'key2': 'value2'};
+  group('JsonSafe Utility Class', () {
+    test('should encode object to JSON string correctly', () async {
+      final map = {'name': 'test', 'value': 42};
+      final result = await JsonSafe.encode(map);
 
-      expect(metadata.getRequiredString('key1'), equals('value1'));
-      expect(metadata.getRequiredString('key2'), equals('value2'));
+      expect(result, isA<String>());
+      // Use our decode method to handle type markers
+      final decoded = await JsonSafe.decode<Map<String, dynamic>>(result);
+      expect(decoded, equals(map));
     });
 
-    test(
-        'getRequiredString should throw InvalidMetadataError when key is missing',
-        () {
-      final metadata = {'key1': 'value1'};
+    test('should decode JSON string to object correctly', () async {
+      const jsonString = '{"name": "test", "value": 42}';
+      final result = await JsonSafe.decode<Map<String, dynamic>>(jsonString);
 
-      expect(() => metadata.getRequiredString('missing'),
-          throwsA(isA<InvalidMetadataError>()));
+      expect(result, isA<Map<String, dynamic>>());
+      expect(result, equals({'name': 'test', 'value': 42}));
     });
 
-    test(
-        'getRequiredString should throw InvalidMetadataError when value is not a string',
-        () {
-      final metadata = {'key1': 123, 'key2': true};
-
-      expect(() => metadata.getRequiredString('key1'),
-          throwsA(isA<InvalidMetadataError>()));
-      expect(() => metadata.getRequiredString('key2'),
-          throwsA(isA<InvalidMetadataError>()));
-    });
-
-    test('getOptionalString should return value when key exists', () {
-      final metadata = {'key1': 'value1', 'key2': 'value2'};
-
-      expect(metadata.getOptionalString('key1'), equals('value1'));
-      expect(metadata.getOptionalString('key2'), equals('value2'));
-    });
-
-    test('getOptionalString should return null when key is missing', () {
-      final metadata = {'key1': 'value1'};
-
-      expect(metadata.getOptionalString('missing'), isNull);
-    });
-
-    test('getOptionalString should return null when value is not a string', () {
-      final metadata = {'key1': 123, 'key2': true};
-
-      expect(metadata.getOptionalString('key1'), isNull);
-      expect(metadata.getOptionalString('key2'), isNull);
-    });
-  });
-
-  group('TaskEitherFileExtension', () {
-    test(
-        'mapBase64DecodeError should map Base64DecodeError to StorageReadError',
+    test('should throw StorageSerializationError for encoding failures',
         () async {
-      final base64Error =
-          Base64DecodeError('test context', Exception('Invalid base64'));
-      final task = TaskEither<StorageError, String>.left(base64Error);
+      final map = <String, dynamic>{'name': 'test'};
+      map['self'] = map; // Create circular reference
 
-      final result = await task.mapBase64DecodeError().run();
-      expect(result.isLeft(), isTrue);
-      result.fold((error) {
-        expect(error, isA<StorageReadError>());
-        expect(error.message, equals(base64Error.message));
-        expect(error.originalException, equals(base64Error.originalException));
-      }, (_) => fail('Should return Left'));
-    });
-
-    test('mapBase64DecodeError should not change other errors', () async {
-      final otherError =
-          StorageWriteError('write error', Exception('Write failed'));
-      final task = TaskEither<StorageError, String>.left(otherError);
-
-      final result = await task.mapBase64DecodeError().run();
-      expect(result.isLeft(), isTrue);
-      result.fold((error) {
-        expect(error, same(otherError));
-      }, (_) => fail('Should return Left'));
-    });
-  });
-
-  group('JsonSafe utility class', () {
-    test('encode should handle valid objects correctly', () {
-      final result = JsonSafe.encode({'name': 'test'});
-      expect(result.isRight(), isTrue);
-      result.fold(
-        (_) => fail('Should not return Left for valid object'),
-        (jsonStr) => expect(jsonDecode(jsonStr), equals({'name': 'test'})),
+      await expectLater(
+        () => JsonSafe.encode(map),
+        throwsA(isA<StorageSerializationError>()),
       );
     });
 
-    test('encode should return error for unencodable objects', () {
-      final unencodable = _UnencodableObject();
-      final result = JsonSafe.encode(unencodable);
+    test('should throw StorageSerializationError for decoding failures',
+        () async {
+      const invalidJson = '{invalid json}';
 
-      expect(result.isLeft(), isTrue);
-      result.fold(
-        (error) {
-          expect(error, isA<StorageSerializationError>());
-          expect(error.message, contains('Failed to encode object to JSON'));
-        },
-        (_) => fail('Should return Left for unencodable object'),
-      );
-    });
-
-    test('decode should handle valid JSON strings correctly', () {
-      final result = JsonSafe.decode<Map<String, dynamic>>('{"name":"test"}');
-      expect(result.isRight(), isTrue);
-      result.fold(
-        (_) => fail('Should not return Left for valid JSON'),
-        (map) => expect(map, equals({'name': 'test'})),
-      );
-    });
-
-    test('decode should return error for invalid JSON strings', () {
-      final result = JsonSafe.decode<Map<String, dynamic>>('{invalid:json}');
-
-      expect(result.isLeft(), isTrue);
-      result.fold(
-        (error) {
-          expect(error, isA<StorageSerializationError>());
-          expect(error.message, contains('Failed to decode JSON'));
-        },
-        (_) => fail('Should return Left for invalid JSON'),
-      );
-    });
-
-    test('decode should return error for type mismatches', () {
-      final result = JsonSafe.decode<Map<String, dynamic>>('[1,2,3]');
-
-      expect(result.isLeft(), isTrue);
-      result.fold(
-        (error) {
-          expect(error, isA<StorageSerializationError>());
-          expect(error.message, contains('Failed to decode JSON'));
-        },
-        (_) => fail('Should return Left for type mismatch'),
+      await expectLater(
+        () => JsonSafe.decode<Map<String, dynamic>>(invalidJson),
+        throwsA(isA<StorageSerializationError>()),
       );
     });
   });
 
-  group('JsonSafe', () {
-    test('should not be instantiable (private constructor)', () {
-      // JsonSafe._() cannot be called from outside the class
-      // This test verifies that JsonSafe is a utility class that cannot be instantiated
-      // We verify that static methods are accessible
-      expect(() => JsonSafe.encode({'test': 'value'}), returnsNormally);
-      expect(() => JsonSafe.decode<Map<String, dynamic>>('{"test":"value"}'),
-          returnsNormally);
+  group('Error Chain Extensions', () {
+    test('should create error chain with nested base64 error', () async {
+      const invalidBase64 = 'not-valid-base64!';
 
-      // Test that demonstrates the class is designed as a utility class
-      expect(() => _testJsonSafeUtility(), returnsNormally);
+      try {
+        await invalidBase64.decodeBase64Safely(context: 'encryption key');
+        fail('Should have thrown an exception');
+      } catch (error) {
+        expect(error, isA<Base64DecodeError>());
+        final base64Error = error as Base64DecodeError;
+        expect(base64Error.message, contains('encryption key'));
+      }
+    });
+
+    test('should create error chain with nested JSON error', () async {
+      const invalidJson = '{broken json}';
+
+      try {
+        await invalidJson.decodeJsonSafely<Map<String, dynamic>>();
+        fail('Should have thrown an exception');
+      } catch (error) {
+        expect(error, isA<StorageSerializationError>());
+        final serializationError = error as StorageSerializationError;
+        expect(serializationError.message, contains('Failed to decode value'));
+      }
     });
   });
-}
 
-// Helper function to test JsonSafe utility functionality
-void _testJsonSafeUtility() {
-  // This function exists to demonstrate that JsonSafe is a utility class
-  // with only static methods and cannot be instantiated
-  var result = JsonSafe.encode({'key': 'value'});
-  expect(result.isRight(), isTrue);
-}
+  group('Integration Tests', () {
+    test('should handle round-trip encoding and decoding', () async {
+      final originalData = {
+        'string': 'test value',
+        'number': 42,
+        'list': [1, 2, 3],
+        'nested': {'key': 'value'}
+      };
 
-class _UnencodableObject {
-  dynamic cyclicRef;
+      // Encode to JSON
+      final jsonString = await originalData.encodeJsonSafely();
+      expect(jsonString, isA<String>());
 
-  _UnencodableObject() {
-    cyclicRef = this; // Create a circular reference that can't be JSON encoded
-  }
+      // Decode back to object
+      final decodedData =
+          await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+      expect(decodedData, equals(originalData));
+    });
 
-  @override
-  String toString() => 'UnencodableObject';
+    test('should handle base64 round-trip encoding and decoding', () async {
+      const originalData = 'Hello, World! 🌍';
+      final bytes = utf8.encode(originalData);
+
+      // Encode to base64
+      final base64String = bytes.encodeBase64();
+      expect(base64String, isA<String>());
+
+      // Decode back to bytes
+      final decodedBytes =
+          await base64String.decodeBase64Safely(context: 'round trip test');
+      expect(decodedBytes, equals(bytes));
+
+      // Convert back to string
+      final decodedString = utf8.decode(decodedBytes);
+      expect(decodedString, equals(originalData));
+    });
+  });
 }

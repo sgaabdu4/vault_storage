@@ -1,15 +1,18 @@
 # Vault Storage
 
-A secure and performant local storage solution for Flutter applications, built with Hive and Flutter Secure Storage. It provides both key-value storage and encrypted file storage with web compatibility, and intensive cryptographic operations are offloaded to background isolates to ensure a smooth UI.
+A secure, fast, and simple local storage solution for Flutter. Built on Hive and Flutter Secure Storage with AES-GCM encryption. Provides key-value storage and encrypted file storage with full web compatibility. Heavy crypto/JSON/base64 work runs in background isolates to keep your UI smooth.
 
 ## Features
 
--   **Dual Storage Model**: Simple key-value storage via Hive and secure file storage for larger data blobs (e.g., images, documents).
--   **Web Compatible**: Full support for both native platforms and web with platform-aware storage strategies.
--   **Robust Security**: Utilises `flutter_secure_storage` to protect the master encryption key, encrypted Hive boxes for sensitive data, and AES-GCM encryption for files.
--   **High Performance**: Cryptographic operations (AES-GCM) are executed in background isolates using `compute` to prevent UI jank.
--   **Type-Safe Error Handling**: Leverages `fpdart`'s `Either` and `TaskEither` for explicit, functional-style error management.
--   **Framework Agnostic**: Use with any state management solution (Riverpod, Bloc, Provider, GetX, or none at all).
+-   **Simple API**: Intuitive methods with clear intent (saveSecure/saveNormal/get/delete/clear…)
+-   **Smart lookups**: get() checks normal first, then secure for performance, or constrain via isSecure
+-   **List stored keys**: keys() returns existing keys (optionally filter secure/normal and include file keys)
+-   **Encrypted file storage**: Secure (AES-GCM 256-bit) and normal file storage, unified API across platforms
+-   **Web compatible**: Native file system on devices; web stores bytes in Hive and auto-downloads on retrieval
+-   **Fast by default**: Crypto, JSON (large), and base64 (large) are offloaded to isolates
+-   **Large-file streaming**: Secure file encryption supports chunked streaming to reduce memory pressure
+-   **Configurable performance**: Tweak isolate thresholds via VaultStorageConfig
+-   Framework agnostic: Works with any state management or none
 
 ## Use Cases
 
@@ -45,19 +48,19 @@ A secure and performant local storage solution for Flutter applications, built w
 
 ### Why Choose Vault Storage?
 
-**🚀 Modern apps demand modern security.** Even simple applications benefit from robust, future-proof storage solutions:
+**🚀 Modern apps demand modern security.** Even simple applications benefit from robust, future-proof storage
 
 #### **Built for Real-World Applications**
 - **🔒 Security by Default**: Why worry about data breaches? Get enterprise-grade encryption out of the box
 - **⚡ Performance First**: Smooth UI even with heavy encryption - operations run in background isolates
 - **🌍 True Cross-Platform**: One API that works consistently across mobile, web, and desktop
-- **🛡️ Bulletproof Error Handling**: Functional error handling prevents crashes and data corruption
+- **🛡️ Clear Error Handling**: Explicit exceptions with typed StorageError subtypes
 
 #### **Future-Proof Your App**
 - **📈 Scalable**: Start with simple key-value storage, seamlessly add encrypted file storage as you grow
 - **✅ Compliance Ready**: Already meet GDPR, HIPAA, and PCI DSS requirements without extra work
 - **🔧 Production Ready**: Used in real-world applications handling sensitive user data
-- **🎯 Type Safe**: Catch storage errors at compile time, not in production
+- **🎯 Pragmatic**: Simple, readable API with robust internals
 
 #### **Developer Experience**
 - **🎨 Clean API**: Simple, intuitive methods that handle complex security behind the scenes
@@ -106,8 +109,7 @@ Add `vault_storage` to your `pubspec.yaml` file:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^1.2.1 # Replace with the latest version
-  
+  vault_storage: ^2.0.0 # Replace with the latest version
 ```
 
 Then, run:
@@ -115,25 +117,82 @@ Then, run:
 flutter pub get
 ```
 
+## Migration Guide: 1.x -> 2.0
+
+This release simplifies the API and removes the `BoxType`-driven/Either-based surface. Key changes and how to migrate:
+
+### Why this change?
+
+- Clarity and intent: Methods like `saveSecure`, `saveNormal`, and `get(..., isSecure)` are explicit and reduce ambiguity and misuse
+- Simpler error handling: Throwing typed `StorageError` exceptions simplifies flows compared to `Either`-based handling sprinkled across call sites
+- Less leakage of internals: Removing `BoxType` prevents coupling callers to storage implementation details
+- Web and files ergonomics: A single key-based file API (with auto-download on web) is easier to use than passing back metadata maps
+- Performance and maintainability: A smaller, clearer surface makes it easier to optimize internals (isolates, streaming) and evolve features safely
+ - Performance and maintainability: A smaller, clearer surface makes it easier to optimise internals (isolates, streaming) and evolve features safely
+
+Trade-offs (considered acceptable):
+- Exceptions require `try/catch` instead of `.fold()` patterns
+- Web downloads now use a sensible default filename rather than app-controlled names in this simplified API
+
+1) Initialisation and errors
+- Before: `await storage.init()` returned `Either`, handled via `.fold()`
+- After: `await storage.init()` throws on failure. Use try/catch.
+
+2) Key-value API
+- Before:
+  - `await storage.set(BoxType.secure, 'k', 'v')`
+  - `final v = await storage.get<String>(BoxType.secure, 'k')`
+- After:
+  - `await storage.saveSecure(key: 'k', value: 'v')`
+  - `final v = await storage.get<String>('k', isSecure: true)`
+  - Normal data: `saveNormal(...)` and `get(..., isSecure: false)`
+  - Delete: `await storage.delete('k')` (removes from both storages)
+  - Clear: `await storage.clearNormal()`, `await storage.clearSecure()`
+
+3) File storage
+- Before:
+  - `saveSecureFile(fileBytes, fileExtension)` returned metadata Map you stored and later passed to `getSecureFile(metadata, downloadFileName: ...)`
+- After:
+  - `await saveSecureFile(key: 'profile', fileBytes: bytes, originalFileName: 'x.jpg', metadata: {...})`
+  - Retrieve with `await getFile('profile')` (auto-detect secure/normal); optionally constrain via `isSecure`
+  - Delete with `await deleteFile('profile')`
+  - Web: files auto-download on `getFile()`; custom filenames are not configurable in this API
+
+4) Error handling
+- Before: `Either<StorageError, T>` results
+- After: methods throw `StorageError` subclasses (`StorageReadError`, `StorageWriteError`, etc.)
+
+5) Performance & internals
+- Large JSON/base64 handled via isolates; thresholds configurable in `VaultStorageConfig`
+- Secure file encryption supports streaming for large files
+- More aggressive Hive compaction strategy internally
+
+See CHANGELOG for full details.
+
 ## Quick Start
 
-The easiest way to get started is using the factory method:
+Use the factory to create an instance and initialise once at app start:
 
 ```dart
 import 'package:vault_storage/vault_storage.dart';
 
-// Create a vault storage instance
 final storage = VaultStorage.create();
+await storage.init();
 
-// Initialise it
-final initResult = await storage.init();
-initResult.fold(
-  (error) => print('Failed to initialise: ${error.message}'),
-  (_) => print('Ready to use!'),
-);
+// Save values
+await storage.saveSecure(key: 'api_key', value: 'my_secret_key');
+await storage.saveNormal(key: 'theme', value: 'dark');
+
+// Read values (normal first, then secure)
+final token = await storage.get<String>('api_key');
+final theme = await storage.get<String>('theme');
+
+// Constrain lookup to secure or normal storage
+final secureOnly = await storage.get<String>('api_key', isSecure: true);
+final normalOnly = await storage.get<String>('theme', isSecure: false);
 ```
 
-The factory method returns the `IVaultStorage` interface, keeping the implementation details hidden and providing a clean, simple API.
+The factory returns `IVaultStorage` and hides implementation details.
 
 ## Platform Setup
 
@@ -203,13 +262,13 @@ No additional configuration required. Note: `readAll` and `deleteAll` operations
 
 ### Web
 
-The package uses WebCrypto for secure storage on web. **Important security considerations**:
+The package uses WebCrypto on web. Important notes:
 
-- Ensure HTTPS with Strict Transport Security headers
-- Data is browser/domain specific and not portable
-- Consider the experimental nature of WebCrypto implementation
+- Use HTTPS in production; consider adding Strict-Transport-Security headers
+- Data is browser/domain specific and non-portable
+- Auto-downloads occur when retrieving files
 
-For production web apps, add these headers:
+Recommended header:
 ```
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 ```
@@ -225,17 +284,14 @@ Future<void> main() async {
 
   // Initialise the vault storage
   final storage = VaultStorage.create();
-  final initResult = await storage.init();
-  
-  initResult.fold(
-    (error) {
-      print('Failed to initialise storage: ${error.message}');
-      // Handle initialisation error appropriately
-    },
-    (_) {
-      runApp(MyApp(storage: storage));
-    },
-  );
+  try {
+    await storage.init();
+    runApp(MyApp(storage: storage));
+  } on StorageError catch (e) {
+    // Handle initialisation error appropriately
+    debugPrint('Failed to initialise storage: ${e.message}');
+    runApp(const ErrorApp());
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -253,69 +309,50 @@ class MyApp extends StatelessWidget {
 }
 ```
 
+    // List keys (unique, sorted)
+    final allKeys = await storage.keys(); // both normal and secure; includes file keys
+
 ## Usage
 
 ### Basic Usage (No Dependencies)
 
-You can use Vault Storage directly without any state management framework:
+Use Vault Storage directly without any state management framework:
 
 ```dart
 import 'package:vault_storage/vault_storage.dart';
 
 class StorageManager {
   static IVaultStorage? _instance;
-  
+
   static Future<IVaultStorage> get instance async {
     if (_instance != null) return _instance!;
-    
-    _instance = VaultStorage.create();
-    final initResult = await _instance!.init();
-    
-    return initResult.fold(
-      (error) => throw Exception('Failed to initialise storage: ${error.message}'),
-      (_) => _instance!,
-    );
+    final s = VaultStorage.create();
+    await s.init();
+    return _instance = s;
   }
 }
 
 // Usage example
 Future<void> example() async {
   final storage = await StorageManager.instance;
-  
-  // Store a secure value (encrypted)
-  final setResult = await storage.set(
-    BoxType.secure, 
-    'api_key', 
-    'my_secret_key'
-  );
-  
-  setResult.fold(
-    (error) => print('Error storing key: ${error.message}'),
-    (_) => print('Key stored successfully'),
-  );
 
-  // Retrieve the value
-  final getResult = await storage.get<String>(BoxType.secure, 'api_key');
-  getResult.fold(
-    (error) => print('Error retrieving key: ${error.message}'),
-    (value) => print('Retrieved API key: $value'),
-  );
+  await storage.saveSecure(key: 'api_key', value: 'my_secret_key');
+  final value = await storage.get<String>('api_key', isSecure: true);
+  debugPrint('Retrieved API key: $value');
 }
 ```
 
 ### Using with Riverpod
 
-If you prefer to use Riverpod, you can create your own provider. First, add the Riverpod dependencies to your `pubspec.yaml`:
+Create your own provider if you use Riverpod:
 
 ```yaml
 dependencies:
-  # ... other dependencies
-  vault_storage: ^1.0.0
-  flutter_riverpod: ^2.4.9
+  vault_storage: ^2.0.0
+  flutter_riverpod: ^2.5.0
   riverpod_annotation: ^2.3.3
 
 dev_dependencies:
-  # ... other dev dependencies  
   build_runner: ^2.4.7
   riverpod_generator: ^2.3.9
 ```
@@ -331,15 +368,9 @@ part 'storage_provider.g.dart';
 @Riverpod(keepAlive: true)
 Future<IVaultStorage> vaultStorage(VaultStorageRef ref) async {
   final implementation = VaultStorage.create();
-  final initResult = await implementation.init();
-
-  return initResult.fold(
-    (error) => throw Exception('Failed to initialise storage: ${error.message}'),
-    (_) {
-      ref.onDispose(() async => implementation.dispose());
-      return implementation;
-    },
-  );
+  await implementation.init();
+  ref.onDispose(() async => implementation.dispose());
+  return implementation;
 }
 ```
 
@@ -375,14 +406,10 @@ import 'providers/storage_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Create a ProviderContainer to access the provider
+
   final container = ProviderContainer();
-  
-  // Initialise the vault storage provider first
   try {
     await container.read(vaultStorageProvider.future);
-    
     runApp(
       UncontrolledProviderScope(
         container: container,
@@ -390,120 +417,81 @@ Future<void> main() async {
       ),
     );
   } catch (error) {
-    print('Failed to initialise storage: $error');
-    // Show error screen
-    runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Storage initialisation failed: $error'),
-          ),
-        ),
-      ),
-    );
+    runApp(const ErrorApp());
   }
 }
 ```
 
 ### Key-Value Storage
 
-Store and retrieve simple key-value pairs using different box types for security levels:
+Store and retrieve simple key-value pairs:
 
 ```dart
-// Store secure data (encrypted)
-await storage.set(BoxType.secure, 'user_token', 'jwt_token_here');
-await storage.set(BoxType.secure, 'user_credentials', {
+// Secure data (encrypted)
+await storage.saveSecure(key: 'user_token', value: 'jwt_token_here');
+await storage.saveSecure(key: 'user_credentials', value: {
   'username': 'john_doe',
-  'password': 'hashed_password'
+  'password': 'hashed_password',
 });
 
-// Store normal data (faster, unencrypted)
-await storage.set(BoxType.normal, 'theme_mode', 'dark');
-await storage.set(BoxType.normal, 'language', 'en');
+// Normal data (faster, unencrypted)
+await storage.saveNormal(key: 'theme_mode', value: 'dark');
+await storage.saveNormal(key: 'language', value: 'en');
 
 // Retrieve data
-final tokenResult = await storage.get<String>(BoxType.secure, 'user_token');
-final themeResult = await storage.get<String>(BoxType.normal, 'theme_mode');
+final token = await storage.get<String>('user_token', isSecure: true);
+final theme = await storage.get<String>('theme_mode', isSecure: false);
 ```
 
-### Secure File Storage
+### File Storage (Secure and Normal)
 
-For larger data like images, documents, or any binary data:
+For images, documents, or any binary data:
 
 ```dart
 import 'dart:typed_data';
 
 Future<void> handleFileStorage(IVaultStorage storage) async {
-  // Assume 'imageData' is a Uint8List from an image picker or network
-  final Uint8List imageData = ...; 
+  final Uint8List imageData = /* from picker/network */ Uint8List(0);
 
-  // Save a file (automatically encrypted)
-  final saveResult = await storage.saveSecureFile(
+  // Save a secure file (encrypted)
+  await storage.saveSecureFile(
+    key: 'profile_image',
     fileBytes: imageData,
-    fileExtension: 'jpg',
+    originalFileName: 'avatar.jpg',
+    metadata: {'userId': '123'}, // optional user metadata
   );
 
-  await saveResult.fold(
-    (error) async => print('Error saving file: ${error.message}'),
-    (metadata) async {
-      print('File saved successfully. ID: ${metadata['fileId']}');
-      
-      // Store the metadata for later retrieval
-      await storage.set(
-        BoxType.secure,
-        'profile_image_metadata',
-        metadata,
-      );
-
-      // Later, retrieve the file using the metadata
-      // On web: automatically downloads the file to user's device
-      // On native: returns file bytes for your app to handle
-      final fileResult = await storage.getSecureFile(fileMetadata: metadata);
-      
-      fileResult.fold(
-        (error) => print('Error retrieving file: ${error.message}'),
-        (fileBytes) => print('Retrieved file of ${fileBytes.length} bytes'),
-      );
-    },
+  // Save a normal file (unencrypted)
+  await storage.saveNormalFile(
+    key: 'cached_document',
+    fileBytes: imageData,
+    originalFileName: 'document.pdf',
   );
+
+  // Retrieve file bytes by key
+  final secureBytes = await storage.getFile('profile_image'); // web auto-downloads
+  final normalBytes = await storage.getFile('cached_document', isSecure: false);
+
+  // Delete files
+  await storage.deleteFile('profile_image');
+  await storage.deleteFile('cached_document');
 }
 ```
 
-#### Custom Download Filenames (Web)
+Note on web: When you call getFile(), the browser automatically downloads the file using a sensible default filename derived from the stored extension. Custom download filenames are not configurable in this simplified API.
 
-For web platforms, you can specify a custom filename for downloads:
+### Storage Classes Under the Hood
 
-```dart
-// Custom filename for web downloads (ignored on native platforms)
-final fileResult = await storage.getSecureFile(
-  fileMetadata: metadata,
-  downloadFileName: 'my_profile_picture.jpg',
-);
+Internally, Vault Storage maintains separate boxes for normal/secure key-value data and normal/secure files. The public API abstracts this; you only provide keys and optional isSecure where relevant.
 
-// Or for normal files
-final normalFileResult = await storage.getNormalFile(
-  fileMetadata: normalFileMetadata,
-  downloadFileName: 'document.pdf',
-);
-```
-
-### Storage Box Types
-
-The package provides different storage box types for different security and performance needs:
-
-- `BoxType.secure`: Encrypted storage for sensitive data (passwords, tokens, etc.)
-- `BoxType.normal`: Unencrypted storage for non-sensitive data (preferences, cache, etc.)
-
-### Platform-Specific Behavior
+### Platform-Specific Behaviour
 
 The package automatically handles platform differences to provide the best user experience:
 
-#### File Retrieval Behavior
+#### File Retrieval Behaviour
 
-| Platform | `getSecureFile()` / `getNormalFile()` Behavior |
-|----------|-----------------------------------------------|
-| **Web** | ✅ Auto-downloads file + Returns `Uint8List` |
-| **Native** | ✅ Returns `Uint8List` only (no download) |
+- Web: Auto-downloads file and returns Uint8List
+- Native: Returns Uint8List only (no download)
 
 #### File Storage Implementation
 
@@ -512,40 +500,14 @@ The package automatically handles platform differences to provide the best user 
 
 #### Automatic MIME Type Detection (Web)
 
-For web downloads, the package automatically detects MIME types based on file extensions:
+For web downloads, MIME types are inferred from file extensions (PDF, images, common docs, audio/video, archives, JSON/TXT, etc.). If unknown, defaults to `application/octet-stream`.
 
-- **Documents**: PDF, DOC, DOCX, XLS, XLSX
-- **Images**: JPG, PNG, GIF, SVG  
-- **Audio**: MP3, WAV
-- **Video**: MP4, AVI
-- **Archives**: ZIP
-- **Text**: TXT, JSON, XML
-- **Default**: `application/octet-stream`
-
-No code changes are required - the package handles platform detection and optimization automatically.
+No code changes are required - the package handles platform detection and optimisation automatically.
 
 ### Web Compatibility
 
-The package provides enhanced web compatibility with automatic file downloads:
-
-- **Native platforms**: Files are stored in the app's documents directory
-- **Web**: Files are stored as base64-encoded strings in encrypted Hive boxes, and automatically download when retrieved
-
-#### Web-Specific Features
-
-- **Automatic Downloads**: When you call `getSecureFile()` or `getNormalFile()` on web, files automatically download to the user's device
-- **Smart Filenames**: Uses stored file extensions to generate appropriate download filenames (e.g., `fileId_secure_file.pdf`)
-- **MIME Type Detection**: Automatically sets correct MIME types for better browser handling
-- **Custom Filenames**: Optional `downloadFileName` parameter for custom download names
-
-```dart
-// Web: Downloads as "my_document.pdf"
-// Native: Just returns bytes
-final result = await storage.getSecureFile(
-  fileMetadata: metadata,
-  downloadFileName: 'my_document.pdf',
-);
-```
+- Native: Files are stored in the app's documents directory
+- Web: Files are stored as base64-encoded strings in Hive (secure files encrypted), and auto-download when retrieved
 
 ### Initialisation in main()
 
@@ -560,70 +522,63 @@ Future<void> main() async {
 
   // Initialise storage
   vaultStorage = VaultStorage.create();
-  final initResult = await vaultStorage.init();
-  
-  initResult.fold(
-    (error) => throw Exception('Failed to initialise storage: ${error.message}'),
-    (_) => print('Storage initialised successfully'),
-  );
+  await vaultStorage.init();
+  debugPrint('Storage initialised successfully');
 
   runApp(const MyApp());
 }
 
 // Use the service anywhere in your app
 Future<void> useStorage() async {
-  final result = await vaultStorage.set(
-    BoxType.secure, 
-    'api_key', 
-    'my_secret_key'
-  );
-  
-  // Handle result...
+  await vaultStorage.saveSecure(key: 'api_key', value: 'my_secret_key');
 }
 ```
 
 ## Error Handling
 
-The service uses functional error handling with `fpdart`'s `Either` type. All methods return `Either<StorageError, T>`:
+APIs throw typed exceptions that extend `StorageError`. Use try/catch:
 
 ```dart
-final result = await vaultStorage.get<String>(BoxType.secure, 'key');
-
-result.fold(
-  (error) {
-    // Handle different error types
-    switch (error.runtimeType) {
-      case StorageInitializationError:
-        print('Storage not initialised: ${error.message}');
-        break;
-      case StorageReadError:
-        print('Failed to read data: ${error.message}');
-        break;
-      case StorageSerializationError:
-        print('Data format error: ${error.message}');
-        break;
-      default:
-        print('Unknown error: ${error.message}');
-    }
-  },
-  (value) {
-    // Handle success
-    print('Retrieved value: $value');
-  },
-);
+try {
+  await vaultStorage.saveSecure(key: 'k', value: 'v');
+  final v = await vaultStorage.get<String>('k', isSecure: true);
+} on StorageInitializationError catch (e) {
+  debugPrint('Storage not initialised: ${e.message}');
+} on StorageReadError catch (e) {
+  debugPrint('Read failed: ${e.message}');
+} on StorageWriteError catch (e) {
+  debugPrint('Write failed: ${e.message}');
+} on StorageSerializationError catch (e) {
+  debugPrint('Serialization failed: ${e.message}');
+}
 ```
 
 ## Storage Management
 
 ```dart
-// Clear a specific box
-await vaultStorage.clear(BoxType.normal);
+// Delete a key from both storages
+await vaultStorage.delete('api_key');
 
-// Delete a specific key
-await vaultStorage.delete(BoxType.secure, 'api_key');
+// Clear storages
+await vaultStorage.clearNormal();
+await vaultStorage.clearSecure();
 
-// Dispose of the service (usually in app shutdown)
+// Inspect keys
+final keys = await vaultStorage.keys(includeFiles: true);
+
+// Dispose (e.g., on shutdown)
 await vaultStorage.dispose();
+```
+
+## Performance Tuning
+
+Tweak thresholds at startup using `VaultStorageConfig`:
+
+```dart
+// Optional: tune for your workload
+VaultStorageConfig.jsonIsolateThreshold = 15000; // chars
+VaultStorageConfig.base64IsolateThreshold = 100000; // bytes
+VaultStorageConfig.secureFileStreamingThresholdBytes = 1 * 1024 * 1024; // 1MB
 ```
 
 ## Troubleshooting
@@ -684,23 +639,18 @@ To get more detailed error information, check the console output when initialisa
 
 ## Testing
 
-This package includes comprehensive tests. To run them:
+To run tests:
 
 ```bash
 flutter test
 ```
 
-For integration testing in your app, you can use the `@visibleForTesting` methods and properties available in the implementation.
-
 ## Dependencies
 
-Key dependencies used by this package:
-
 - `hive_ce_flutter`: Local storage database
-- `flutter_secure_storage`: Secure key storage
+;- `flutter_secure_storage`: Secure key storage
 - `cryptography_plus`: AES-GCM encryption
-- `fpdart`: Functional programming utilities
-- `web`: Modern web APIs for file downloads (web platform only)
+- `web`: Modern web APIs for web downloads
 
 ## Platform Support
 
@@ -714,3 +664,5 @@ Key dependencies used by this package:
 ## License
 
 This project is licensed under the MIT License.
+
+---
