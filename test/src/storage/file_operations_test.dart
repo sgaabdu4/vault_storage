@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -192,8 +193,7 @@ void main() {
         };
 
         when(() => testContext.mockSecureStorage.read(key: secureKeyName))
-            .thenAnswer(
-                (_) async => testKey.map((e) => e.toString()).join(','));
+            .thenAnswer((_) async => base64Encode(testKey));
 
         // Act & Assert
         // Note: This test would need more complex mocking for the file system

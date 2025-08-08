@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -37,9 +38,9 @@ void main() {
           fileOperations: testContext.mockFileOperations,
         );
 
-        // Provide a valid 32-byte key (AES-256) encoded in base64
-        const base64Key =
-            'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='; // 32 zero bytes
+  // Provide a valid 32-byte key (AES-256) encoded in base64
+  // 32 zero bytes -> base64 encodes to a string of 'A's with padding
+  final base64Key = base64Encode(Uint8List(32));
         when(() =>
                 testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
             .thenAnswer((_) async => base64Key);
