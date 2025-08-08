@@ -20,6 +20,7 @@ This release delivers a simpler, clearer API and improved performance characteri
 * Large-file encryption streaming for secure files (chunked AES-GCM) to reduce memory pressure
 * Performance configuration via `VaultStorageConfig` with thresholds for JSON/base64 isolate usage and secure file streaming
 * More aggressive Hive compaction strategy for better on-disk efficiency
+* New: `keys({bool includeFiles = true, bool? isSecure})` API to list stored keys (unique and sorted). The example app now loads keys on startup so they persist across restarts.
 
 ### Web Platform Behavior
 * Auto-downloads when calling `getFile()` on web; returns `Uint8List` and triggers browser download with a smart filename

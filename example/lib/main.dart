@@ -229,8 +229,13 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   Future<void> _initializeStorage() async {
     try {
       await vaultStorage.init();
+      // Load existing keys (both normal and secure; include file keys)
+      final keys = await vaultStorage.keys();
       setState(() {
         _isInitialized = true;
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
       });
     } catch (e) {
       setState(() {
@@ -322,9 +327,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
             children: [
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
-                  labelText: _availableKeys.isNotEmpty
-                      ? 'Select from available keys'
-                      : 'No keys available',
+                  labelText: _availableKeys.isNotEmpty ? 'Select from available keys' : 'No keys available',
                 ),
                 value: selectedKey,
                 items: _availableKeys.isNotEmpty
@@ -383,9 +386,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     _clearMessages();
     try {
       final result = await _getKeyValueInput('Enter Key and Value');
-      if (result == null ||
-          result['key']?.isEmpty == true ||
-          result['value']?.isEmpty == true) {
+      if (result == null || result['key']?.isEmpty == true || result['value']?.isEmpty == true) {
         setState(() => _operationResult = 'Cancelled');
         return;
       }
@@ -400,8 +401,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() {
-        _operationResult =
-            '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
+        _operationResult = '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
         if (!_availableKeys.contains(key)) _availableKeys.add(key);
       });
     } catch (e) {
@@ -464,16 +464,13 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       setState(() => _operationResult = 'Saving file...');
 
       if (isSecure) {
-        await vaultStorage.saveSecureFile(
-            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+        await vaultStorage.saveSecureFile(key: fileKey!, fileBytes: bytes, originalFileName: fileName);
       } else {
-        await vaultStorage.saveNormalFile(
-            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+        await vaultStorage.saveNormalFile(key: fileKey!, fileBytes: bytes, originalFileName: fileName);
       }
 
       setState(() {
-        _operationResult =
-            '${isSecure ? 'Secure' : 'Normal'} file "$fileName" saved with key "$fileKey"!';
+        _operationResult = '${isSecure ? 'Secure' : 'Normal'} file "$fileName" saved with key "$fileKey"!';
         _fileKey = fileKey;
         if (!_availableKeys.contains(fileKey)) _availableKeys.add(fileKey);
       });
@@ -484,8 +481,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
   Future<void> _getFile({bool? isSecure}) async {
     _clearMessages();
-    final key =
-        await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
+    final key = await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
     if (key?.isEmpty ?? true) {
       setState(() => _operationResult = 'Cancelled');
       return;
@@ -530,8 +526,13 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     _clearMessages();
     try {
       await vaultStorage.clearSecure();
+      // Refresh keys after clear
+      final keys = await vaultStorage.keys();
       setState(() {
         _operationResult = 'Secure storage cleared successfully!';
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
       });
     } catch (e) {
       setState(() {
@@ -544,8 +545,13 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     _clearMessages();
     try {
       await vaultStorage.clearNormal();
+      // Refresh keys after clear
+      final keys = await vaultStorage.keys();
       setState(() {
         _operationResult = 'Normal storage cleared successfully!';
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
       });
     } catch (e) {
       setState(() {
@@ -557,48 +563,9 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   Widget _buildButton(String text, VoidCallback? onPressed) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: _isInitialized ? onPressed : null,
-          child: Text(text),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultCard() {
-    if (_operationResult == null && _errorMessage == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_operationResult != null) ...[
-              const Text(
-                'Success:',
-                style:
-                    TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-              ),
-              const SizedBox(height: 8),
-              Text(_operationResult!),
-            ],
-            if (_errorMessage != null) ...[
-              const Text(
-                'Error:',
-                style:
-                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-              ),
-              const SizedBox(height: 8),
-              Text(_errorMessage!),
-            ],
-          ],
-        ),
+      child: ElevatedButton(
+        onPressed: _isInitialized ? onPressed : null,
+        child: Text(text),
       ),
     );
   }
@@ -608,119 +575,75 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vault Storage Demo'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!_isInitialized)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(width: 16),
-                      Text('Initializing storage...'),
-                    ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_isInitialized)
+            const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
+                  SizedBox(width: 8),
+                  Text('Initializing storage...'),
+                ],
+              ),
+            ),
+          if (_operationResult != null || _errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                _errorMessage ?? _operationResult!,
+                style: TextStyle(
+                  color: _errorMessage != null ? Colors.red : Colors.green,
                 ),
               ),
-
-            const SizedBox(height: 16),
-
-            // Key-Value Operations
-            const Text(
-              'Key-Value Storage:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            _buildButton('Save Secure', () => _saveValue(isSecure: true)),
-            _buildButton('Save Normal', () => _saveValue(isSecure: false)),
-            _buildButton('Get (Auto-detect)', () => _getValue()),
-            _buildButton('Get Secure', () => _getValue(isSecure: true)),
-            _buildButton('Get Normal', () => _getValue(isSecure: false)),
-
-            const SizedBox(height: 24),
-
-            // File Operations
-            const Text(
-              'File Storage:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(12.0),
+              children: [
+                const Text('Key-Value Storage:'),
+                const SizedBox(height: 8),
+                _buildButton('Save Secure', () => _saveValue(isSecure: true)),
+                _buildButton('Save Normal', () => _saveValue(isSecure: false)),
+                _buildButton('Get (Auto-detect)', () => _getValue()),
+                _buildButton('Get Secure', () => _getValue(isSecure: true)),
+                _buildButton('Get Normal', () => _getValue(isSecure: false)),
+                const SizedBox(height: 16),
+                const Text('File Storage:'),
+                const SizedBox(height: 8),
+                _buildButton('Save Secure File', () => _saveFile(isSecure: true)),
+                _buildButton('Save Normal File', () => _saveFile(isSecure: false)),
+                _buildButton('Get File', () => _getFile()),
+                _buildButton('Get Secure File', () => _getFile(isSecure: true)),
+                _buildButton('Get Normal File', () => _getFile(isSecure: false)),
+                const SizedBox(height: 16),
+                const Text('Delete:'),
+                _buildButton('Delete Value', _delete),
+                const SizedBox(height: 16),
+                const Text('Clear Storage:'),
+                _buildButton('Clear Secure Storage', _clearSecureStorage),
+                _buildButton('Clear Normal Storage', _clearNormalStorage),
+                if (_availableKeys.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Available Keys:'),
+                  ..._availableKeys.map((key) => Text('• $key')),
+                ],
+                if (_fileKey != null) ...[
+                  const SizedBox(height: 16),
+                  const Text('Current File Key:'),
+                  Text(_fileKey!),
+                ],
+              ],
             ),
-            const SizedBox(height: 8),
-            _buildButton('Save Secure File', () => _saveFile(isSecure: true)),
-            _buildButton('Save Normal File', () => _saveFile(isSecure: false)),
-            _buildButton('Get File', () => _getFile()),
-            _buildButton('Get Secure File', () => _getFile(isSecure: true)),
-            _buildButton('Get Normal File', () => _getFile(isSecure: false)),
-
-            const SizedBox(height: 24),
-
-            // Delete Operations
-            const Text(
-              'Delete:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            _buildButton('Delete Value', _delete),
-
-            const SizedBox(height: 24),
-
-            // Clear Operations
-            const Text(
-              'Clear Storage:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            _buildButton('Clear Secure Storage', _clearSecureStorage),
-            _buildButton('Clear Normal Storage', _clearNormalStorage),
-
-            // Results
-            _buildResultCard(),
-
-            // Available Keys
-            if (_availableKeys.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              const Text(
-                'Available Keys:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children:
-                        _availableKeys.map((key) => Text('• $key')).toList(),
-                  ),
-                ),
-              ),
-            ],
-
-            // File Key Info
-            if (_fileKey != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Current File Key:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(_fileKey!),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

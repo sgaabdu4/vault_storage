@@ -46,6 +46,16 @@ abstract class IVaultStorage {
   /// Throws [StorageError] if the operation fails.
   Future<void> clearSecure();
 
+  /// List stored keys.
+  ///
+  /// - If [isSecure] is null (default): returns keys from both normal and secure storages
+  /// - If [isSecure] is true: returns keys from secure storage only
+  /// - If [isSecure] is false: returns keys from normal storage only
+  ///
+  /// When [includeFiles] is true (default), file keys are included as well.
+  /// Keys are unique; duplicates across boxes are de-duplicated.
+  Future<List<String>> keys({bool includeFiles = true, bool? isSecure});
+
   // ==========================================
   // FILE STORAGE
   // ==========================================

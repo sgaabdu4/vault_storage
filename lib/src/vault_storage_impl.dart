@@ -144,6 +144,50 @@ class VaultStorageImpl implements IVaultStorage {
     }
   }
 
+  @override
+  Future<List<String>> keys({bool includeFiles = true, bool? isSecure}) async {
+    _ensureInitialized();
+
+    try {
+      final result = <String>{};
+
+      // Helper to collect keys from a box
+      Future<void> collect(BoxType type) async {
+        final box = boxes[type];
+        if (box == null) return;
+        if (box is Box) {
+          result.addAll(box.keys.whereType<String>());
+        } else if (box is LazyBox) {
+          // LazyBox exposes keys via keys property (sync) in Hive_ce
+          result.addAll(box.keys.whereType<String>());
+        }
+      }
+
+      switch (isSecure) {
+        case true:
+          await collect(BoxType.secure);
+          if (includeFiles) await collect(BoxType.secureFiles);
+          break;
+        case false:
+          await collect(BoxType.normal);
+          if (includeFiles) await collect(BoxType.normalFiles);
+          break;
+        case null:
+          await collect(BoxType.normal);
+          await collect(BoxType.secure);
+          if (includeFiles) {
+            await collect(BoxType.normalFiles);
+            await collect(BoxType.secureFiles);
+          }
+          break;
+      }
+
+      return result.toList(growable: false)..sort();
+    } catch (e) {
+      throw StorageReadError('Failed to list keys', e);
+    }
+  }
+
   // ==========================================
   // FILE STORAGE
   // ==========================================

@@ -6,6 +6,7 @@ A secure, fast, and simple local storage solution for Flutter. Built on Hive and
 
 -   **Simple API**: Intuitive methods with clear intent (saveSecure/saveNormal/get/delete/clear…)
 -   **Smart lookups**: get() checks normal first, then secure for performance, or constrain via isSecure
+-   **List stored keys**: keys() returns existing keys (optionally filter secure/normal and include file keys)
 -   **Encrypted file storage**: Secure (AES-GCM 256-bit) and normal file storage, unified API across platforms
 -   **Web compatible**: Native file system on devices; web stores bytes in Hive and auto-downloads on retrieval
 -   **Fast by default**: Crypto, JSON (large), and base64 (large) are offloaded to isolates
@@ -308,6 +309,9 @@ class MyApp extends StatelessWidget {
 }
 ```
 
+    // List keys (unique, sorted)
+    final allKeys = await storage.keys(); // both normal and secure; includes file keys
+
 ## Usage
 
 ### Basic Usage (No Dependencies)
@@ -558,6 +562,9 @@ await vaultStorage.delete('api_key');
 // Clear storages
 await vaultStorage.clearNormal();
 await vaultStorage.clearSecure();
+
+// Inspect keys
+final keys = await vaultStorage.keys(includeFiles: true);
 
 // Dispose (e.g., on shutdown)
 await vaultStorage.dispose();
