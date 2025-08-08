@@ -381,7 +381,7 @@ void main() {
 
         // Assert
         verify(() => testContext.mockNormalBox.delete(key)).called(1);
-  verifyNever(() => testContext.mockSecureBox.delete(any<String>()));
+        verifyNever(() => testContext.mockSecureBox.delete(any<String>()));
       });
 
       test('should throw StorageDeleteError when deletion fails', () async {
@@ -470,8 +470,8 @@ void main() {
               uuid: any(named: 'uuid'),
               getBox: any(named: 'getBox'),
             )).thenAnswer((_) async => mockMetadata);
-  when(() => testContext.mockSecureFilesBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(() => testContext.mockSecureFilesBox
+            .put(any<String>(), any<String>())).thenAnswer((_) async {});
 
         // Act
         await testContext.vaultStorage.saveSecureFile(
@@ -532,8 +532,8 @@ void main() {
               uuid: any(named: 'uuid'),
               getBox: any(named: 'getBox'),
             )).thenAnswer((_) async => mockMetadata);
-  when(() => testContext.mockNormalFilesBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(() => testContext.mockNormalFilesBox
+            .put(any<String>(), any<String>())).thenAnswer((_) async {});
 
         // Act
         await testContext.vaultStorage.saveNormalFile(
@@ -554,7 +554,7 @@ void main() {
       });
     });
 
-  // No public streaming API; streaming is handled internally by saveSecureFile
+    // No public streaming API; streaming is handled internally by saveSecureFile
 
     group('getFile', () {
       test('should get secure file successfully', () async {
@@ -773,7 +773,8 @@ void main() {
           const key = 'test_key';
           const value = 'test_value';
 
-          when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
+          when(() =>
+                  testContext.mockNormalBox.put(any<String>(), any<String>()))
               .thenAnswer((_) async {});
 
           // Act
@@ -811,15 +812,15 @@ void main() {
           when(() => testContext.mockSecureFilesBox.get(key))
               .thenAnswer((_) async => jsonMetadata);
 
-      // Act
-      final result = await testContext.vaultStorage
-        .getFileMetadata(key, isSecure: true);
+          // Act
+          final result = await testContext.vaultStorage
+              .getFileMetadata(key, isSecure: true);
 
-      // Assert
-      expect(result, isNotNull);
-      expect(result!['fileId'], equals('test-id'));
-      expect(result['extension'], equals('txt'));
-      expect(result['isSecure'], isTrue);
+          // Assert
+          expect(result, isNotNull);
+          expect(result!['fileId'], equals('test-id'));
+          expect(result['extension'], equals('txt'));
+          expect(result['isSecure'], isTrue);
         });
 
         test('should return null when metadata does not exist', () async {
@@ -875,7 +876,7 @@ void main() {
         const key = 'concurrent_key';
         const value = 'concurrent_value';
 
-  when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
+        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
             .thenAnswer((_) async {});
 
         // Act - Simulate concurrent writes
@@ -895,7 +896,7 @@ void main() {
         const key = 'error_key';
         const value = 'error_value';
 
-  when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
+        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
             .thenThrow(Exception('Temporary error'));
 
         // Act & Assert

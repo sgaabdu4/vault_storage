@@ -130,8 +130,8 @@ class FileOperations implements IFileOperations {
             EncryptRequest(fileBytes: toEncrypt, keyBytes: keyBytes),
           );
 
-          final nonceB64 = await secretBox.nonce
-              .encodeBase64Safely(context: 'chunk nonce');
+          final nonceB64 =
+              await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
           final macB64 = await secretBox.mac.bytes
               .encodeBase64Safely(context: 'chunk mac');
 
@@ -146,7 +146,12 @@ class FileOperations implements IFileOperations {
             final bytes = secretBox.cipherText;
             final header = BytesBuilder();
             final len = bytes.length;
-            header.add([len >> 24 & 0xFF, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]);
+            header.add([
+              len >> 24 & 0xFF,
+              len >> 16 & 0xFF,
+              len >> 8 & 0xFF,
+              len & 0xFF
+            ]);
             header.add([secretBox.nonce.length]);
             header.add(secretBox.nonce);
             header.add([secretBox.mac.bytes.length]);
@@ -175,25 +180,30 @@ class FileOperations implements IFileOperations {
       if (tail.isNotEmpty) {
         final secretBox = await compute(
           encryptInIsolate,
-          EncryptRequest(fileBytes: Uint8List.fromList(tail), keyBytes: keyBytes),
+          EncryptRequest(
+              fileBytes: Uint8List.fromList(tail), keyBytes: keyBytes),
         );
 
-        final nonceB64 = await secretBox.nonce
-            .encodeBase64Safely(context: 'chunk nonce');
-        final macB64 = await secretBox.mac.bytes
-            .encodeBase64Safely(context: 'chunk mac');
+        final nonceB64 =
+            await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
+        final macB64 =
+            await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
 
         if (isWeb ?? kIsWeb) {
           final b64 = await secretBox.cipherText
               .encodeBase64Safely(context: 'encrypted chunk');
           final key = '${fileId}:c:$chunkIndex';
-          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
-              .put(key, b64);
+          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(key, b64);
         } else {
           final bytes = secretBox.cipherText;
           final header = BytesBuilder();
           final len = bytes.length;
-          header.add([len >> 24 & 0xFF, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]);
+          header.add([
+            len >> 24 & 0xFF,
+            len >> 16 & 0xFF,
+            len >> 8 & 0xFF,
+            len & 0xFF
+          ]);
           header.add([secretBox.nonce.length]);
           header.add(secretBox.nonce);
           header.add([secretBox.mac.bytes.length]);
@@ -263,17 +273,19 @@ class FileOperations implements IFileOperations {
       // Streaming path
       if (fileMetadata['streaming'] == true) {
         final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
-        final chunks = (fileMetadata['chunks'] as List?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+        final chunks =
+            (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ??
+                [];
         final out = BytesBuilder(copy: false);
 
         if (isWeb ?? kIsWeb) {
           for (var i = 0; i < chunkCount; i++) {
             final entry = chunks[i];
-            final nonceB = await entry.getRequiredString('nonce')
+            final nonceB = await entry
+                .getRequiredString('nonce')
                 .decodeBase64Safely(context: 'chunk nonce');
-            final macB = await entry.getRequiredString('mac')
+            final macB = await entry
+                .getRequiredString('mac')
                 .decodeBase64Safely(context: 'chunk mac');
             final key = '${fileId}:c:$i';
             final b64 = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
@@ -281,15 +293,15 @@ class FileOperations implements IFileOperations {
             if (b64 == null) {
               throw FileNotFoundError(fileId, 'Hive secure files chunk $i');
             }
-            final enc = await b64.decodeBase64Safely(
-                context: 'encrypted chunk');
+            final enc =
+                await b64.decodeBase64Safely(context: 'encrypted chunk');
             // Defer key fetch until we know data exists
             final keyString = await secureStorage.read(key: secureKeyName);
             if (keyString == null) {
               throw KeyNotFoundError(secureKeyName);
             }
-            final keyBytes = await keyString
-                .decodeBase64Safely(context: 'encryption key');
+            final keyBytes =
+                await keyString.decodeBase64Safely(context: 'encryption key');
             final dec = await compute(
               decryptInIsolate,
               DecryptRequest(
@@ -315,8 +327,8 @@ class FileOperations implements IFileOperations {
           if (keyString == null) {
             throw KeyNotFoundError(secureKeyName);
           }
-          final keyBytes = await keyString
-              .decodeBase64Safely(context: 'encryption key');
+          final keyBytes =
+              await keyString.decodeBase64Safely(context: 'encryption key');
           final raf = await f.open();
           try {
             while (true) {
@@ -369,9 +381,9 @@ class FileOperations implements IFileOperations {
       // Non-streaming legacy path
       Uint8List encryptedFileBytes;
       if (isWeb ?? kIsWeb) {
-        final encryptedContentBase64 = await (getBox(BoxType.secureFiles)
-                as LazyBox<dynamic>)
-            .get(fileId) as String?;
+        final encryptedContentBase64 =
+            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(fileId)
+                as String?;
         if (encryptedContentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive secure files box');
         }
@@ -394,8 +406,8 @@ class FileOperations implements IFileOperations {
       if (keyString == null) {
         throw KeyNotFoundError(secureKeyName);
       }
-      final keyBytes = await keyString
-          .decodeBase64Safely(context: 'encryption key');
+      final keyBytes =
+          await keyString.decodeBase64Safely(context: 'encryption key');
 
       final decryptedBytes = await compute(
         decryptInIsolate,

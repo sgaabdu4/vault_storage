@@ -143,8 +143,8 @@ void main() {
         const testFileId = 'stream-id';
 
         when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => testContext.mockSecureFilesBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(() => testContext.mockSecureFilesBox
+            .put(any<String>(), any<String>())).thenAnswer((_) async {});
         when(() => testContext.mockSecureStorage.write(
               key: any(named: 'key'),
               value: any(named: 'value'),
@@ -165,8 +165,8 @@ void main() {
         expect(meta['fileId'], equals(testFileId));
         expect(meta['streaming'], isTrue);
         expect(meta['chunkCount'], greaterThan(0));
-    verify(() => testContext.mockSecureFilesBox.put(any<String>(), any<String>()))
-      .called(greaterThan(0));
+        verify(() => testContext.mockSecureFilesBox
+            .put(any<String>(), any<String>())).called(greaterThan(0));
         verify(() => testContext.mockSecureStorage.write(
               key: 'file_key_$testFileId',
               value: any(named: 'value'),

@@ -127,7 +127,7 @@ class VaultStorageImpl implements IVaultStorage {
     _ensureInitialized();
 
     try {
-  await boxes[BoxType.normal]!.clear();
+      await boxes[BoxType.normal]!.clear();
     } catch (e) {
       throw StorageDeleteError('Failed to clear normal storage', e);
     }
@@ -138,7 +138,7 @@ class VaultStorageImpl implements IVaultStorage {
     _ensureInitialized();
 
     try {
-  await boxes[BoxType.secure]!.clear();
+      await boxes[BoxType.secure]!.clear();
     } catch (e) {
       throw StorageDeleteError('Failed to clear secure storage', e);
     }
@@ -158,29 +158,28 @@ class VaultStorageImpl implements IVaultStorage {
     _ensureInitialized();
 
     try {
-    final ext = originalFileName?.split('.').last ?? 'bin';
-    final shouldStream = fileBytes.length >=
-      VaultStorageConfig.secureFileStreamingThresholdBytes;
+      final ext = originalFileName?.split('.').last ?? 'bin';
+      final shouldStream = fileBytes.length >=
+          VaultStorageConfig.secureFileStreamingThresholdBytes;
 
-    final fileMetadata = shouldStream
-      ? await _fileOperations.saveSecureFileStream(
-        stream: Stream<List<int>>.value(fileBytes),
-        fileExtension: ext,
-        isWeb: kIsWeb,
-        secureStorage: _secureStorage,
-        uuid: _uuid,
-        getBox: getInternalBox,
-        chunkSize:
-          VaultStorageConfig.secureFileStreamingChunkSizeBytes,
-      )
-      : await _fileOperations.saveSecureFile(
-        fileBytes: fileBytes,
-        fileExtension: ext,
-        isWeb: kIsWeb,
-        secureStorage: _secureStorage,
-        uuid: _uuid,
-        getBox: getInternalBox,
-      );
+      final fileMetadata = shouldStream
+          ? await _fileOperations.saveSecureFileStream(
+              stream: Stream<List<int>>.value(fileBytes),
+              fileExtension: ext,
+              isWeb: kIsWeb,
+              secureStorage: _secureStorage,
+              uuid: _uuid,
+              getBox: getInternalBox,
+              chunkSize: VaultStorageConfig.secureFileStreamingChunkSizeBytes,
+            )
+          : await _fileOperations.saveSecureFile(
+              fileBytes: fileBytes,
+              fileExtension: ext,
+              isWeb: kIsWeb,
+              secureStorage: _secureStorage,
+              uuid: _uuid,
+              getBox: getInternalBox,
+            );
 
       // Tag the metadata as secure and merge any user-provided metadata
       final toStore = <String, dynamic>{
@@ -192,7 +191,7 @@ class VaultStorageImpl implements IVaultStorage {
       // Store the metadata with the user's key - serialize to JSON
       final jsonString = await toStore.encodeJsonSafely();
 
-  await boxes[BoxType.secureFiles]!.put(key, jsonString);
+      await boxes[BoxType.secureFiles]!.put(key, jsonString);
     } catch (e) {
       if (e is StorageError) rethrow;
       throw StorageWriteError('Failed to save secure file "$key"', e);
@@ -227,7 +226,7 @@ class VaultStorageImpl implements IVaultStorage {
       // Store the metadata with the user's key - serialize to JSON
       final jsonString = await toStore.encodeJsonSafely();
 
-  await boxes[BoxType.normalFiles]!.put(key, jsonString);
+      await boxes[BoxType.normalFiles]!.put(key, jsonString);
     } catch (e) {
       if (e is StorageError) rethrow;
       throw StorageWriteError('Failed to save normal file "$key"', e);
@@ -245,8 +244,8 @@ class VaultStorageImpl implements IVaultStorage {
       final metadata = await getFileMetadata(key, isSecure: isSecure);
       if (metadata == null) return null;
 
-  // Determine if this is a secure file based on returned metadata
-  final isSecureFile = metadata['isSecure'] as bool? ?? false;
+      // Determine if this is a secure file based on returned metadata
+      final isSecureFile = metadata['isSecure'] as bool? ?? false;
 
       if (isSecureFile) {
         return await _fileOperations.getSecureFile(
@@ -424,12 +423,12 @@ class VaultStorageImpl implements IVaultStorage {
           jsonString = box.get(key) as String?;
         }
 
-    if (jsonString == null) return null;
-    try {
-      final result =
-        await jsonString.decodeJsonSafely<Map<String, dynamic>>();
-      // Explicitly tag source
-      return <String, dynamic>{...result, 'isSecure': true};
+        if (jsonString == null) return null;
+        try {
+          final result =
+              await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+          // Explicitly tag source
+          return <String, dynamic>{...result, 'isSecure': true};
         } catch (e) {
           return null;
         }
@@ -450,9 +449,9 @@ class VaultStorageImpl implements IVaultStorage {
 
           if (normalJsonString != null) {
             try {
-        final normalMetadata = await normalJsonString
-          .decodeJsonSafely<Map<String, dynamic>>();
-        return <String, dynamic>{...normalMetadata, 'isSecure': false};
+              final normalMetadata = await normalJsonString
+                  .decodeJsonSafely<Map<String, dynamic>>();
+              return <String, dynamic>{...normalMetadata, 'isSecure': false};
             } catch (e) {
               // Continue to secure files
             }
@@ -517,11 +516,11 @@ class VaultStorageImpl implements IVaultStorage {
 
       // Custom compaction strategy - more aggressive for storage service
       bool vaultCompactionStrategy(int entries, int deletedEntries) {
-    if (entries == 0) return false;
-    const deletedRatio = 0.10; // 10% instead of default 15%
-    const deletedThreshold = 30; // 30 instead of default 60
-    return deletedEntries > deletedThreshold &&
-      deletedEntries / entries > deletedRatio;
+        if (entries == 0) return false;
+        const deletedRatio = 0.10; // 10% instead of default 15%
+        const deletedThreshold = 30; // 30 instead of default 60
+        return deletedEntries > deletedThreshold &&
+            deletedEntries / entries > deletedRatio;
       }
 
       // Open key-value storage boxes (normal boxes for fast access)

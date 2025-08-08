@@ -30,7 +30,7 @@ class MocksHelper {
     registerFallbackValue(const Uuid());
     registerFallbackValue(BoxType.normal);
     registerFallbackValue(false);
-  // Fallback for Stream<List<int>> parameters used in any(named: 'stream')
-  registerFallbackValue(const Stream<List<int>>.empty());
+    // Fallback for Stream<List<int>> parameters used in any(named: 'stream')
+    registerFallbackValue(const Stream<List<int>>.empty());
   }
 }
