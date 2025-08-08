@@ -1,146 +1,83 @@
-import 'package:flutter/foundation.dart';
-import 'package:fpdart/fpdart.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'dart:typed_data' show Uint8List;
 import 'package:vault_storage/src/errors/storage_error.dart';
 
-/// Defines the contract for a comprehensive vault storage.
+/// Simple, secure storage for Flutter apps.
 ///
-/// This interface specifies the capabilities for both key-value storage and secure
-/// file storage. It is designed to be implemented by a service that can handle
-/// sensitive and non-sensitive data, with clear separation between the two.
-/// The use of `fpdart`'s `Either` type ensures robust, type-safe error handling.
+/// This interface provides a clean API for both key-value storage and file storage,
+/// with automatic encryption for secure data. Methods throw [StorageError]
+/// exceptions when operations fail.
 abstract class IVaultStorage {
-  /// Initializes the vault storage.
+  /// Initialize storage. Call this once when your app starts.
   ///
-  /// This must be called before any other methods are used. It sets up the necessary
-  /// resources, such as opening Hive boxes and preparing encryption keys.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Unit)` on successful initialization.
-  /// - `Left(StorageError)` if initialization fails.
-  Future<Either<StorageError, Unit>> init();
+  /// Throws [StorageError] if initialization fails.
+  Future<void> init();
 
-  /// Retrieves a value from the specified Hive box by its [key].
-  ///
-  /// The [box] parameter determines whether to read from the `normal` or `secure`
-  /// box. The type parameter [T] specifies the expected type of the value.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(T?)` containing the value if found, or `null` if the key does not exist.
-  /// - `Left(StorageError)` if the read operation fails.
-  Future<Either<StorageError, T?>> get<T>(BoxType box, String key);
+  // ==========================================
+  // KEY-VALUE STORAGE
+  // ==========================================
 
-  /// Saves a [value] in the specified Hive box with the given [key].
+  /// Get any value by key with optional storage type specification.
   ///
-  /// The [box] parameter determines whether to write to the `normal` or `secure`
-  /// box. The type parameter [T] is the type of the value being stored.
+  /// - If [isSecure] is null (default): Searches normal storage first, then secure storage
+  /// - If [isSecure] is true: Only searches secure storage
+  /// - If [isSecure] is false: Only searches normal storage
   ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(void)` on successful write.
-  /// - `Left(StorageError)` if the write operation fails (e.g., due to serialization issues).
-  Future<Either<StorageError, void>> set<T>(BoxType box, String key, T value);
+  /// Returns null if the key is not found in the specified storage(s).
+  /// Throws [StorageError] if the operation fails.
+  Future<T?> get<T>(String key, {bool? isSecure});
 
-  /// Deletes a value from the specified Hive box by its [key].
-  ///
-  /// The [box] parameter determines which box to perform the deletion on.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(void)` on successful deletion.
-  /// - `Left(StorageError)` if the deletion fails.
-  Future<Either<StorageError, void>> delete(BoxType box, String key);
+  /// Store sensitive data with encryption.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> saveSecure<T>({required String key, required T value});
 
-  /// Clears all data from the specified Hive box.
-  ///
-  /// The [box] parameter determines whether to clear the `normal` or `secure` box.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(void)` on successful clear.
-  /// - `Left(StorageError)` if the clear operation fails.
-  Future<Either<StorageError, void>> clear(BoxType box);
+  /// Store normal data without encryption (faster).
+  /// Throws [StorageError] if the operation fails.
+  Future<void> saveNormal<T>({required String key, required T value});
 
-  /// Encrypts and saves a file's bytes securely.
-  ///
-  /// This method takes the raw [fileBytes] and a [fileExtension], encrypts the
-  /// data, and stores it. It returns metadata required for later retrieval.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Map<String, dynamic>)` containing the file metadata (e.g., path, key, nonce).
-  /// - `Left(StorageError)` if the encryption or save operation fails.
-  Future<Either<StorageError, Map<String, dynamic>>> saveSecureFile({
+  /// Delete key from both storages.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> delete(String key);
+
+  /// Clear all normal storage.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> clearNormal();
+
+  /// Clear all secure storage.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> clearSecure();
+
+  // ==========================================
+  // FILE STORAGE
+  // ==========================================
+
+  /// Store a file with encryption.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> saveSecureFile({
+    required String key,
     required Uint8List fileBytes,
-    required String fileExtension,
-    @visibleForTesting bool? isWeb,
+    String? originalFileName,
+    Map<String, dynamic>? metadata,
   });
 
-  /// Retrieves and decrypts a secure file using its [fileMetadata].
-  ///
-  /// The [fileMetadata] map must contain all the necessary information to locate
-  /// and decrypt the file, as provided by `saveSecureFile`.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Uint8List)` containing the decrypted file bytes.
-  /// - `Left(StorageError)` if the retrieval or decryption fails.
-  Future<Either<StorageError, Uint8List>> getSecureFile({
-    required Map<String, dynamic> fileMetadata,
-    @visibleForTesting bool? isWeb,
-    String? downloadFileName,
-  });
-
-  /// Deletes a secure file from storage using its [fileMetadata].
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Unit)` on successful deletion.
-  /// - `Left(StorageError)` if the deletion fails.
-  Future<Either<StorageError, Unit>> deleteSecureFile({
-    required Map<String, dynamic> fileMetadata,
-    @visibleForTesting bool? isWeb,
-  });
-
-  /// Saves a file's bytes without encryption.
-  ///
-  /// This method takes the raw [fileBytes] and a [fileExtension], stores it
-  /// using the most appropriate method for the platform, and returns metadata required for later retrieval.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Map<String, dynamic>)` containing the file metadata (e.g., path, id).
-  /// - `Left(StorageError)` if the save operation fails.
-  Future<Either<StorageError, Map<String, dynamic>>> saveNormalFile({
+  /// Store a file without encryption (faster).
+  /// Throws [StorageError] if the operation fails.
+  Future<void> saveNormalFile({
+    required String key,
     required Uint8List fileBytes,
-    required String fileExtension,
-    @visibleForTesting bool? isWeb,
+    String? originalFileName,
+    Map<String, dynamic>? metadata,
   });
 
-  /// Retrieves a normal file using its [fileMetadata].
-  ///
-  /// The [fileMetadata] map must contain all the necessary information to locate
-  /// the file, as provided by `saveNormalFile`.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Uint8List)` containing the file bytes.
-  /// - `Left(StorageError)` if the retrieval fails.
-  Future<Either<StorageError, Uint8List>> getNormalFile({
-    required Map<String, dynamic> fileMetadata,
-    @visibleForTesting bool? isWeb,
-    String? downloadFileName,
-  });
+  /// Get file content with optional storage type specification.
+  /// Returns null if the file is not found.
+  /// Throws [StorageError] if the operation fails.
+  Future<Uint8List?> getFile(String key, {bool? isSecure});
 
-  /// Deletes a normal file from storage using its [fileMetadata].
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Unit)` on successful deletion.
-  /// - `Left(StorageError)` if the deletion fails.
-  Future<Either<StorageError, Unit>> deleteNormalFile({
-    required Map<String, dynamic> fileMetadata,
-    @visibleForTesting bool? isWeb,
-  });
+  /// Delete file from both storages.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> deleteFile(String key);
 
-  /// Disposes of all resources used by the vault storage.
-  ///
-  /// This should be called when the storage service is no longer needed to ensure
-  /// that all resources, such as Hive boxes, are properly closed.
-  ///
-  /// Returns a `Future` that completes with an `Either`:
-  /// - `Right(Unit)` on successful disposal.
-  /// - `Left(StorageError)` if disposal fails.
-  Future<Either<StorageError, Unit>> dispose();
+  /// Clean up resources.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> dispose();
 }

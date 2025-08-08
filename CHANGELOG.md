@@ -1,3 +1,55 @@
+## 2.0.0
+
+This release delivers a simpler, clearer API and improved performance characteristics. It replaces the BoxType/Either-based surface with intent-driven methods and exception-based error handling. File APIs are simplified to use your own keys instead of passing metadata around.
+
+### Breaking Changes
+* API surface reworked for simplicity:
+  - Removed: `set(BoxType, key, value)` and `get<T>(BoxType, key)` in favor of intent-specific methods
+  - Added: `saveSecure`, `saveNormal`, `get<T>(key, {bool? isSecure})`, `delete(key)`, `clearNormal()`, `clearSecure()`
+  - File retrieval unified: `getFile(key, {bool? isSecure})` (replaces passing metadata to `getSecureFile`/`getNormalFile`)
+  - File deletion unified: `deleteFile(key)`
+* Error handling model:
+  - Removed: `Either<StorageError, T>` return style
+  - Added: Methods now throw `StorageError` subclasses (`StorageInitializationError`, `StorageReadError`, `StorageWriteError`, `StorageDeleteError`, `StorageDisposalError`, `StorageSerializationError`)
+* Web file retrieval
+  - Custom download filenames are no longer configurable via public API; sensible filenames are generated automatically based on stored extension
+
+### New Features
+* Simplified key-value API with smart lookup order (normal first, then secure) when `isSecure` is not specified
+* Secure and normal file storage keyed by your own identifiers; implementation tracks metadata internally
+* Large-file encryption streaming for secure files (chunked AES-GCM) to reduce memory pressure
+* Performance configuration via `VaultStorageConfig` with thresholds for JSON/base64 isolate usage and secure file streaming
+* More aggressive Hive compaction strategy for better on-disk efficiency
+
+### Web Platform Behavior
+* Auto-downloads when calling `getFile()` on web; returns `Uint8List` and triggers browser download with a smart filename
+* MIME type inference from file extension for better browser handling
+
+### Internal Improvements
+* Consistent use of isolates for heavy crypto, JSON encode/decode, and base64 encode/decode
+* Clear separation of responsibilities: `IVaultStorage` (interface) and `VaultStorageImpl` (implementation), with `VaultStorage.create()` factory
+* File operations abstracted behind `IFileOperations` for testability
+
+### Migration Notes
+1. Initialization and errors
+   - Before: `await storage.init()` returned `Either`; handled with `.fold()`
+   - After: `await storage.init()` throws on failure. Use try/catch around initialization and calls.
+
+2. Key-value operations
+   - Replace `set(BoxType.secure, 'k', 'v')` with `saveSecure(key: 'k', value: 'v')`
+   - Replace `set(BoxType.normal, 'k', 'v')` with `saveNormal(key: 'k', value: 'v')`
+   - Replace `get<T>(BoxType.secure, 'k')` with `get<T>('k', isSecure: true)`
+   - Replace `get<T>(BoxType.normal, 'k')` with `get<T>('k', isSecure: false)`
+   - Delete both: `delete('k')`; clear with `clearNormal()` / `clearSecure()`
+
+3. File storage
+   - Replace metadata-based retrieval (`getSecureFile(fileMetadata: ...)`) with key-based retrieval: `getFile('myKey')`
+   - Saving files now requires a key: `saveSecureFile(key: 'myKey', fileBytes: ..., originalFileName: 'x.jpg')`
+   - Delete with `deleteFile('myKey')`
+   - Web downloads still occur automatically on retrieval; custom filenames are not exposed
+
+Refer to the README Migration Guide for full examples.
+
 ## 1.2.1
 
 ### New Features

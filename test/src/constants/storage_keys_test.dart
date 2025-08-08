@@ -3,14 +3,24 @@ import 'package:vault_storage/src/constants/storage_keys.dart';
 
 void main() {
   group('StorageKeys', () {
-    test('should not be instantiable (private constructor)', () {
-      // This test ensures that StorageKeys._() is covered
-      // We verify that the class exists and constants are accessible
-      expect(() => StorageKeys.secureKey, returnsNormally);
-      expect(() => StorageKeys.secureBox, returnsNormally);
-      expect(() => StorageKeys.normalBox, returnsNormally);
-      expect(() => StorageKeys.secureFilesBox, returnsNormally);
-      expect(() => StorageKeys.normalFilesBox, returnsNormally);
+    test('should not allow instantiation', () {
+      // Test that StorageKeys has a private constructor
+      // This ensures it's used as a constants-only class
+      // We can't actually call StorageKeys._() from outside the class,
+      // but we can verify the constants are accessible without instantiation
+      expect(StorageKeys.secureKey, isA<String>());
+      expect(StorageKeys.secureBox, isA<String>());
+      expect(StorageKeys.normalBox, isA<String>());
+      expect(StorageKeys.secureFilesBox, isA<String>());
+      expect(StorageKeys.normalFilesBox, isA<String>());
+    });
+
+    test('constants should be accessible without instantiation', () {
+      // This test ensures we can access constants directly from the class
+      // which indirectly tests that the private constructor works as intended
+      const keyValue = StorageKeys.secureKey;
+      expect(keyValue, isNotNull);
+      expect(keyValue, equals('hive_encryption_key'));
     });
 
     test('secureKey should have the correct value', () {

@@ -12,6 +12,18 @@ class Base64DecodeError extends StorageReadError {
       : super('Failed to decode base64 for $context', originalException);
 }
 
+/// An error that occurs during base64 encoding operations for file data.
+///
+/// This is thrown when attempting to encode binary data to base64 string
+/// and the operation fails.
+class Base64EncodeError extends StorageWriteError {
+  /// Creates a new [Base64EncodeError].
+  ///
+  /// The [context] parameter specifies what was being encoded (e.g., "file content", "binary data").
+  Base64EncodeError(String context, Object? originalException)
+      : super('Failed to encode base64 for $context', originalException);
+}
+
 /// An error that occurs when a file is not found.
 ///
 /// This can happen when trying to retrieve a file from storage (Hive or file system)

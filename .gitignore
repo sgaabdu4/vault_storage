@@ -36,3 +36,14 @@ coverage/
 # Generated files
 *_box.hive
 *_box.lock
+
+example/macos
+example/ios
+example/android
+example/linux
+example/windows
+example/web
+example/analysis_options.yaml
+example/pubspec.lock
+example/README.md
+
