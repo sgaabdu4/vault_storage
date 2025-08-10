@@ -1,3 +1,13 @@
+## 2.1.0
+
+### New Features
+* feat: Add `clearAll({bool includeFiles = true})` to wipe both key-value and file storage in one call
+* feat: Extend `clearNormal()` and `clearSecure()` with `includeFiles` (default `false`) to optionally delete underlying files and file metadata for the respective storage
+
+### Internal
+* refactor: Consolidate file-clearing logic into `clearAllFilesInBox(...)` with `@visibleForTesting` for easier testing
+* test: Add coverage for `clearAll`, and `includeFiles` behavior in `clearNormal` and `clearSecure`
+
 ## 2.0.0
 
 This release delivers a simpler, clearer API and improved performance characteristics. It replaces the BoxType/Either-based surface with intent-driven methods and exception-based error handling. File APIs are simplified to use your own keys instead of passing metadata around.

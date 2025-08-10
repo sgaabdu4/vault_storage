@@ -39,12 +39,28 @@ abstract class IVaultStorage {
   Future<void> delete(String key);
 
   /// Clear all normal storage.
+  ///
+  /// When [includeFiles] is true, also deletes normal file metadata and the
+  /// underlying file contents.
   /// Throws [StorageError] if the operation fails.
-  Future<void> clearNormal();
+  Future<void> clearNormal({bool includeFiles = false});
 
   /// Clear all secure storage.
+  ///
+  /// When [includeFiles] is true, also deletes secure file metadata and the
+  /// underlying encrypted file contents.
   /// Throws [StorageError] if the operation fails.
-  Future<void> clearSecure();
+  Future<void> clearSecure({bool includeFiles = false});
+
+  /// Clear all storage in one call.
+  ///
+  /// When [includeFiles] is true (default), this clears:
+  /// - Normal and secure key-value boxes
+  /// - Normal and secure file metadata boxes, and deletes underlying files
+  ///
+  /// When [includeFiles] is false, only key-value data is cleared.
+  /// Throws [StorageError] if the operation fails.
+  Future<void> clearAll({bool includeFiles = true});
 
   /// List stored keys.
   ///
