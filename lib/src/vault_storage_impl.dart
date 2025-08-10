@@ -123,24 +123,51 @@ class VaultStorageImpl implements IVaultStorage {
   }
 
   @override
-  Future<void> clearNormal() async {
+  Future<void> clearNormal({bool includeFiles = false}) async {
     _ensureInitialized();
 
     try {
       await boxes[BoxType.normal]!.clear();
+      if (includeFiles) {
+        await clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
+      }
     } catch (e) {
       throw StorageDeleteError('Failed to clear normal storage', e);
     }
   }
 
   @override
-  Future<void> clearSecure() async {
+  Future<void> clearSecure({bool includeFiles = false}) async {
     _ensureInitialized();
 
     try {
       await boxes[BoxType.secure]!.clear();
+      if (includeFiles) {
+        await clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
+      }
     } catch (e) {
       throw StorageDeleteError('Failed to clear secure storage', e);
+    }
+  }
+
+  @override
+  Future<void> clearAll({bool includeFiles = true}) async {
+    _ensureInitialized();
+
+    try {
+      // 1) Clear key-value stores
+      await Future.wait<void>([
+        boxes[BoxType.normal]!.clear(),
+        boxes[BoxType.secure]!.clear(),
+      ]);
+
+      if (!includeFiles) return;
+
+      // 2) For files, delete underlying file content first, then clear metadata boxes
+      await clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
+      await clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
+    } catch (e) {
+      throw StorageDeleteError('Failed to clear all storage', e);
     }
   }
 
@@ -533,6 +560,49 @@ class VaultStorageImpl implements IVaultStorage {
   @visibleForTesting
   BoxBase<dynamic> getInternalBox(BoxType type) {
     return boxes[type]!;
+  }
+
+  /// Clear all files (underlying content + metadata) within a specific files box.
+  /// Best-effort: continues on per-item failures. Throws if box.clear() fails.
+  @visibleForTesting
+  Future<void> clearAllFilesInBox(BoxType boxType,
+      {required bool isSecure}) async {
+    final box = boxes[boxType];
+    if (box == null) return;
+
+    Iterable<dynamic> keyIterable;
+    if (box is LazyBox) {
+      keyIterable = box.keys;
+    } else if (box is Box) {
+      keyIterable = box.keys;
+    } else {
+      return;
+    }
+
+    for (final key in keyIterable.whereType<String>()) {
+      try {
+        final metadata = await getFileMetadata(key, isSecure: isSecure);
+        if (metadata == null) continue;
+        if (isSecure) {
+          await _fileOperations.deleteSecureFile(
+            fileMetadata: metadata,
+            isWeb: kIsWeb,
+            secureStorage: _secureStorage,
+            getBox: getInternalBox,
+          );
+        } else {
+          await _fileOperations.deleteNormalFile(
+            fileMetadata: metadata,
+            isWeb: kIsWeb,
+            getBox: getInternalBox,
+          );
+        }
+      } catch (_) {
+        // Ignore per-file errors; final clear() will drop metadata
+      }
+    }
+
+    await box.clear();
   }
 
   @visibleForTesting
