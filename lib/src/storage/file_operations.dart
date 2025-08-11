@@ -1,11 +1,12 @@
-import 'dart:io'
-    if (dart.library.js_interop) 'package:vault_storage/src/mock/file_io_mock.dart';
+// Prefer web-safe default imports and gate native IO behind dart.library.io
+import 'package:vault_storage/src/mock/file_io_mock.dart'
+    if (dart.library.io) 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'dart:typed_data' show BytesBuilder, Uint8List;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart'
-    if (dart.library.js_interop) 'package:vault_storage/src/mock/path_provider_mock.dart';
+import 'package:vault_storage/src/mock/path_provider_mock.dart'
+    if (dart.library.io) 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vault_storage/src/storage/web_download_helper.dart'
     if (dart.library.io) 'package:vault_storage/src/mock/web_download_stub.dart';

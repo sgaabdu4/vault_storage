@@ -417,8 +417,8 @@ class VaultStorageImpl implements IVaultStorage {
 
     String? jsonString;
     if (box is LazyBox<dynamic>) {
-      // Handle lazy boxes (files) - asynchronous
-      if (!await box.containsKey(key)) return null;
+      // Handle lazy boxes (files) - asynchronous get, sync containsKey in Hive_ce
+      if (!box.containsKey(key)) return null;
       jsonString = await box.get(key) as String?;
     } else if (box is Box<dynamic>) {
       // Handle normal boxes (key-value) - synchronous access but async decode
@@ -465,7 +465,7 @@ class VaultStorageImpl implements IVaultStorage {
 
         String? jsonString;
         if (box is LazyBox<dynamic>) {
-          if (!await box.containsKey(key)) return null;
+          if (!box.containsKey(key)) return null;
           jsonString = await box.get(key) as String?;
         } else if (box is Box<dynamic>) {
           if (!box.containsKey(key)) return null;
@@ -487,7 +487,7 @@ class VaultStorageImpl implements IVaultStorage {
 
         String? jsonString;
         if (box is LazyBox<dynamic>) {
-          if (!await box.containsKey(key)) return null;
+          if (!box.containsKey(key)) return null;
           jsonString = await box.get(key) as String?;
         } else if (box is Box<dynamic>) {
           if (!box.containsKey(key)) return null;
@@ -509,7 +509,7 @@ class VaultStorageImpl implements IVaultStorage {
         if (normalBox != null) {
           String? normalJsonString;
           if (normalBox is LazyBox<dynamic>) {
-            if (await normalBox.containsKey(key)) {
+            if (normalBox.containsKey(key)) {
               normalJsonString = await normalBox.get(key) as String?;
             }
           } else if (normalBox is Box<dynamic>) {
@@ -533,7 +533,7 @@ class VaultStorageImpl implements IVaultStorage {
         if (secureBox != null) {
           String? secureJsonString;
           if (secureBox is LazyBox<dynamic>) {
-            if (await secureBox.containsKey(key)) {
+            if (secureBox.containsKey(key)) {
               secureJsonString = await secureBox.get(key) as String?;
             }
           } else if (secureBox is Box<dynamic>) {

@@ -1,3 +1,12 @@
+## 2.1.1
+
+### Web compatibility and quality
+* fix: Remove `dart:isolate` from the public import graph and use `compute` from `flutter/foundation`, enabling web platform detection on pub.dev.
+* fix: Use conditional imports that default to web-safe stubs and import `dart:io` only behind `dart.library.io`.
+* chore: Add explicit `platforms:` section in `pubspec.yaml` to declare support for Android, iOS, Linux, macOS, Web, and Windows.
+* chore: Add IO stubs in web mocks to satisfy analyzer for conditional imports.
+* fix: Address analyzer warnings (avoid `await` on synchronous `containsKey`).
+
 ## 2.1.0
 
 ### New Features
