@@ -8,6 +8,15 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.29.0"
 
+# Explicit platform support declaration for pub.dev
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
 dependencies:
   cryptography_plus: ^2.7.1
   flutter:

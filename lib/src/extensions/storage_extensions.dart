@@ -1,6 +1,4 @@
 import 'dart:convert';
-// ignore: unused_import
-import 'dart:isolate'; // Used by compute() for isolate operations
 
 import 'package:flutter/foundation.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
