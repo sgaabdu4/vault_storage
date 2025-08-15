@@ -1,23 +1,22 @@
 // Prefer web-safe default imports and gate native IO behind dart.library.io
-import 'package:vault_storage/src/mock/file_io_mock.dart'
-    if (dart.library.io) 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'dart:typed_data' show BytesBuilder, Uint8List;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:vault_storage/src/mock/path_provider_mock.dart'
-    if (dart.library.io) 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:vault_storage/src/storage/web_download_helper.dart'
-    if (dart.library.io) 'package:vault_storage/src/mock/web_download_stub.dart';
-
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
 import 'package:vault_storage/src/interface/i_file_operations.dart';
+import 'package:vault_storage/src/mock/file_io_mock.dart' if (dart.library.io) 'dart:io';
+import 'package:vault_storage/src/mock/path_provider_mock.dart'
+    if (dart.library.io) 'package:path_provider/path_provider.dart';
 import 'package:vault_storage/src/storage/encryption_helpers.dart';
+import 'package:vault_storage/src/storage/web_download_helper.dart'
+    if (dart.library.io) 'package:vault_storage/src/mock/web_download_stub.dart';
 
 /// Handles file operations for both secure and normal files
 ///
@@ -55,10 +54,9 @@ class FileOperations implements IFileOperations {
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
         // WEB: Store the encrypted bytes directly in Hive as a base64 string
-        final encryptedContentBase64 = await secretBox.cipherText
-            .encodeBase64Safely(context: 'encrypted file content');
-        await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
-            .put(fileId, encryptedContentBase64);
+        final encryptedContentBase64 =
+            await secretBox.cipherText.encodeBase64Safely(context: 'encrypted file content');
+        await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(fileId, encryptedContentBase64);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -67,8 +65,7 @@ class FileOperations implements IFileOperations {
       }
 
       await secureStorage.write(
-          key: secureKeyName,
-          value: await keyBytes.encodeBase64Safely(context: 'encryption key'));
+          key: secureKeyName, value: await keyBytes.encodeBase64Safely(context: 'encryption key'));
 
       // Return unified metadata
       return {
@@ -76,8 +73,7 @@ class FileOperations implements IFileOperations {
         'filePath': filePath, // Path is only present on native platforms
         'secureKeyName': secureKeyName,
         'nonce': await secretBox.nonce.encodeBase64Safely(context: 'nonce'),
-        'mac':
-            await secretBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
+        'mac': await secretBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
         'extension': fileExtension, // Store the original extension
       };
     } catch (e) {
@@ -131,28 +127,19 @@ class FileOperations implements IFileOperations {
             EncryptRequest(fileBytes: toEncrypt, keyBytes: keyBytes),
           );
 
-          final nonceB64 =
-              await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
-          final macB64 = await secretBox.mac.bytes
-              .encodeBase64Safely(context: 'chunk mac');
+          final nonceB64 = await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
+          final macB64 = await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
 
           if (isWeb ?? kIsWeb) {
-            final b64 = await secretBox.cipherText
-                .encodeBase64Safely(context: 'encrypted chunk');
-            final key = '${fileId}:c:$chunkIndex';
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
-                .put(key, b64);
+            final b64 = await secretBox.cipherText.encodeBase64Safely(context: 'encrypted chunk');
+            final key = '$fileId:c:$chunkIndex';
+            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(key, b64);
           } else {
             // Write framed chunk: [len(4 bytes)][nonceLen(1)][nonce][macLen(1)][mac][ciphertext]
             final bytes = secretBox.cipherText;
             final header = BytesBuilder();
             final len = bytes.length;
-            header.add([
-              len >> 24 & 0xFF,
-              len >> 16 & 0xFF,
-              len >> 8 & 0xFF,
-              len & 0xFF
-            ]);
+            header.add([len >> 24 & 0xFF, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]);
             header.add([secretBox.nonce.length]);
             header.add(secretBox.nonce);
             header.add([secretBox.mac.bytes.length]);
@@ -181,30 +168,21 @@ class FileOperations implements IFileOperations {
       if (tail.isNotEmpty) {
         final secretBox = await compute(
           encryptInIsolate,
-          EncryptRequest(
-              fileBytes: Uint8List.fromList(tail), keyBytes: keyBytes),
+          EncryptRequest(fileBytes: Uint8List.fromList(tail), keyBytes: keyBytes),
         );
 
-        final nonceB64 =
-            await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
-        final macB64 =
-            await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
+        final nonceB64 = await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
+        final macB64 = await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
 
         if (isWeb ?? kIsWeb) {
-          final b64 = await secretBox.cipherText
-              .encodeBase64Safely(context: 'encrypted chunk');
-          final key = '${fileId}:c:$chunkIndex';
+          final b64 = await secretBox.cipherText.encodeBase64Safely(context: 'encrypted chunk');
+          final key = '$fileId:c:$chunkIndex';
           await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(key, b64);
         } else {
           final bytes = secretBox.cipherText;
           final header = BytesBuilder();
           final len = bytes.length;
-          header.add([
-            len >> 24 & 0xFF,
-            len >> 16 & 0xFF,
-            len >> 8 & 0xFF,
-            len & 0xFF
-          ]);
+          header.add([len >> 24 & 0xFF, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]);
           header.add([secretBox.nonce.length]);
           header.add(secretBox.nonce);
           header.add([secretBox.mac.bytes.length]);
@@ -227,8 +205,7 @@ class FileOperations implements IFileOperations {
       }
 
       await secureStorage.write(
-          key: secureKeyName,
-          value: await keyBytes.encodeBase64Safely(context: 'encryption key'));
+          key: secureKeyName, value: await keyBytes.encodeBase64Safely(context: 'encryption key'));
 
       return {
         'fileId': fileId,
@@ -264,45 +241,36 @@ class FileOperations implements IFileOperations {
       final secureKeyName = fileMetadata.getRequiredString('secureKeyName');
 
       // Decode base64 values from metadata
-      final nonce = await fileMetadata
-          .getRequiredString('nonce')
-          .decodeBase64Safely(context: 'nonce');
-      final macBytes = await fileMetadata
-          .getRequiredString('mac')
-          .decodeBase64Safely(context: 'MAC bytes');
+      final nonce =
+          await fileMetadata.getRequiredString('nonce').decodeBase64Safely(context: 'nonce');
+      final macBytes =
+          await fileMetadata.getRequiredString('mac').decodeBase64Safely(context: 'MAC bytes');
 
       // Streaming path
       if (fileMetadata['streaming'] == true) {
         final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
-        final chunks =
-            (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ??
-                [];
+        final chunks = (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ?? [];
         final out = BytesBuilder(copy: false);
 
         if (isWeb ?? kIsWeb) {
           for (var i = 0; i < chunkCount; i++) {
             final entry = chunks[i];
-            final nonceB = await entry
-                .getRequiredString('nonce')
-                .decodeBase64Safely(context: 'chunk nonce');
-            final macB = await entry
-                .getRequiredString('mac')
-                .decodeBase64Safely(context: 'chunk mac');
-            final key = '${fileId}:c:$i';
-            final b64 = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
-                .get(key) as String?;
+            final nonceB =
+                await entry.getRequiredString('nonce').decodeBase64Safely(context: 'chunk nonce');
+            final macB =
+                await entry.getRequiredString('mac').decodeBase64Safely(context: 'chunk mac');
+            final key = '$fileId:c:$i';
+            final b64 = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(key) as String?;
             if (b64 == null) {
               throw FileNotFoundError(fileId, 'Hive secure files chunk $i');
             }
-            final enc =
-                await b64.decodeBase64Safely(context: 'encrypted chunk');
+            final enc = await b64.decodeBase64Safely(context: 'encrypted chunk');
             // Defer key fetch until we know data exists
             final keyString = await secureStorage.read(key: secureKeyName);
             if (keyString == null) {
               throw KeyNotFoundError(secureKeyName);
             }
-            final keyBytes =
-                await keyString.decodeBase64Safely(context: 'encryption key');
+            final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
             final dec = await compute(
               decryptInIsolate,
               DecryptRequest(
@@ -328,17 +296,13 @@ class FileOperations implements IFileOperations {
           if (keyString == null) {
             throw KeyNotFoundError(secureKeyName);
           }
-          final keyBytes =
-              await keyString.decodeBase64Safely(context: 'encryption key');
+          final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
           final raf = await f.open();
           try {
             while (true) {
               final header = await raf.read(4);
               if (header.isEmpty) break;
-              final len = (header[0] << 24) |
-                  (header[1] << 16) |
-                  (header[2] << 8) |
-                  header[3];
+              final len = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
               final nLenB = await raf.read(1);
               final nLen = nLenB[0];
               final nonceB = await raf.read(nLen);
@@ -383,13 +347,12 @@ class FileOperations implements IFileOperations {
       Uint8List encryptedFileBytes;
       if (isWeb ?? kIsWeb) {
         final encryptedContentBase64 =
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(fileId)
-                as String?;
+            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(fileId) as String?;
         if (encryptedContentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive secure files box');
         }
-        encryptedFileBytes = await encryptedContentBase64.decodeBase64Safely(
-            context: 'encrypted content');
+        encryptedFileBytes =
+            await encryptedContentBase64.decodeBase64Safely(context: 'encrypted content');
       } else {
         final filePath = fileMetadata.getOptionalString('filePath');
         if (filePath == null) {
@@ -407,8 +370,7 @@ class FileOperations implements IFileOperations {
       if (keyString == null) {
         throw KeyNotFoundError(secureKeyName);
       }
-      final keyBytes =
-          await keyString.decodeBase64Safely(context: 'encryption key');
+      final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
 
       final decryptedBytes = await compute(
         decryptInIsolate,
@@ -459,8 +421,7 @@ class FileOperations implements IFileOperations {
         if (isWeb ?? kIsWeb) {
           final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
           for (var i = 0; i < chunkCount; i++) {
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
-                .delete('${fileId}:c:$i');
+            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).delete('$fileId:c:$i');
           }
         } else {
           final filePath = fileMetadata.getOptionalString('filePath');
@@ -473,8 +434,7 @@ class FileOperations implements IFileOperations {
         }
       } else {
         if (isWeb ?? kIsWeb) {
-          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>)
-              .delete(fileId);
+          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).delete(fileId);
         } else {
           final filePath = fileMetadata.getOptionalString('filePath');
           if (filePath != null) {
@@ -513,10 +473,8 @@ class FileOperations implements IFileOperations {
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
         // WEB: Store the bytes directly in Hive as a base64 string
-        final contentBase64 =
-            await fileBytes.encodeBase64Safely(context: 'normal file content');
-        await (getBox(BoxType.normalFiles) as LazyBox<dynamic>)
-            .put(fileId, contentBase64);
+        final contentBase64 = await fileBytes.encodeBase64Safely(context: 'normal file content');
+        await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).put(fileId, contentBase64);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -555,23 +513,19 @@ class FileOperations implements IFileOperations {
       if (isWeb ?? kIsWeb) {
         // WEB: Retrieve from Hive and decode from base64
         final contentBase64 =
-            await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).get(fileId)
-                as String?;
+            await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).get(fileId) as String?;
         if (contentBase64 == null) {
           throw FileNotFoundError(fileId, 'Hive normal files box');
         }
 
         // Use our extension method for cleaner code
-        final result = await contentBase64.decodeBase64Safely(
-            context: 'normal file content');
+        final result = await contentBase64.decodeBase64Safely(context: 'normal file content');
         final fileBytes = result;
 
         // Trigger download on web
         final extension = fileMetadata.getOptionalString('extension') ?? '';
         final fileName = downloadFileName ??
-            (extension.isNotEmpty
-                ? '${fileId}_file.$extension'
-                : '${fileId}_file.bin');
+            (extension.isNotEmpty ? '${fileId}_file.$extension' : '${fileId}_file.bin');
         downloadFileOnWeb(
           fileBytes: fileBytes,
           fileName: fileName,

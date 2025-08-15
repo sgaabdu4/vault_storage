@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
 
 void main() {
   group('StorageError', () {
@@ -88,8 +88,7 @@ void main() {
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error =
-            StorageSerializationError('Serialization failed', exception);
+        final error = StorageSerializationError('Serialization failed', exception);
         expect(error.message, equals('Serialization failed'));
         expect(error.originalException, equals(exception));
       });
@@ -101,15 +100,13 @@ void main() {
       test('should create with context and exception', () {
         final exception = Exception('Original error');
         final error = Base64DecodeError('encryption key', exception);
-        expect(error.message,
-            equals('Failed to decode base64 for encryption key'));
+        expect(error.message, equals('Failed to decode base64 for encryption key'));
         expect(error.originalException, equals(exception));
       });
 
       test('should create with context and null exception', () {
         final error = Base64DecodeError('file content', null);
-        expect(
-            error.message, equals('Failed to decode base64 for file content'));
+        expect(error.message, equals('Failed to decode base64 for file content'));
         expect(error.originalException, isNull);
       });
     });
@@ -117,8 +114,7 @@ void main() {
     group('FileNotFoundError', () {
       test('should create with fileId and location', () {
         final error = FileNotFoundError('file123', 'storage box');
-        expect(
-            error.message, equals('File not found: ID file123 in storage box'));
+        expect(error.message, equals('File not found: ID file123 in storage box'));
         expect(error.originalException, isNull);
       });
     });
@@ -126,8 +122,7 @@ void main() {
     group('InvalidMetadataError', () {
       test('should create with missing field name', () {
         final error = InvalidMetadataError('filePath');
-        expect(
-            error.message, equals('Invalid file metadata: missing filePath'));
+        expect(error.message, equals('Invalid file metadata: missing filePath'));
         expect(error.originalException, isNull);
       });
     });
@@ -135,10 +130,7 @@ void main() {
     group('KeyNotFoundError', () {
       test('should create with key name', () {
         final error = KeyNotFoundError('encryptionKey');
-        expect(
-            error.message,
-            equals(
-                'Encryption key not found in secure storage: encryptionKey'));
+        expect(error.message, equals('Encryption key not found in secure storage: encryptionKey'));
         expect(error.originalException, isNull);
       });
     });

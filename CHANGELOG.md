@@ -1,3 +1,12 @@
+## 2.1.2
+
+### Documentation improvements
+* docs: Enhanced macOS setup documentation with complete entitlement files and codesigning requirements
+* docs: Added comprehensive troubleshooting steps for `StorageInitializationError` on macOS
+* docs: Included detailed entitlement configurations for both DebugProfile and Release builds
+* docs: Added step-by-step codesigning setup instructions in Xcode
+* docs: Clarified why keychain access and codesigning are required for VaultStorage initialization
+
 ## 2.1.1
 
 ### Web compatibility and quality

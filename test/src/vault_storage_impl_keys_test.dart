@@ -20,12 +20,9 @@ void main() {
     test('returns unique, sorted keys from all boxes by default', () async {
       // Arrange
       when(() => testContext.mockNormalBox.keys).thenReturn(<Object>['a', 'b']);
-      when(() => testContext.mockSecureBox.keys)
-          .thenReturn(<Object>['b', 's1']);
-      when(() => testContext.mockNormalFilesBox.keys)
-          .thenReturn(<Object>['f1', 'a']);
-      when(() => testContext.mockSecureFilesBox.keys)
-          .thenReturn(<Object>['fs1', 's1']);
+      when(() => testContext.mockSecureBox.keys).thenReturn(<Object>['b', 's1']);
+      when(() => testContext.mockNormalFilesBox.keys).thenReturn(<Object>['f1', 'a']);
+      when(() => testContext.mockSecureFilesBox.keys).thenReturn(<Object>['fs1', 's1']);
 
       // Act
       final result = await testContext.vaultStorage.keys();
@@ -37,8 +34,7 @@ void main() {
     test('respects includeFiles=false (key-value only)', () async {
       // Arrange
       when(() => testContext.mockNormalBox.keys).thenReturn(<Object>['a', 'b']);
-      when(() => testContext.mockSecureBox.keys)
-          .thenReturn(<Object>['b', 's1']);
+      when(() => testContext.mockSecureBox.keys).thenReturn(<Object>['b', 's1']);
 
       // Act
       final result = await testContext.vaultStorage.keys(includeFiles: false);
@@ -49,10 +45,8 @@ void main() {
 
     test('filters secure-only when isSecure=true', () async {
       // Arrange
-      when(() => testContext.mockSecureBox.keys)
-          .thenReturn(<Object>['s1', 's2']);
-      when(() => testContext.mockSecureFilesBox.keys)
-          .thenReturn(<Object>['fs1']);
+      when(() => testContext.mockSecureBox.keys).thenReturn(<Object>['s1', 's2']);
+      when(() => testContext.mockSecureFilesBox.keys).thenReturn(<Object>['fs1']);
 
       // Act
       final result = await testContext.vaultStorage.keys(isSecure: true);
@@ -64,8 +58,7 @@ void main() {
     test('filters normal-only when isSecure=false', () async {
       // Arrange
       when(() => testContext.mockNormalBox.keys).thenReturn(<Object>['a', 'b']);
-      when(() => testContext.mockNormalFilesBox.keys)
-          .thenReturn(<Object>['f1']);
+      when(() => testContext.mockNormalFilesBox.keys).thenReturn(<Object>['f1']);
 
       // Act
       final result = await testContext.vaultStorage.keys(isSecure: false);
@@ -79,8 +72,7 @@ void main() {
       testContext.vaultStorage.isVaultStorageReady = false;
 
       // Act & Assert
-      expect(() => testContext.vaultStorage.keys(),
-          throwsA(isA<StorageInitializationError>()));
+      expect(() => testContext.vaultStorage.keys(), throwsA(isA<StorageInitializationError>()));
     });
   });
 }

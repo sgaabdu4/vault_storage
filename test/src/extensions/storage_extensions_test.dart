@@ -15,8 +15,7 @@ void main() {
         expect(result, equals(utf8.encode('Hello World')));
       });
 
-      test('should throw Base64DecodeError for invalid base64 string',
-          () async {
+      test('should throw Base64DecodeError for invalid base64 string', () async {
         const invalidBase64 = 'not-valid-base64!';
 
         await expectLater(
@@ -43,8 +42,7 @@ void main() {
 
         expect(result, isA<String>());
         // Test that we can decode it back
-        final decoded =
-            await result.decodeBase64Safely(context: 'test round trip');
+        final decoded = await result.decodeBase64Safely(context: 'test round trip');
         expect(decoded, equals(bytes));
       });
     });
@@ -54,15 +52,13 @@ void main() {
     group('JsonDecodingExtension', () {
       test('should decode valid JSON object correctly', () async {
         const jsonString = '{"name": "test", "value": 42}';
-        final result =
-            await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
 
         expect(result, isA<Map<String, dynamic>>());
         expect(result, equals({'name': 'test', 'value': 42}));
       });
 
-      test('should throw StorageSerializationError for invalid JSON string',
-          () async {
+      test('should throw StorageSerializationError for invalid JSON string', () async {
         const invalidJson = '{invalid json}';
 
         await expectLater(
@@ -101,9 +97,7 @@ void main() {
         expect(decoded, equals(list));
       });
 
-      test(
-          'should throw StorageSerializationError for circular reference objects',
-          () async {
+      test('should throw StorageSerializationError for circular reference objects', () async {
         // Create a circular reference
         final map = <String, dynamic>{'name': 'test'};
         map['self'] = map; // Create circular reference
@@ -139,8 +133,7 @@ void main() {
         );
       });
 
-      test('should throw InvalidMetadataError for wrong type required string',
-          () {
+      test('should throw InvalidMetadataError for wrong type required string', () {
         expect(
           () => testMap.getRequiredString('intKey'),
           throwsA(isA<InvalidMetadataError>()),
@@ -165,8 +158,7 @@ void main() {
       test('should throw InvalidMetadataError with custom message', () {
         const customMsg = 'Custom error message';
         expect(
-          () => testMap.getRequiredString('missingKey',
-              customErrorMsg: customMsg),
+          () => testMap.getRequiredString('missingKey', customErrorMsg: customMsg),
           throwsA(isA<InvalidMetadataError>()),
         );
       });
@@ -192,8 +184,7 @@ void main() {
       expect(result, equals({'name': 'test', 'value': 42}));
     });
 
-    test('should throw StorageSerializationError for encoding failures',
-        () async {
+    test('should throw StorageSerializationError for encoding failures', () async {
       final map = <String, dynamic>{'name': 'test'};
       map['self'] = map; // Create circular reference
 
@@ -203,8 +194,7 @@ void main() {
       );
     });
 
-    test('should throw StorageSerializationError for decoding failures',
-        () async {
+    test('should throw StorageSerializationError for decoding failures', () async {
       const invalidJson = '{invalid json}';
 
       await expectLater(
@@ -256,8 +246,7 @@ void main() {
       expect(jsonString, isA<String>());
 
       // Decode back to object
-      final decodedData =
-          await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+      final decodedData = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
       expect(decodedData, equals(originalData));
     });
 
@@ -270,8 +259,7 @@ void main() {
       expect(base64String, isA<String>());
 
       // Decode back to bytes
-      final decodedBytes =
-          await base64String.decodeBase64Safely(context: 'round trip test');
+      final decodedBytes = await base64String.decodeBase64Safely(context: 'round trip test');
       expect(decodedBytes, equals(bytes));
 
       // Convert back to string

@@ -2,9 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
-
-import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/constants/config.dart';
+import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
@@ -112,10 +111,8 @@ class VaultStorageImpl implements IVaultStorage {
     try {
       // Delete from both key-value boxes
       await Future.wait<void>([
-        if (boxes[BoxType.normal]?.containsKey(key) == true)
-          boxes[BoxType.normal]!.delete(key),
-        if (boxes[BoxType.secure]?.containsKey(key) == true)
-          boxes[BoxType.secure]!.delete(key),
+        if (boxes[BoxType.normal]?.containsKey(key) == true) boxes[BoxType.normal]!.delete(key),
+        if (boxes[BoxType.secure]?.containsKey(key) == true) boxes[BoxType.secure]!.delete(key),
       ]);
     } catch (e) {
       throw StorageDeleteError('Failed to delete "$key"', e);
@@ -194,11 +191,9 @@ class VaultStorageImpl implements IVaultStorage {
         case true:
           await collect(BoxType.secure);
           if (includeFiles) await collect(BoxType.secureFiles);
-          break;
         case false:
           await collect(BoxType.normal);
           if (includeFiles) await collect(BoxType.normalFiles);
-          break;
         case null:
           await collect(BoxType.normal);
           await collect(BoxType.secure);
@@ -206,7 +201,6 @@ class VaultStorageImpl implements IVaultStorage {
             await collect(BoxType.normalFiles);
             await collect(BoxType.secureFiles);
           }
-          break;
       }
 
       return result.toList(growable: false)..sort();
@@ -230,8 +224,7 @@ class VaultStorageImpl implements IVaultStorage {
 
     try {
       final ext = originalFileName?.split('.').last ?? 'bin';
-      final shouldStream = fileBytes.length >=
-          VaultStorageConfig.secureFileStreamingThresholdBytes;
+      final shouldStream = fileBytes.length >= VaultStorageConfig.secureFileStreamingThresholdBytes;
 
       final fileMetadata = shouldStream
           ? await _fileOperations.saveSecureFileStream(
@@ -404,8 +397,7 @@ class VaultStorageImpl implements IVaultStorage {
   /// Ensure storage is initialized
   void _ensureInitialized() {
     if (!isVaultStorageReady) {
-      throw const StorageInitializationError(
-          'Storage not initialized. Call init() first.');
+      throw const StorageInitializationError('Storage not initialized. Call init() first.');
     }
   }
 
@@ -429,7 +421,7 @@ class VaultStorageImpl implements IVaultStorage {
     }
 
     if (jsonString == null) return null;
-    return await jsonString.decodeJsonSafely<T>();
+    return jsonString.decodeJsonSafely<T>();
   }
 
   /// Set value in a specific box
@@ -437,8 +429,7 @@ class VaultStorageImpl implements IVaultStorage {
   Future<void> setInBox<T>(BoxType boxType, String key, T value) async {
     final box = boxes[boxType];
     if (box == null) {
-      throw StorageInitializationError(
-          'Box ${boxType.name} not opened. Ensure init() was called.');
+      throw StorageInitializationError('Box ${boxType.name} not opened. Ensure init() was called.');
     }
 
     final jsonString = await value.encodeJsonSafely();
@@ -456,8 +447,7 @@ class VaultStorageImpl implements IVaultStorage {
 
   /// Get file metadata with optional storage type specification
   @visibleForTesting
-  Future<Map<String, dynamic>?> getFileMetadata(String key,
-      {bool? isSecure}) async {
+  Future<Map<String, dynamic>?> getFileMetadata(String key, {bool? isSecure}) async {
     switch (isSecure) {
       case false:
         final box = boxes[BoxType.normalFiles];
@@ -474,8 +464,7 @@ class VaultStorageImpl implements IVaultStorage {
 
         if (jsonString == null) return null;
         try {
-          final result =
-              await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+          final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
           // Explicitly tag source
           return <String, dynamic>{...result, 'isSecure': false};
         } catch (e) {
@@ -496,8 +485,7 @@ class VaultStorageImpl implements IVaultStorage {
 
         if (jsonString == null) return null;
         try {
-          final result =
-              await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+          final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
           // Explicitly tag source
           return <String, dynamic>{...result, 'isSecure': true};
         } catch (e) {
@@ -520,8 +508,8 @@ class VaultStorageImpl implements IVaultStorage {
 
           if (normalJsonString != null) {
             try {
-              final normalMetadata = await normalJsonString
-                  .decodeJsonSafely<Map<String, dynamic>>();
+              final normalMetadata =
+                  await normalJsonString.decodeJsonSafely<Map<String, dynamic>>();
               return <String, dynamic>{...normalMetadata, 'isSecure': false};
             } catch (e) {
               // Continue to secure files
@@ -544,8 +532,8 @@ class VaultStorageImpl implements IVaultStorage {
 
           if (secureJsonString != null) {
             try {
-              final secureMetadata = await secureJsonString
-                  .decodeJsonSafely<Map<String, dynamic>>();
+              final secureMetadata =
+                  await secureJsonString.decodeJsonSafely<Map<String, dynamic>>();
               return <String, dynamic>{...secureMetadata, 'isSecure': true};
             } catch (e) {
               return null;
@@ -565,8 +553,7 @@ class VaultStorageImpl implements IVaultStorage {
   /// Clear all files (underlying content + metadata) within a specific files box.
   /// Best-effort: continues on per-item failures. Throws if box.clear() fails.
   @visibleForTesting
-  Future<void> clearAllFilesInBox(BoxType boxType,
-      {required bool isSecure}) async {
+  Future<void> clearAllFilesInBox(BoxType boxType, {required bool isSecure}) async {
     final box = boxes[boxType];
     if (box == null) return;
 
@@ -612,8 +599,7 @@ class VaultStorageImpl implements IVaultStorage {
 
       if (encodedKey == null) {
         final key = Hive.generateSecureKey();
-        await _secureStorage.write(
-            key: StorageKeys.secureKey, value: key.encodeBase64());
+        await _secureStorage.write(key: StorageKeys.secureKey, value: key.encodeBase64());
         return key;
       }
 
@@ -633,8 +619,7 @@ class VaultStorageImpl implements IVaultStorage {
         if (entries == 0) return false;
         const deletedRatio = 0.10; // 10% instead of default 15%
         const deletedThreshold = 30; // 30 instead of default 60
-        return deletedEntries > deletedThreshold &&
-            deletedEntries / entries > deletedRatio;
+        return deletedEntries > deletedThreshold && deletedEntries / entries > deletedRatio;
       }
 
       // Open key-value storage boxes (normal boxes for fast access)

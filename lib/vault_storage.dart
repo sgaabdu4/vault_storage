@@ -6,13 +6,13 @@
 /// feature modules from the internal implementation details of the service.
 library;
 
-import 'src/interface/i_vault_storage.dart';
-import 'src/vault_storage_impl.dart';
+import 'package:vault_storage/src/interface/i_vault_storage.dart';
+import 'package:vault_storage/src/vault_storage_impl.dart';
 
+export 'src/constants/config.dart';
+export 'src/errors/storage_error.dart';
 // Interfaces and Models
 export 'src/interface/i_vault_storage.dart';
-export 'src/errors/storage_error.dart';
-export 'src/constants/config.dart';
 
 /// Creates a new instance of [IVaultStorage].
 ///

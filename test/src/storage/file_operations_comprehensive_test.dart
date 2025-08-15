@@ -84,8 +84,7 @@ void main() {
     });
 
     group('getSecureFile', () {
-      test('should throw InvalidMetadataError for missing required fields',
-          () async {
+      test('should throw InvalidMetadataError for missing required fields', () async {
         // Arrange
         final incompleteMetadata = <String, dynamic>{
           'fileId': 'test-file-id',
@@ -104,8 +103,7 @@ void main() {
         );
       });
 
-      test('should throw FileNotFoundError when file does not exist on web',
-          () async {
+      test('should throw FileNotFoundError when file does not exist on web', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -117,8 +115,7 @@ void main() {
           'mac': 'dGVzdE1hYw==',
         };
 
-        when(() => testContext.mockSecureFilesBox.get(testFileId))
-            .thenAnswer((_) async => null);
+        when(() => testContext.mockSecureFilesBox.get(testFileId)).thenAnswer((_) async => null);
 
         // Act & Assert
         expect(
@@ -132,8 +129,7 @@ void main() {
         );
       });
 
-      test('should throw KeyNotFoundError when encryption key is missing',
-          () async {
+      test('should throw KeyNotFoundError when encryption key is missing', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -162,9 +158,7 @@ void main() {
         );
       });
 
-      test(
-          'should throw InvalidMetadataError when filePath is missing on native',
-          () async {
+      test('should throw InvalidMetadataError when filePath is missing on native', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -201,8 +195,7 @@ void main() {
           'secureKeyName': secureKeyName,
         };
 
-        when(() => testContext.mockSecureFilesBox.delete(testFileId))
-            .thenAnswer((_) async {});
+        when(() => testContext.mockSecureFilesBox.delete(testFileId)).thenAnswer((_) async {});
         when(() => testContext.mockSecureStorage.delete(key: secureKeyName))
             .thenAnswer((_) async {});
 
@@ -215,10 +208,8 @@ void main() {
         );
 
         // Assert
-        verify(() => testContext.mockSecureFilesBox.delete(testFileId))
-            .called(1);
-        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName))
-            .called(1);
+        verify(() => testContext.mockSecureFilesBox.delete(testFileId)).called(1);
+        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName)).called(1);
       });
 
       test('should handle InvalidMetadataError for missing fileId', () async {
@@ -249,8 +240,8 @@ void main() {
         const testFileId = 'test-file-id';
 
         when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => testContext.mockNormalFilesBox
-            .put(any<String>(), any<String>())).thenAnswer((_) async {});
+        when(() => testContext.mockNormalFilesBox.put(any<String>(), any<String>()))
+            .thenAnswer((_) async {});
 
         // Act
         final result = await fileOperations.saveNormalFile(
@@ -267,8 +258,7 @@ void main() {
         expect(result['filePath'], isNull); // Web doesn't use file paths
 
         verify(() => testContext.mockUuid.v4()).called(1);
-        verify(() => testContext.mockNormalFilesBox.put(testFileId, any()))
-            .called(1);
+        verify(() => testContext.mockNormalFilesBox.put(testFileId, any())).called(1);
       });
 
       test('should generate proper metadata for native', () async {
@@ -300,8 +290,7 @@ void main() {
     });
 
     group('getNormalFile', () {
-      test('should retrieve normal file successfully on web platform',
-          () async {
+      test('should retrieve normal file successfully on web platform', () async {
         // Arrange
         const testFileId = 'test-file-id';
         final expectedBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -326,8 +315,7 @@ void main() {
         verify(() => testContext.mockNormalFilesBox.get(testFileId)).called(1);
       });
 
-      test('should throw FileNotFoundError when file does not exist on web',
-          () async {
+      test('should throw FileNotFoundError when file does not exist on web', () async {
         // Arrange
         const testFileId = 'test-file-id';
 
@@ -336,8 +324,7 @@ void main() {
           'extension': 'txt',
         };
 
-        when(() => testContext.mockNormalFilesBox.get(testFileId))
-            .thenAnswer((_) async => null);
+        when(() => testContext.mockNormalFilesBox.get(testFileId)).thenAnswer((_) async => null);
 
         // Act & Assert
         expect(
@@ -350,9 +337,7 @@ void main() {
         );
       });
 
-      test(
-          'should throw InvalidMetadataError when filePath is missing on native',
-          () async {
+      test('should throw InvalidMetadataError when filePath is missing on native', () async {
         // Arrange
         final fileMetadata = {
           'fileId': 'test-file-id',
@@ -380,8 +365,7 @@ void main() {
           'fileId': testFileId,
         };
 
-        when(() => testContext.mockNormalFilesBox.delete(testFileId))
-            .thenAnswer((_) async {});
+        when(() => testContext.mockNormalFilesBox.delete(testFileId)).thenAnswer((_) async {});
 
         // Act
         await fileOperations.deleteNormalFile(
@@ -391,12 +375,10 @@ void main() {
         );
 
         // Assert
-        verify(() => testContext.mockNormalFilesBox.delete(testFileId))
-            .called(1);
+        verify(() => testContext.mockNormalFilesBox.delete(testFileId)).called(1);
       });
 
-      test('should handle deletion gracefully when file does not exist',
-          () async {
+      test('should handle deletion gracefully when file does not exist', () async {
         // Arrange
         const testFileId = 'test-file-id';
 
@@ -405,8 +387,7 @@ void main() {
           'filePath': '/nonexistent/path',
         };
 
-        when(() => testContext.mockNormalFilesBox.delete(testFileId))
-            .thenAnswer((_) async {});
+        when(() => testContext.mockNormalFilesBox.delete(testFileId)).thenAnswer((_) async {});
 
         // Act & Assert - Should not throw
         await fileOperations.deleteNormalFile(
@@ -415,8 +396,7 @@ void main() {
           getBox: testContext.getBox,
         );
 
-        verify(() => testContext.mockNormalFilesBox.delete(testFileId))
-            .called(1);
+        verify(() => testContext.mockNormalFilesBox.delete(testFileId)).called(1);
       });
 
       test('should throw InvalidMetadataError for missing fileId', () async {
@@ -439,14 +419,11 @@ void main() {
     });
 
     group('Error handling and edge cases', () {
-      test(
-          'should wrap non-StorageError exceptions appropriately in saveNormalFile',
-          () async {
+      test('should wrap non-StorageError exceptions appropriately in saveNormalFile', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
 
-        when(() => testContext.mockUuid.v4())
-            .thenThrow(Exception('Unexpected error'));
+        when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
 
         // Act & Assert
         expect(
@@ -495,8 +472,7 @@ void main() {
           'mac': 'dGVzdE1hYw==',
         };
 
-        when(() => testContext.mockSecureFilesBox.get(testFileId))
-            .thenAnswer((_) async => null);
+        when(() => testContext.mockSecureFilesBox.get(testFileId)).thenAnswer((_) async => null);
 
         // Act & Assert
         expect(

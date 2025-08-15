@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/constants/config.dart';
+import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 
 /// Request class for Base64 decode operations in isolates
@@ -31,8 +31,7 @@ Uint8List _decodeBase64InIsolate(_Base64DecodeRequest request) {
       return base64.decode(request.data);
     }
   } catch (e) {
-    throw Exception(
-        'Base64 decode failed in isolate for ${request.context}: $e');
+    throw Exception('Base64 decode failed in isolate for ${request.context}: $e');
   }
 }
 
@@ -41,8 +40,7 @@ String _encodeBase64InIsolate(_Base64EncodeRequest request) {
   try {
     return base64Url.encode(request.data);
   } catch (e) {
-    throw Exception(
-        'Base64 encode failed in isolate for ${request.context}: $e');
+    throw Exception('Base64 encode failed in isolate for ${request.context}: $e');
   }
 }
 
@@ -69,8 +67,7 @@ extension Base64DecodingExtension on String {
       // For large base64 strings, use isolate to prevent UI blocking
       if (length > VaultStorageConfig.base64IsolateThreshold) {
         // ~37KB of original data
-        return await compute(
-            _decodeBase64InIsolate, _Base64DecodeRequest(this, context));
+        return await compute(_decodeBase64InIsolate, _Base64DecodeRequest(this, context));
       }
 
       // Small strings - decode synchronously for better performance
@@ -121,14 +118,12 @@ extension Base64EncodingExtension on List<int> {
   Future<String> encodeBase64Safely({required String context}) async {
     try {
       // Convert to Uint8List if needed for consistency
-      final uint8List =
-          this is Uint8List ? this as Uint8List : Uint8List.fromList(this);
+      final uint8List = this is Uint8List ? this as Uint8List : Uint8List.fromList(this);
 
       // For large binary data, use isolate to prevent UI blocking
       if (length > VaultStorageConfig.base64IsolateThreshold) {
         // ~50KB threshold
-        return await compute(
-            _encodeBase64InIsolate, _Base64EncodeRequest(uint8List, context));
+        return await compute(_encodeBase64InIsolate, _Base64EncodeRequest(uint8List, context));
       }
 
       // Small data - encode synchronously for better performance
@@ -185,12 +180,10 @@ class JsonSafe {
 
   // Thresholds for optimization decisions
   static int get _isolateThreshold => VaultStorageConfig.jsonIsolateThreshold;
-  static int get _primitiveStringThreshold =>
-      VaultStorageConfig.primitiveStringThreshold;
+  static int get _primitiveStringThreshold => VaultStorageConfig.primitiveStringThreshold;
 
   // Type markers for optimized storage
-  static const String _typeMarkerPrefix =
-      '__VST__'; // Vault Storage Type marker
+  static const String _typeMarkerPrefix = '__VST__'; // Vault Storage Type marker
   static const String _stringMarker = '${_typeMarkerPrefix}STR:';
   static const String _intMarker = '${_typeMarkerPrefix}INT:';
   static const String _doubleMarker = '${_typeMarkerPrefix}DBL:';
@@ -211,8 +204,7 @@ class JsonSafe {
 
       // String optimization - store directly if small
       if (value is String) {
-        if (value.length <= _primitiveStringThreshold &&
-            !value.startsWith(_typeMarkerPrefix)) {
+        if (value.length <= _primitiveStringThreshold && !value.startsWith(_typeMarkerPrefix)) {
           return '$_stringMarker$value';
         }
         // Large strings go through JSON for consistency
@@ -261,8 +253,7 @@ class JsonSafe {
       }
 
       if (encodedValue.startsWith(_doubleMarker)) {
-        final value =
-            double.parse(encodedValue.substring(_doubleMarker.length));
+        final value = double.parse(encodedValue.substring(_doubleMarker.length));
         return value as T;
       }
 
@@ -332,7 +323,7 @@ extension JsonDecodingExtension on String {
   /// }
   /// ```
   Future<T> decodeJsonSafely<T>() async {
-    return await JsonSafe.decode<T>(this);
+    return JsonSafe.decode<T>(this);
   }
 }
 
@@ -354,7 +345,7 @@ extension JsonEncodingExtension on Object? {
   /// }
   /// ```
   Future<String> encodeJsonSafely() async {
-    return await JsonSafe.encode(this);
+    return JsonSafe.encode(this);
   }
 }
 

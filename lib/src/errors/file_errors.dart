@@ -45,8 +45,7 @@ class InvalidMetadataError extends StorageReadError {
   /// Creates a new [InvalidMetadataError].
   ///
   /// The [missingField] specifies which field was missing or invalid in the metadata.
-  InvalidMetadataError(String missingField)
-      : super('Invalid file metadata: missing $missingField');
+  InvalidMetadataError(String missingField) : super('Invalid file metadata: missing $missingField');
 }
 
 /// An error that occurs when a cryptographic key is not found in secure storage.
@@ -57,6 +56,5 @@ class KeyNotFoundError extends StorageReadError {
   /// Creates a new [KeyNotFoundError].
   ///
   /// The [keyName] is the identifier used to locate the key in secure storage.
-  KeyNotFoundError(String keyName)
-      : super('Encryption key not found in secure storage: $keyName');
+  KeyNotFoundError(String keyName) : super('Encryption key not found in secure storage: $keyName');
 }

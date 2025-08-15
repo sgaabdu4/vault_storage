@@ -331,7 +331,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                       ? 'Select from available keys'
                       : 'No keys available',
                 ),
-                value: selectedKey,
+                initialValue: selectedKey,
                 items: _availableKeys.isNotEmpty
                     ? _availableKeys
                         .map((key) => DropdownMenuItem(

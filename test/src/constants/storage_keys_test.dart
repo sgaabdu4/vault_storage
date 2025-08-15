@@ -51,8 +51,7 @@ void main() {
         StorageKeys.secureFilesBox,
         StorageKeys.normalFilesBox,
       };
-      expect(boxNames.length, equals(4),
-          reason: 'All box names should be unique');
+      expect(boxNames.length, equals(4), reason: 'All box names should be unique');
     });
 
     test('all keys should be non-empty strings', () {

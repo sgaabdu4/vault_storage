@@ -1,16 +1,15 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vault_storage/src/storage/encryption_helpers.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
+import 'package:vault_storage/src/storage/encryption_helpers.dart';
 
 void main() {
   group('Encryption Helpers', () {
     test('encryptInIsolate should encrypt data correctly', () async {
       final plainData = Uint8List.fromList([1, 2, 3, 4, 5]);
-      final keyBytes = Uint8List.fromList(
-          List.generate(32, (i) => i)); // 32-byte key for AES-256
+      final keyBytes = Uint8List.fromList(List.generate(32, (i) => i)); // 32-byte key for AES-256
 
       final request = EncryptRequest(fileBytes: plainData, keyBytes: keyBytes);
       final secretBox = await encryptInIsolate(request);
@@ -25,12 +24,10 @@ void main() {
 
     test('decryptInIsolate should decrypt data correctly', () async {
       final plainData = Uint8List.fromList([1, 2, 3, 4, 5]);
-      final keyBytes = Uint8List.fromList(
-          List.generate(32, (i) => i)); // 32-byte key for AES-256
+      final keyBytes = Uint8List.fromList(List.generate(32, (i) => i)); // 32-byte key for AES-256
 
       // First encrypt the data
-      final encryptRequest =
-          EncryptRequest(fileBytes: plainData, keyBytes: keyBytes);
+      final encryptRequest = EncryptRequest(fileBytes: plainData, keyBytes: keyBytes);
       final secretBox = await encryptInIsolate(encryptRequest);
 
       // Then decrypt it

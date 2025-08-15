@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -29,8 +29,7 @@ void main() {
     });
 
     group('saveSecureFile', () {
-      test('should save secure file successfully on native platforms',
-          () async {
+      test('should save secure file successfully on native platforms', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
@@ -80,8 +79,7 @@ void main() {
               key: any(named: 'key'),
               value: any(named: 'value'),
             )).thenAnswer((_) async {});
-        when(() => mockBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(() => mockBox.put(any<String>(), any<String>())).thenAnswer((_) async {});
 
         // Act
         final result = await fileOperations.saveSecureFile(
@@ -114,8 +112,7 @@ void main() {
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
 
-        when(() => testContext.mockUuid.v4())
-            .thenThrow(Exception('UUID generation failed'));
+        when(() => testContext.mockUuid.v4()).thenThrow(Exception('UUID generation failed'));
 
         // Act & Assert
         expect(
@@ -144,8 +141,8 @@ void main() {
         const testFileId = 'stream-id';
 
         when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => testContext.mockSecureFilesBox
-            .put(any<String>(), any<String>())).thenAnswer((_) async {});
+        when(() => testContext.mockSecureFilesBox.put(any<String>(), any<String>()))
+            .thenAnswer((_) async {});
         when(() => testContext.mockSecureStorage.write(
               key: any(named: 'key'),
               value: any(named: 'value'),
@@ -166,8 +163,8 @@ void main() {
         expect(meta['fileId'], equals(testFileId));
         expect(meta['streaming'], isTrue);
         expect(meta['chunkCount'], greaterThan(0));
-        verify(() => testContext.mockSecureFilesBox
-            .put(any<String>(), any<String>())).called(greaterThan(0));
+        verify(() => testContext.mockSecureFilesBox.put(any<String>(), any<String>()))
+            .called(greaterThan(0));
         verify(() => testContext.mockSecureStorage.write(
               key: 'file_key_$testFileId',
               value: any(named: 'value'),
@@ -176,8 +173,7 @@ void main() {
     });
 
     group('getSecureFile', () {
-      test('should retrieve secure file successfully on native platforms',
-          () async {
+      test('should retrieve secure file successfully on native platforms', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -209,8 +205,7 @@ void main() {
         );
       });
 
-      test('should retrieve secure file successfully on web platform',
-          () async {
+      test('should retrieve secure file successfully on web platform', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -224,8 +219,8 @@ void main() {
           'extension': 'txt',
         };
 
-        when(() => mockBox.get(testFileId)).thenAnswer(
-            (_) async => 'dGVzdENvbnRlbnQ='); // base64 encoded test content
+        when(() => mockBox.get(testFileId))
+            .thenAnswer((_) async => 'dGVzdENvbnRlbnQ='); // base64 encoded test content
         when(() => testContext.mockSecureStorage.read(key: secureKeyName))
             .thenAnswer((_) async => 'dGVzdEtleQ=='); // base64 encoded test key
 
@@ -242,8 +237,7 @@ void main() {
         );
       });
 
-      test('should throw FileNotFoundError when file does not exist on web',
-          () async {
+      test('should throw FileNotFoundError when file does not exist on web', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -271,8 +265,7 @@ void main() {
         );
       });
 
-      test('should throw KeyNotFoundError when encryption key is missing',
-          () async {
+      test('should throw KeyNotFoundError when encryption key is missing', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -286,8 +279,7 @@ void main() {
           'extension': 'txt',
         };
 
-        when(() => mockBox.get(testFileId))
-            .thenAnswer((_) async => 'dGVzdENvbnRlbnQ=');
+        when(() => mockBox.get(testFileId)).thenAnswer((_) async => 'dGVzdENvbnRlbnQ=');
         when(() => testContext.mockSecureStorage.read(key: secureKeyName))
             .thenAnswer((_) async => null);
 
@@ -303,8 +295,7 @@ void main() {
         );
       });
 
-      test('should throw InvalidMetadataError when required fields are missing',
-          () async {
+      test('should throw InvalidMetadataError when required fields are missing', () async {
         // Arrange
         final incompleteMetadata = <String, dynamic>{
           'fileId': 'test-file-id',
@@ -325,8 +316,7 @@ void main() {
     });
 
     group('deleteSecureFile', () {
-      test('should delete secure file successfully on native platforms',
-          () async {
+      test('should delete secure file successfully on native platforms', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -349,8 +339,7 @@ void main() {
         );
 
         // Assert
-        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName))
-            .called(1);
+        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName)).called(1);
       });
 
       test('should delete secure file successfully on web platform', () async {
@@ -378,8 +367,7 @@ void main() {
 
         // Assert
         verify(() => mockBox.delete(testFileId)).called(1);
-        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName))
-            .called(1);
+        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName)).called(1);
       });
 
       test('should throw StorageDeleteError when deletion fails', () async {
@@ -409,8 +397,7 @@ void main() {
     });
 
     group('saveNormalFile', () {
-      test('should save normal file successfully on native platforms',
-          () async {
+      test('should save normal file successfully on native platforms', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
@@ -444,8 +431,7 @@ void main() {
         final mockBox = testContext.mockNormalFilesBox;
 
         when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => mockBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(() => mockBox.put(any<String>(), any<String>())).thenAnswer((_) async {});
 
         // Act
         final result = await fileOperations.saveNormalFile(
@@ -470,8 +456,7 @@ void main() {
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
 
-        when(() => testContext.mockUuid.v4())
-            .thenThrow(Exception('UUID generation failed'));
+        when(() => testContext.mockUuid.v4()).thenThrow(Exception('UUID generation failed'));
 
         // Act & Assert
         expect(
@@ -488,8 +473,7 @@ void main() {
     });
 
     group('getNormalFile', () {
-      test('should retrieve normal file successfully on web platform',
-          () async {
+      test('should retrieve normal file successfully on web platform', () async {
         // Arrange
         const testFileId = 'test-file-id';
         final mockBox = testContext.mockNormalFilesBox;
@@ -515,8 +499,7 @@ void main() {
         verify(() => mockBox.get(testFileId)).called(1);
       });
 
-      test('should throw FileNotFoundError when file does not exist on web',
-          () async {
+      test('should throw FileNotFoundError when file does not exist on web', () async {
         // Arrange
         const testFileId = 'test-file-id';
         final mockBox = testContext.mockNormalFilesBox;
@@ -539,9 +522,7 @@ void main() {
         );
       });
 
-      test(
-          'should throw InvalidMetadataError when filePath is missing on native',
-          () async {
+      test('should throw InvalidMetadataError when filePath is missing on native', () async {
         // Arrange
         final fileMetadata = {
           'fileId': 'test-file-id',
@@ -583,8 +564,7 @@ void main() {
         verify(() => mockBox.delete(testFileId)).called(1);
       });
 
-      test('should handle deletion gracefully when file does not exist',
-          () async {
+      test('should handle deletion gracefully when file does not exist', () async {
         // Arrange
         const testFileId = 'test-file-id';
         final mockBox = testContext.mockNormalFilesBox;
@@ -615,8 +595,7 @@ void main() {
           'fileId': testFileId,
         };
 
-        when(() => mockBox.delete(testFileId))
-            .thenThrow(Exception('Deletion failed'));
+        when(() => mockBox.delete(testFileId)).thenThrow(Exception('Deletion failed'));
 
         // Act & Assert
         expect(
@@ -637,8 +616,7 @@ void main() {
         // make this method visible for testing or test it through the public API.
 
         // For now, we can verify the behavior through file operations
-        expect(
-            true, isTrue); // Placeholder - would need access to private method
+        expect(true, isTrue); // Placeholder - would need access to private method
       });
     });
 
@@ -655,8 +633,7 @@ void main() {
           'mac': 'dGVzdE1hYw==',
         };
 
-        when(() => testContext.mockSecureFilesBox.get(testFileId))
-            .thenAnswer((_) async => null);
+        when(() => testContext.mockSecureFilesBox.get(testFileId)).thenAnswer((_) async => null);
 
         // Act & Assert
         expect(
@@ -674,8 +651,7 @@ void main() {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
 
-        when(() => testContext.mockUuid.v4())
-            .thenThrow(Exception('Unexpected error'));
+        when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
 
         // Act & Assert
         expect(

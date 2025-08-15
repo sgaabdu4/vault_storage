@@ -4,8 +4,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:vault_storage/src/vault_storage_impl.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import 'mocks.dart';
 
@@ -70,8 +70,7 @@ class TestContext {
   }
 
   void _setupPathProviderMock() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel('plugins.flutter.io/path_provider'),
       (MethodCall methodCall) async {
         if (methodCall.method == 'getApplicationDocumentsDirectory') {
@@ -83,8 +82,7 @@ class TestContext {
   }
 
   void _tearDownPathProviderMock() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel('plugins.flutter.io/path_provider'),
       null,
     );

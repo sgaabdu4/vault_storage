@@ -3,8 +3,7 @@
 library;
 
 Future<dynamic> getApplicationDocumentsDirectory() async {
-  throw UnsupportedError(
-      'getApplicationDocumentsDirectory is not supported on the web.');
+  throw UnsupportedError('getApplicationDocumentsDirectory is not supported on the web.');
 }
 
 // Add other functions from path_provider here if you use them,
