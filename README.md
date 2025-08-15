@@ -226,25 +226,85 @@ No additional configuration required. The package uses iOS Keychain by default.
 
 ### macOS
 
-**Required**: Add Keychain Sharing capability to both entitlement files:
+**Required**: Add Keychain access entitlements and configure codesigning to prevent `StorageInitializationError`.
 
-In `macos/Runner/DebugProfile.entitlements`:
+#### 1. Create or update entitlement files
+
+**`macos/Runner/DebugProfile.entitlements`:**
 ```xml
-<key>keychain-access-groups</key>
-<array>
-    <string>$(AppIdentifierPrefix)com.your.bundle.id</string>
-</array>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+    </array>
+</dict>
+</plist>
 ```
 
-In `macos/Runner/Release.entitlements`:
+**`macos/Runner/Release.entitlements`:**
 ```xml
-<key>keychain-access-groups</key>
-<array>
-    <string>$(AppIdentifierPrefix)com.your.bundle.id</string>
-</array>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+    </array>
+</dict>
+</plist>
 ```
 
-Replace `com.your.bundle.id` with your actual bundle identifier.
+#### 2. Configure Codesigning
+
+Ensure proper codesigning is configured in your Xcode project:
+
+1. Open `macos/Runner.xcworkspace` in Xcode
+2. Select the Runner project in the navigator
+3. Go to "Signing & Capabilities" tab
+4. Ensure:
+   - **Team** is selected (required for keychain access)
+   - **Bundle Identifier** matches your app's identifier
+   - **Signing Certificate** is valid
+   - **Keychain Sharing** capability is added (should appear automatically with the entitlements)
+
+#### 3. Clean and rebuild after setup
+
+```bash
+flutter clean
+flutter pub get
+flutter run -d macos
+```
+
+#### 4. Troubleshooting macOS Issues
+
+If you still encounter `StorageInitializationError`:
+
+1. **Check Console app** for detailed error messages from your app
+2. **Verify codesigning**: Run `codesign -dv --verbose=4 /path/to/your/app.app` to verify signatures
+3. **Reset Keychain** (development only): Delete keychain entries for your app if corrupted
+4. **Check entitlements**: Run `codesign -d --entitlements - /path/to/your/app.app` to verify entitlements are applied
+
+**Why this is required**: `VaultStorage` creates secure encryption keys using macOS Keychain during initialization. Without proper entitlements and codesigning, the system denies access to the Keychain, causing the `StorageInitializationError`.
 
 ### Linux
 
