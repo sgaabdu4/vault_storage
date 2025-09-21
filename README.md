@@ -2,7 +2,9 @@
 
 A secure, fast, and simple local storage solution for Flutter. Built on Hive and Flutter Secure Storage with AES-GCM encryption. Provides key-value storage and encrypted file storage with full web compatibility. Heavy crypto/JSON/base64 work runs in background isolates to keep your UI smooth.
 
-**NEW in v2.2.0*### Migration Benefits
+**NEW in v2.2.0**: FreeRASP integration brings optional jailbreak protection and runtime security monitoring!
+
+### Migration Benefits
 
 Switching from the "package dance" to Vault Storage provides immediate benefits:
 
@@ -1111,19 +1113,20 @@ flutter test
 
 ## Dependencies
 
-- `hive_ce_flutter`: Local storage database
-- `flutter_secure_storage`: Secure key storage
-- `cryptography_plus`: AES-GCM encryption
-- `web`: Modern web APIs for web downloads
+- **`hive_ce_flutter`**: Local storage database
+- **`flutter_secure_storage`**: Secure key storage
+- **`cryptography_plus`**: AES-GCM encryption
+- **`web`**: Modern web APIs for web downloads
+- **`freerasp`**: Optional runtime security monitoring and jailbreak protection (Android/iOS only)
 
 ## Platform Support
 
-- Android
-- iOS  
-- Web
-- macOS
-- Windows
-- Linux
+- **Android**
+- **iOS**  
+- **Web**
+- **macOS**
+- **Windows**
+- **Linux**
 
 ## License
 

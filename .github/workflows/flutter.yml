@@ -99,3 +99,48 @@ jobs:
         with:
           file: coverage/lcov.info
         if: success()
+
+  pana:
+    name: Package Analysis (PANA)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Activate PANA
+        run: dart pub global activate pana
+
+      - name: Run PANA analysis
+        run: dart pub global run pana . --exit-code-threshold 0
+
+      - name: Check PANA score
+        run: |
+          SCORE=$(dart pub global run pana . --json | jq '.scores.grantedPoints')
+          TOTAL=$(dart pub global run pana . --json | jq '.scores.maxPoints')
+          echo "PANA Score: $SCORE/$TOTAL"
+          if [ "$SCORE" -lt "$TOTAL" ]; then
+            echo "❌ PANA analysis failed. Score: $SCORE/$TOTAL"
+            echo "Package must achieve maximum PANA score including WASM compatibility"
+            exit 1
+          else
+            echo "✅ PANA analysis passed. Perfect score: $SCORE/$TOTAL"
+          fi
