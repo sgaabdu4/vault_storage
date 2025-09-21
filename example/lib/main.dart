@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:vault_storage/vault_storage.dart';
-import 'package:file_picker/file_picker.dart';
 
 /*
  * Vault Storage Demo - Platform Setup Requirements
@@ -308,7 +309,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
   // Simple dialog showing all collected threats
   void _showSecurityDialog() {
-    showAdaptiveDialog(
+    showAdaptiveDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog.adaptive(
@@ -451,7 +452,6 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                         .toList()
                     : [
                         const DropdownMenuItem(
-                          value: null,
                           child: Text('No keys stored yet'),
                         ),
                       ],
@@ -549,7 +549,6 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
-        allowMultiple: false,
       );
 
       if (result == null) {
@@ -567,7 +566,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() => _operationResult = 'Reading file...');
-      late Uint8List bytes;
+      final Uint8List bytes;
       if (file.bytes != null) {
         bytes = file.bytes!;
       } else if (file.path != null) {
