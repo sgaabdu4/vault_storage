@@ -1,6 +1,7 @@
 // Prefer web-safe default imports and gate native IO behind dart.library.io
 import 'dart:typed_data' show BytesBuilder, Uint8List;
 
+import 'package:cryptography_plus/cryptography_plus.dart' show SecretBox;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
@@ -45,7 +46,7 @@ class FileOperations implements IFileOperations {
       final secretKey = await encryptionAlgorithm.newSecretKey();
       final keyBytes = await secretKey.extractBytes();
 
-      final secretBox = await compute(
+      final SecretBox secretBox = await compute(
         encryptInIsolate,
         EncryptRequest(fileBytes: fileBytes, keyBytes: keyBytes),
       );
@@ -122,7 +123,7 @@ class FileOperations implements IFileOperations {
           final data = buffer.takeBytes();
           final toEncrypt = Uint8List.view(data.buffer, 0, size);
 
-          final secretBox = await compute(
+          final SecretBox secretBox = await compute(
             encryptInIsolate,
             EncryptRequest(fileBytes: toEncrypt, keyBytes: keyBytes),
           );
@@ -166,7 +167,7 @@ class FileOperations implements IFileOperations {
       // Final small tail
       final tail = buffer.takeBytes();
       if (tail.isNotEmpty) {
-        final secretBox = await compute(
+        final SecretBox secretBox = await compute(
           encryptInIsolate,
           EncryptRequest(fileBytes: Uint8List.fromList(tail), keyBytes: keyBytes),
         );

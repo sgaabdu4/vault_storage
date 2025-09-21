@@ -213,7 +213,135 @@ class VaultStorageDemo extends StatefulWidget {
 }
 
 class _VaultStorageDemoState extends State<VaultStorageDemo> {
-  final vaultStorage = VaultStorage.create();
+  // Simple list to collect security threats during initialization
+  final List<String> _securityThreats = [];
+
+  // Collect all security threats first, then show one dialog
+  Future<void> _checkSecurityAndInitialize() async {
+    try {
+      // Clear any previous threats
+      _securityThreats.clear();
+
+      // Create VaultStorage with threat collection (no dialogs in callbacks)
+      // Note: Security features only work on Android and iOS platforms
+      vaultStorage = VaultStorage.create(
+        securityConfig: VaultSecurityConfig.production(
+          watcherMail: 'security@example.com',
+          threatCallbacks: {
+            SecurityThreat.jailbreak: () => _securityThreats
+                .add('Jailbreak/Root detected - device may be compromised'),
+            SecurityThreat.tampering: () => _securityThreats
+                .add('App tampering detected - app integrity compromised'),
+            SecurityThreat.debugging: () =>
+                _securityThreats.add('Debug environment detected'),
+            SecurityThreat.emulator: () =>
+                _securityThreats.add('Running on emulator/simulator'),
+            SecurityThreat.hooks: () => _securityThreats
+                .add('Runtime manipulation detected (hooks/injection)'),
+            SecurityThreat.unofficialStore: () =>
+                _securityThreats.add('App installed from unofficial store'),
+            SecurityThreat.screenshot: () =>
+                _securityThreats.add('Screen capture detected'),
+            SecurityThreat.screenRecording: () =>
+                _securityThreats.add('Screen recording detected'),
+            SecurityThreat.systemVPN: () =>
+                _securityThreats.add('System VPN detected'),
+            SecurityThreat.passcode: () =>
+                _securityThreats.add('Device passcode not set'),
+            SecurityThreat.secureHardware: () =>
+                _securityThreats.add('Secure hardware not available'),
+            SecurityThreat.developerMode: () =>
+                _securityThreats.add('Developer mode enabled'),
+            SecurityThreat.adbEnabled: () =>
+                _securityThreats.add('ADB debugging enabled'),
+            SecurityThreat.multiInstance: () =>
+                _securityThreats.add('Multiple app instances detected'),
+          },
+        ),
+      );
+
+      // Initialize storage (this will trigger security checks)
+      await vaultStorage.init(
+        bundleId: 'com.example.storageService.example',
+        teamId: 'YOUR_TEAM_ID',
+      );
+
+      // Load existing keys
+      final keys = await vaultStorage.keys();
+
+      // Update UI
+      setState(() {
+        _isInitialized = true;
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
+      });
+
+      // Show security dialog ONCE if any threats were detected
+      if (_securityThreats.isNotEmpty && mounted) {
+        _showSecurityDialog();
+      }
+    } on JailbreakDetectedException {
+      setState(() {
+        _errorMessage =
+            'Security Warning: Jailbreak detected - app may have limited functionality';
+        _isInitialized = false;
+      });
+    } on TamperingDetectedException {
+      setState(() {
+        _errorMessage =
+            'Security Error: App tampering detected - please reinstall from official source';
+        _isInitialized = false;
+      });
+    } on SecurityThreatException catch (e) {
+      setState(() {
+        _errorMessage =
+            'Security threat detected: ${e.threatType} - ${e.message}';
+        _isInitialized = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Initialization Error: $e';
+      });
+    }
+  }
+
+  // Simple dialog showing all collected threats
+  void _showSecurityDialog() {
+    showAdaptiveDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog.adaptive(
+        title: const Text('Security Alert'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Security issues detected:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ..._securityThreats.map((threat) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text('• $threat'),
+                )),
+            const SizedBox(height: 8),
+            const Text('App functionality may be limited.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // VaultStorage instance to be initialized in initState
+  late final IVaultStorage vaultStorage;
   String? _operationResult;
   String? _errorMessage;
   String? _fileKey;
@@ -223,25 +351,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   @override
   void initState() {
     super.initState();
-    _initializeStorage();
-  }
-
-  Future<void> _initializeStorage() async {
-    try {
-      await vaultStorage.init();
-      // Load existing keys (both normal and secure; include file keys)
-      final keys = await vaultStorage.keys();
-      setState(() {
-        _isInitialized = true;
-        _availableKeys
-          ..clear()
-          ..addAll(keys);
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Initialization Error: $e';
-      });
-    }
+    _checkSecurityAndInitialize();
   }
 
   void _clearMessages() {
