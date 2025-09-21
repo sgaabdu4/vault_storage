@@ -9,8 +9,25 @@ import 'package:vault_storage/src/errors/storage_error.dart';
 abstract class IVaultStorage {
   /// Initialize storage. Call this once when your app starts.
   ///
+  /// For apps with security features enabled, provide platform-specific configuration:
+  ///
+  /// **Note**: Security features are only available on Android and iOS platforms.
+  /// On other platforms (macOS, Windows, Linux, Web), security configuration
+  /// will be ignored and vault storage will work normally.
+  ///
+  /// [packageName] - Android package name (required for Android security features)
+  /// [signingCertHashes] - Android signing certificate hashes in Base64 format
+  /// [bundleId] - iOS bundle identifier (required for iOS security features)
+  /// [teamId] - iOS team identifier (required for iOS security features)
+  ///
   /// Throws [StorageError] if initialization fails.
-  Future<void> init();
+  /// Throws [SecurityThreatException] if security threats are detected during init.
+  Future<void> init({
+    String? packageName,
+    List<String>? signingCertHashes,
+    String? bundleId,
+    String? teamId,
+  });
 
   // ==========================================
   // KEY-VALUE STORAGE
@@ -54,11 +71,13 @@ abstract class IVaultStorage {
 
   /// Clear all storage in one call.
   ///
-  /// When [includeFiles] is true (default), this clears:
+  /// When [includeFiles] is true (default), this performs a complete wipe:
   /// - Normal and secure key-value boxes
   /// - Normal and secure file metadata boxes, and deletes underlying files
+  /// - Master encryption key from secure storage (forcing key regeneration on next init)
   ///
-  /// When [includeFiles] is false, only key-value data is cleared.
+  /// When [includeFiles] is false, only key-value data is cleared and the master
+  /// encryption key is preserved.
   /// Throws [StorageError] if the operation fails.
   Future<void> clearAll({bool includeFiles = true});
 

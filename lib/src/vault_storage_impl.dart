@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:freerasp/freerasp.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vault_storage/src/constants/config.dart';
@@ -9,6 +10,8 @@ import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
 import 'package:vault_storage/src/interface/i_file_operations.dart';
 import 'package:vault_storage/src/interface/i_vault_storage.dart';
+import 'package:vault_storage/src/security/security_exceptions.dart';
+import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 
 /// Simple, secure storage implementation for Flutter apps.
@@ -19,6 +22,7 @@ class VaultStorageImpl implements IVaultStorage {
   final FlutterSecureStorage _secureStorage;
   final Uuid _uuid;
   final IFileOperations _fileOperations;
+  final VaultSecurityConfig? _securityConfig;
 
   @visibleForTesting
   final Map<BoxType, BoxBase<dynamic>> boxes = {};
@@ -26,20 +30,51 @@ class VaultStorageImpl implements IVaultStorage {
   @visibleForTesting
   bool isVaultStorageReady = false;
 
+  @visibleForTesting
+  bool isSecureEnvironment = true;
+
   /// Creates a new [VaultStorageImpl] instance.
   VaultStorageImpl({
     FlutterSecureStorage? secureStorage,
     Uuid? uuid,
     IFileOperations? fileOperations,
+    VaultSecurityConfig? securityConfig,
   })  : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _uuid = uuid ?? const Uuid(),
-        _fileOperations = fileOperations ?? FileOperations();
+        _fileOperations = fileOperations ?? FileOperations(),
+        _securityConfig = securityConfig;
 
   @override
-  Future<void> init() async {
+  Future<void> init({
+    String? packageName,
+    List<String>? signingCertHashes,
+    String? bundleId,
+    String? teamId,
+  }) async {
     if (isVaultStorageReady) return;
 
     try {
+      // Initialize RASP protection first if enabled and on supported platforms
+      if (_securityConfig?.enableRaspProtection == true) {
+        // FreeRASP only supports Android and iOS
+        if (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS) {
+          await _initializeRaspProtection(
+            packageName: packageName,
+            signingCertHashes: signingCertHashes,
+            bundleId: bundleId,
+            teamId: teamId,
+          );
+        } else {
+          // Log that security features are not available on this platform
+          if (_securityConfig?.enableLogging == true) {
+            debugPrint(
+                'VaultStorage: FreeRASP security features are only available on Android and iOS. '
+                'Current platform: ${defaultTargetPlatform.name}');
+          }
+        }
+      }
+
       await Hive.initFlutter();
       final key = await getOrCreateSecureKey();
       await openBoxes(key);
@@ -79,6 +114,7 @@ class VaultStorageImpl implements IVaultStorage {
   @override
   Future<void> saveSecure<T>({required String key, required T value}) async {
     _ensureInitialized();
+    _validateSecureEnvironment();
 
     try {
       await setInBox(BoxType.secure, key, value);
@@ -163,6 +199,9 @@ class VaultStorageImpl implements IVaultStorage {
       // 2) For files, delete underlying file content first, then clear metadata boxes
       await clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
       await clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
+
+      // 3) Delete the master encryption key since we're doing a complete wipe
+      await _secureStorage.delete(key: StorageKeys.secureKey);
     } catch (e) {
       throw StorageDeleteError('Failed to clear all storage', e);
     }
@@ -590,6 +629,296 @@ class VaultStorageImpl implements IVaultStorage {
     }
 
     await box.clear();
+  }
+
+  // ==========================================
+  // SECURITY METHODS (Android/iOS only)
+  // ==========================================
+
+  /// Initialize FreeRASP protection with the provided configuration
+  ///
+  /// This method is only called on Android and iOS platforms.
+  /// On other platforms, security initialization is skipped automatically.
+  Future<void> _initializeRaspProtection({
+    String? packageName,
+    List<String>? signingCertHashes,
+    String? bundleId,
+    String? teamId,
+  }) async {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Initializing RASP protection...');
+    }
+
+    final talsecConfig = TalsecConfig(
+      androidConfig: AndroidConfig(
+        packageName: packageName ?? 'your.package.name',
+        signingCertHashes: signingCertHashes ?? [],
+        supportedStores: ['com.android.vending'], // Google Play Store
+      ),
+      iosConfig: IOSConfig(
+        bundleIds: bundleId != null ? [bundleId] : [],
+        teamId: teamId ?? '',
+      ),
+      watcherMail: config.watcherMail ?? '',
+      isProd: config.isProd,
+    );
+
+    final threatCallback = ThreatCallback(
+      onPrivilegedAccess: () => _handleJailbreakDetection(),
+      onAppIntegrity: () => _handleTamperingDetection(),
+      onDebug: () => _handleDebugDetection(),
+      onHooks: () => _handleHookingDetection(),
+      onSimulator: () => _handleEmulatorDetection(),
+      onUnofficialStore: () => _handleUnofficialStoreDetection(),
+      onScreenshot: () => _handleScreenshotDetection(),
+      onScreenRecording: () => _handleScreenRecordingDetection(),
+      onSystemVPN: () => _handleSystemVPNDetection(),
+      onPasscode: () => _handlePasscodeDetection(),
+      onSecureHardwareNotAvailable: () => _handleSecureHardwareDetection(),
+      onDevMode: () => _handleDeveloperModeDetection(),
+      onADBEnabled: () => _handleADBDetection(),
+      onMultiInstance: () => _handleMultiInstanceDetection(),
+    );
+
+    Talsec.instance.attachListener(threatCallback);
+    await Talsec.instance.start(talsecConfig);
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: RASP protection initialized successfully');
+    }
+  }
+
+  /// Check if FreeRASP security features are supported on the current platform
+  bool _isSecuritySupportedOnCurrentPlatform() {
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  /// Validate that the environment is secure for vault operations
+  void _validateSecureEnvironment() {
+    final config = _securityConfig;
+    if (config == null) return;
+
+    // Only validate if security features are supported on this platform
+    if (!_isSecuritySupportedOnCurrentPlatform()) {
+      return;
+    }
+
+    if (!isSecureEnvironment) {
+      if (config.blockOnJailbreak ||
+          config.blockOnTampering ||
+          config.blockOnHooks ||
+          config.blockOnDebug ||
+          config.blockOnEmulator ||
+          config.blockOnUnofficialStore) {
+        throw const SecurityThreatException(
+          'Environment',
+          'Vault operations blocked due to detected security threats',
+        );
+      }
+    }
+  }
+
+  /// Handle jailbreak/root detection
+  void _handleJailbreakDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Jailbreak/Root detected');
+    }
+
+    isSecureEnvironment = false;
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.jailbreak]?.call();
+
+    if (config.blockOnJailbreak) {
+      throw const JailbreakDetectedException();
+    }
+  }
+
+  /// Handle app tampering detection
+  void _handleTamperingDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: App tampering detected');
+    }
+
+    isSecureEnvironment = false;
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.tampering]?.call();
+
+    if (config.blockOnTampering) {
+      throw const TamperingDetectedException();
+    }
+  }
+
+  /// Handle debug detection
+  void _handleDebugDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Debugger detected');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.debugging]?.call();
+
+    if (config.blockOnDebug) {
+      throw const DebugDetectedException();
+    }
+  }
+
+  /// Handle hooking framework detection
+  void _handleHookingDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Hooking framework detected');
+    }
+
+    isSecureEnvironment = false;
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.hooks]?.call();
+
+    if (config.blockOnHooks) {
+      throw const HookingDetectedException();
+    }
+  }
+
+  /// Handle emulator detection
+  void _handleEmulatorDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Emulator detected');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.emulator]?.call();
+
+    if (config.blockOnEmulator) {
+      throw const EmulatorDetectedException();
+    }
+  }
+
+  /// Handle unofficial store detection
+  void _handleUnofficialStoreDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Unofficial store detected');
+    }
+
+    isSecureEnvironment = false;
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.unofficialStore]?.call();
+
+    if (config.blockOnUnofficialStore) {
+      throw const UnofficialStoreDetectedException();
+    }
+  }
+
+  /// Handle screenshot detection
+  void _handleScreenshotDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Screenshot detected');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.screenshot]?.call();
+  }
+
+  /// Handle screen recording detection
+  void _handleScreenRecordingDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Screen recording detected');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.screenRecording]?.call();
+  }
+
+  /// Handle system VPN detection
+  void _handleSystemVPNDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: System VPN detected');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.systemVPN]?.call();
+  }
+
+  /// Handle passcode detection
+  void _handlePasscodeDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Device passcode not set');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.passcode]?.call();
+  }
+
+  /// Handle secure hardware detection
+  void _handleSecureHardwareDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Secure hardware not available');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.secureHardware]?.call();
+  }
+
+  /// Handle developer mode detection
+  void _handleDeveloperModeDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Developer mode enabled');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.developerMode]?.call();
+  }
+
+  /// Handle ADB detection
+  void _handleADBDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: ADB debugging enabled');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.adbEnabled]?.call();
+  }
+
+  /// Handle multiple instance detection
+  void _handleMultiInstanceDetection() {
+    final config = _securityConfig!;
+
+    if (config.enableLogging) {
+      debugPrint('VaultStorage: Multiple app instances detected');
+    }
+
+    // Call user-defined callback if provided
+    config.threatCallbacks?[SecurityThreat.multiInstance]?.call();
   }
 
   @visibleForTesting

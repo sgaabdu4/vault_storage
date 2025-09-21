@@ -488,6 +488,8 @@ void main() {
         verify(() => testContext.mockSecureBox.clear()).called(1);
         verifyNever(() => testContext.mockNormalFilesBox.clear());
         verifyNever(() => testContext.mockSecureFilesBox.clear());
+        // Master key should NOT be deleted when includeFiles=false
+        verifyNever(() => testContext.mockSecureStorage.delete(key: StorageKeys.secureKey));
       });
 
       test('clears key-value and files when includeFiles=true', () async {
@@ -527,6 +529,10 @@ void main() {
         when(() => testContext.mockNormalFilesBox.clear()).thenAnswer((_) async => 0);
         when(() => testContext.mockSecureFilesBox.clear()).thenAnswer((_) async => 0);
 
+        // Mock master key deletion
+        when(() => testContext.mockSecureStorage.delete(key: StorageKeys.secureKey))
+            .thenAnswer((_) async {});
+
         // Act
         await testContext.vaultStorage.clearAll();
 
@@ -550,6 +556,9 @@ void main() {
         // Metadata boxes cleared
         verify(() => testContext.mockNormalFilesBox.clear()).called(1);
         verify(() => testContext.mockSecureFilesBox.clear()).called(1);
+
+        // Master key should be deleted when includeFiles=true (complete wipe)
+        verify(() => testContext.mockSecureStorage.delete(key: StorageKeys.secureKey)).called(1);
       });
 
       test('throws StorageDeleteError on failure', () async {

@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:vault_storage/vault_storage.dart';
-import 'package:file_picker/file_picker.dart';
 
 /*
  * Vault Storage Demo - Platform Setup Requirements
@@ -213,7 +214,125 @@ class VaultStorageDemo extends StatefulWidget {
 }
 
 class _VaultStorageDemoState extends State<VaultStorageDemo> {
-  final vaultStorage = VaultStorage.create();
+  // Simple list to collect security threats during initialization
+  final List<String> _securityThreats = [];
+
+  // Collect all security threats first, then show one dialog
+  Future<void> _checkSecurityAndInitialize() async {
+    try {
+      // Clear any previous threats
+      _securityThreats.clear();
+
+      // Create VaultStorage with threat collection (no dialogs in callbacks)
+      // Note: Security features only work on Android and iOS platforms
+      vaultStorage = VaultStorage.create(
+        securityConfig: VaultSecurityConfig.production(
+          watcherMail: 'security@example.com',
+          threatCallbacks: {
+            SecurityThreat.jailbreak: () =>
+                _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
+            SecurityThreat.tampering: () =>
+                _securityThreats.add('App tampering detected - app integrity compromised'),
+            SecurityThreat.debugging: () => _securityThreats.add('Debug environment detected'),
+            SecurityThreat.emulator: () => _securityThreats.add('Running on emulator/simulator'),
+            SecurityThreat.hooks: () =>
+                _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
+            SecurityThreat.unofficialStore: () =>
+                _securityThreats.add('App installed from unofficial store'),
+            SecurityThreat.screenshot: () => _securityThreats.add('Screen capture detected'),
+            SecurityThreat.screenRecording: () => _securityThreats.add('Screen recording detected'),
+            SecurityThreat.systemVPN: () => _securityThreats.add('System VPN detected'),
+            SecurityThreat.passcode: () => _securityThreats.add('Device passcode not set'),
+            SecurityThreat.secureHardware: () =>
+                _securityThreats.add('Secure hardware not available'),
+            SecurityThreat.developerMode: () => _securityThreats.add('Developer mode enabled'),
+            SecurityThreat.adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
+            SecurityThreat.multiInstance: () =>
+                _securityThreats.add('Multiple app instances detected'),
+          },
+        ),
+      );
+
+      // Initialize storage (this will trigger security checks)
+      await vaultStorage.init(
+        bundleId: 'com.example.storageService.example',
+        teamId: 'YOUR_TEAM_ID',
+      );
+
+      // Load existing keys
+      final keys = await vaultStorage.keys();
+
+      // Update UI
+      setState(() {
+        _isInitialized = true;
+        _availableKeys
+          ..clear()
+          ..addAll(keys);
+      });
+
+      // Show security dialog ONCE if any threats were detected
+      if (_securityThreats.isNotEmpty && mounted) {
+        _showSecurityDialog();
+      }
+    } on JailbreakDetectedException {
+      setState(() {
+        _errorMessage = 'Security Warning: Jailbreak detected - app may have limited functionality';
+        _isInitialized = false;
+      });
+    } on TamperingDetectedException {
+      setState(() {
+        _errorMessage =
+            'Security Error: App tampering detected - please reinstall from official source';
+        _isInitialized = false;
+      });
+    } on SecurityThreatException catch (e) {
+      setState(() {
+        _errorMessage = 'Security threat detected: ${e.threatType} - ${e.message}';
+        _isInitialized = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Initialization Error: $e';
+      });
+    }
+  }
+
+  // Simple dialog showing all collected threats
+  void _showSecurityDialog() {
+    showAdaptiveDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog.adaptive(
+        title: const Text('Security Alert'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Security issues detected:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ..._securityThreats.map((threat) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text('• $threat'),
+                )),
+            const SizedBox(height: 8),
+            const Text('App functionality may be limited.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // VaultStorage instance to be initialized in initState
+  late final IVaultStorage vaultStorage;
   String? _operationResult;
   String? _errorMessage;
   String? _fileKey;
@@ -223,25 +342,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   @override
   void initState() {
     super.initState();
-    _initializeStorage();
-  }
-
-  Future<void> _initializeStorage() async {
-    try {
-      await vaultStorage.init();
-      // Load existing keys (both normal and secure; include file keys)
-      final keys = await vaultStorage.keys();
-      setState(() {
-        _isInitialized = true;
-        _availableKeys
-          ..clear()
-          ..addAll(keys);
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Initialization Error: $e';
-      });
-    }
+    _checkSecurityAndInitialize();
   }
 
   void _clearMessages() {
@@ -341,7 +442,6 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                         .toList()
                     : [
                         const DropdownMenuItem(
-                          value: null,
                           child: Text('No keys stored yet'),
                         ),
                       ],
@@ -388,9 +488,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     _clearMessages();
     try {
       final result = await _getKeyValueInput('Enter Key and Value');
-      if (result == null ||
-          result['key']?.isEmpty == true ||
-          result['value']?.isEmpty == true) {
+      if (result == null || result['key']?.isEmpty == true || result['value']?.isEmpty == true) {
         setState(() => _operationResult = 'Cancelled');
         return;
       }
@@ -405,8 +503,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() {
-        _operationResult =
-            '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
+        _operationResult = '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
         if (!_availableKeys.contains(key)) _availableKeys.add(key);
       });
     } catch (e) {
@@ -437,10 +534,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     try {
       setState(() => _operationResult = 'Opening file picker...');
 
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
-      );
+      final FilePickerResult? result = await FilePicker.platform.pickFiles();
 
       if (result == null) {
         setState(() => _operationResult = 'No file selected');
@@ -457,7 +551,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() => _operationResult = 'Reading file...');
-      late Uint8List bytes;
+      final Uint8List bytes;
       if (file.bytes != null) {
         bytes = file.bytes!;
       } else if (file.path != null) {
@@ -489,8 +583,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
   Future<void> _getFile({bool? isSecure}) async {
     _clearMessages();
-    final key =
-        await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
+    final key = await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
     if (key?.isEmpty ?? true) {
       setState(() => _operationResult = 'Cancelled');
       return;
@@ -627,14 +720,11 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 const SizedBox(height: 16),
                 const Text('File Storage:'),
                 const SizedBox(height: 8),
-                _buildButton(
-                    'Save Secure File', () => _saveFile(isSecure: true)),
-                _buildButton(
-                    'Save Normal File', () => _saveFile(isSecure: false)),
+                _buildButton('Save Secure File', () => _saveFile(isSecure: true)),
+                _buildButton('Save Normal File', () => _saveFile(isSecure: false)),
                 _buildButton('Get File', () => _getFile()),
                 _buildButton('Get Secure File', () => _getFile(isSecure: true)),
-                _buildButton(
-                    'Get Normal File', () => _getFile(isSecure: false)),
+                _buildButton('Get Normal File', () => _getFile(isSecure: false)),
                 const SizedBox(height: 16),
                 const Text('Delete:'),
                 _buildButton('Delete Value', _delete),

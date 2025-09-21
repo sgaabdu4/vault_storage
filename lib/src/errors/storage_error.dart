@@ -2,7 +2,7 @@
 ///
 /// Using a sealed class allows for exhaustive pattern matching on error types,
 /// ensuring that all potential failure cases are handled explicitly.
-sealed class StorageError {
+sealed class StorageError implements Exception {
   /// Creates a new [StorageError] with a descriptive [message] and an optional
   /// [originalException] that caused the error.
   const StorageError(this.message, [this.originalException]);

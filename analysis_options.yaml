@@ -28,6 +28,8 @@ analyzer:
     invalid_annotation_target: ignore
     deprecated_member_use: ignore
     deprecated_member_use_from_same_package: ignore
+    # False positives with SecretBox from cryptography_plus package
+    avoid_dynamic_calls: ignore
   exclude:
     - "bin/cache/**"
     - "dev/conductor/lib/proto/*"
