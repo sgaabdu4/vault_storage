@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:freerasp/freerasp.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vault_storage/src/constants/config.dart';
@@ -10,6 +9,8 @@ import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
 import 'package:vault_storage/src/interface/i_file_operations.dart';
 import 'package:vault_storage/src/interface/i_vault_storage.dart';
+import 'package:vault_storage/src/mock/freerasp_mock.dart'
+    if (dart.library.io) 'package:freerasp/freerasp.dart';
 import 'package:vault_storage/src/security/security_exceptions.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';

@@ -1,3 +1,13 @@
+## \[2.2.1\] - 2025-09-21
+### Web Compatibility Improvements
+- **fix: Add WASM compatibility** - Implemented conditional imports for FreeRASP to ensure package works in WASM runtime
+- **feat: FreeRASP mock implementation** - Added comprehensive mock for FreeRASP on unsupported platforms (Web, Windows, Linux, macOS)
+- **improvement: Cross-platform stability** - Package now gracefully handles FreeRASP dependency across all platforms without breaking WASM compatibility
+
+### Technical Improvements
+- **refactor: Conditional imports for security features** - FreeRASP is only imported when `dart.library.io` is available
+- **docs: Updated platform compatibility notes** - Clarified that security features work seamlessly across all platforms with automatic fallback
+
 ## \[2.2.0\] - 2025-09-21
 ### New Security Features
 - **feat: Optional jailbreak protection with FreeRASP integration** - Add runtime security monitoring to protect your app and user data

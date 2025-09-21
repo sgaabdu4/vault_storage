@@ -229,24 +229,32 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
         securityConfig: VaultSecurityConfig.production(
           watcherMail: 'security@example.com',
           threatCallbacks: {
-            SecurityThreat.jailbreak: () =>
-                _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
-            SecurityThreat.tampering: () =>
-                _securityThreats.add('App tampering detected - app integrity compromised'),
-            SecurityThreat.debugging: () => _securityThreats.add('Debug environment detected'),
-            SecurityThreat.emulator: () => _securityThreats.add('Running on emulator/simulator'),
-            SecurityThreat.hooks: () =>
-                _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
+            SecurityThreat.jailbreak: () => _securityThreats
+                .add('Jailbreak/Root detected - device may be compromised'),
+            SecurityThreat.tampering: () => _securityThreats
+                .add('App tampering detected - app integrity compromised'),
+            SecurityThreat.debugging: () =>
+                _securityThreats.add('Debug environment detected'),
+            SecurityThreat.emulator: () =>
+                _securityThreats.add('Running on emulator/simulator'),
+            SecurityThreat.hooks: () => _securityThreats
+                .add('Runtime manipulation detected (hooks/injection)'),
             SecurityThreat.unofficialStore: () =>
                 _securityThreats.add('App installed from unofficial store'),
-            SecurityThreat.screenshot: () => _securityThreats.add('Screen capture detected'),
-            SecurityThreat.screenRecording: () => _securityThreats.add('Screen recording detected'),
-            SecurityThreat.systemVPN: () => _securityThreats.add('System VPN detected'),
-            SecurityThreat.passcode: () => _securityThreats.add('Device passcode not set'),
+            SecurityThreat.screenshot: () =>
+                _securityThreats.add('Screen capture detected'),
+            SecurityThreat.screenRecording: () =>
+                _securityThreats.add('Screen recording detected'),
+            SecurityThreat.systemVPN: () =>
+                _securityThreats.add('System VPN detected'),
+            SecurityThreat.passcode: () =>
+                _securityThreats.add('Device passcode not set'),
             SecurityThreat.secureHardware: () =>
                 _securityThreats.add('Secure hardware not available'),
-            SecurityThreat.developerMode: () => _securityThreats.add('Developer mode enabled'),
-            SecurityThreat.adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
+            SecurityThreat.developerMode: () =>
+                _securityThreats.add('Developer mode enabled'),
+            SecurityThreat.adbEnabled: () =>
+                _securityThreats.add('ADB debugging enabled'),
             SecurityThreat.multiInstance: () =>
                 _securityThreats.add('Multiple app instances detected'),
           },
@@ -276,7 +284,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
     } on JailbreakDetectedException {
       setState(() {
-        _errorMessage = 'Security Warning: Jailbreak detected - app may have limited functionality';
+        _errorMessage =
+            'Security Warning: Jailbreak detected - app may have limited functionality';
         _isInitialized = false;
       });
     } on TamperingDetectedException {
@@ -287,7 +296,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       });
     } on SecurityThreatException catch (e) {
       setState(() {
-        _errorMessage = 'Security threat detected: ${e.threatType} - ${e.message}';
+        _errorMessage =
+            'Security threat detected: ${e.threatType} - ${e.message}';
         _isInitialized = false;
       });
     } catch (e) {
@@ -488,7 +498,9 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     _clearMessages();
     try {
       final result = await _getKeyValueInput('Enter Key and Value');
-      if (result == null || result['key']?.isEmpty == true || result['value']?.isEmpty == true) {
+      if (result == null ||
+          result['key']?.isEmpty == true ||
+          result['value']?.isEmpty == true) {
         setState(() => _operationResult = 'Cancelled');
         return;
       }
@@ -503,7 +515,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() {
-        _operationResult = '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
+        _operationResult =
+            '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
         if (!_availableKeys.contains(key)) _availableKeys.add(key);
       });
     } catch (e) {
@@ -583,7 +596,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
   Future<void> _getFile({bool? isSecure}) async {
     _clearMessages();
-    final key = await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
+    final key =
+        await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
     if (key?.isEmpty ?? true) {
       setState(() => _operationResult = 'Cancelled');
       return;
@@ -720,11 +734,14 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 const SizedBox(height: 16),
                 const Text('File Storage:'),
                 const SizedBox(height: 8),
-                _buildButton('Save Secure File', () => _saveFile(isSecure: true)),
-                _buildButton('Save Normal File', () => _saveFile(isSecure: false)),
+                _buildButton(
+                    'Save Secure File', () => _saveFile(isSecure: true)),
+                _buildButton(
+                    'Save Normal File', () => _saveFile(isSecure: false)),
                 _buildButton('Get File', () => _getFile()),
                 _buildButton('Get Secure File', () => _getFile(isSecure: true)),
-                _buildButton('Get Normal File', () => _getFile(isSecure: false)),
+                _buildButton(
+                    'Get Normal File', () => _getFile(isSecure: false)),
                 const SizedBox(height: 16),
                 const Text('Delete:'),
                 _buildButton('Delete Value', _delete),
