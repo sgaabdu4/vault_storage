@@ -1,7 +1,7 @@
 ## \[2.2.2\] - 2025-10-13
 ### Dependency Updates
 - **chore: Upgrade freerasp** - Updated from `^7.2.1` to `^7.2.2` for latest security improvements and bug fixes
-- **chore: Upgrade hive_ce** - Updated from `^2.13.2` to `^2.14.0` for improved performance and stability
+- **chore: Upgrade hive_ce** - Updated from `^2.13.2` to `^2.15.0` for improved performance and stability
 
 ## \[2.2.1\] - 2025-09-21
 ### Web Compatibility Improvements
