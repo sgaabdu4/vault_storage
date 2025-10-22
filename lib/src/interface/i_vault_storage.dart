@@ -9,25 +9,24 @@ import 'package:vault_storage/src/errors/storage_error.dart';
 abstract class IVaultStorage {
   /// Initialize storage. Call this once when your app starts.
   ///
-  /// For apps with security features enabled, provide platform-specific configuration:
+  /// Platform-specific security configuration (Android/iOS) should be provided
+  /// in VaultSecurityConfig during create(), not here.
   ///
-  /// **Note**: Security features are only available on Android and iOS platforms.
-  /// On other platforms (macOS, Windows, Linux, Web), security configuration
-  /// will be ignored and vault storage will work normally.
-  ///
-  /// [packageName] - Android package name (required for Android security features)
-  /// [signingCertHashes] - Android signing certificate hashes in Base64 format
-  /// [bundleId] - iOS bundle identifier (required for iOS security features)
-  /// [teamId] - iOS team identifier (required for iOS security features)
+  /// Example:
+  /// ```dart
+  /// final storage = VaultStorage.create(
+  ///   securityConfig: VaultSecurityConfig.production(
+  ///     watcherMail: 'security@app.com',
+  ///     androidPackageName: 'com.example.app',
+  ///     iosBundleId: 'com.example.app',
+  ///   ),
+  /// );
+  /// await storage.init();
+  /// ```
   ///
   /// Throws [StorageError] if initialization fails.
   /// Throws [SecurityThreatException] if security threats are detected during init.
-  Future<void> init({
-    String? packageName,
-    List<String>? signingCertHashes,
-    String? bundleId,
-    String? teamId,
-  });
+  Future<void> init();
 
   // ==========================================
   // KEY-VALUE STORAGE
@@ -35,25 +34,44 @@ abstract class IVaultStorage {
 
   /// Get any value by key with optional storage type specification.
   ///
-  /// - If [isSecure] is null (default): Searches normal storage first, then secure storage
+  /// - If [box] is specified: Only searches the specified custom box
+  /// - If [box] is null and [isSecure] is null (default): Searches all boxes (normal, secure, and custom)
+  ///   and throws [AmbiguousKeyError] if the key exists in multiple boxes
   /// - If [isSecure] is true: Only searches secure storage
   /// - If [isSecure] is false: Only searches normal storage
   ///
   /// Returns null if the key is not found in the specified storage(s).
   /// Throws [StorageError] if the operation fails.
-  Future<T?> get<T>(String key, {bool? isSecure});
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
+  /// Throws [AmbiguousKeyError] if the key exists in multiple boxes and no specific box is specified.
+  Future<T?> get<T>(String key, {bool? isSecure, String? box});
 
   /// Store sensitive data with encryption.
+  ///
+  /// If [box] is specified, stores in the custom box (encryption determined by box config).
+  /// If [box] is null, stores in the default secure box.
+  ///
   /// Throws [StorageError] if the operation fails.
-  Future<void> saveSecure<T>({required String key, required T value});
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
+  Future<void> saveSecure<T>({required String key, required T value, String? box});
 
   /// Store normal data without encryption (faster).
+  ///
+  /// If [box] is specified, stores in the custom box (encryption determined by box config).
+  /// If [box] is null, stores in the default normal box.
+  ///
   /// Throws [StorageError] if the operation fails.
-  Future<void> saveNormal<T>({required String key, required T value});
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
+  Future<void> saveNormal<T>({required String key, required T value, String? box});
 
-  /// Delete key from both storages.
+  /// Delete key from storage.
+  ///
+  /// If [box] is specified, deletes from the custom box only.
+  /// If [box] is null, deletes from all boxes (normal, secure, and all custom boxes).
+  ///
   /// Throws [StorageError] if the operation fails.
-  Future<void> delete(String key);
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
+  Future<void> delete(String key, {String? box});
 
   /// Clear all normal storage.
   ///
@@ -96,31 +114,57 @@ abstract class IVaultStorage {
   // ==========================================
 
   /// Store a file with encryption.
+  ///
+  /// If [box] is specified, stores in the custom box (encryption determined by box config).
+  /// If [box] is null, stores in the default secure files box.
+  ///
   /// Throws [StorageError] if the operation fails.
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> saveSecureFile({
     required String key,
     required Uint8List fileBytes,
     String? originalFileName,
     Map<String, dynamic>? metadata,
+    String? box,
   });
 
   /// Store a file without encryption (faster).
+  ///
+  /// If [box] is specified, stores in the custom box (encryption determined by box config).
+  /// If [box] is null, stores in the default normal files box.
+  ///
   /// Throws [StorageError] if the operation fails.
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> saveNormalFile({
     required String key,
     required Uint8List fileBytes,
     String? originalFileName,
     Map<String, dynamic>? metadata,
+    String? box,
   });
 
   /// Get file content with optional storage type specification.
+  ///
+  /// If [box] is specified: Only searches the specified custom box
+  /// If [box] is null and [isSecure] is null (default): Searches all file boxes
+  ///   and throws [AmbiguousKeyError] if the key exists in multiple boxes
+  /// If [isSecure] is true: Only searches secure files storage
+  /// If [isSecure] is false: Only searches normal files storage
+  ///
   /// Returns null if the file is not found.
   /// Throws [StorageError] if the operation fails.
-  Future<Uint8List?> getFile(String key, {bool? isSecure});
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
+  /// Throws [AmbiguousKeyError] if the key exists in multiple boxes and no specific box is specified.
+  Future<Uint8List?> getFile(String key, {bool? isSecure, String? box});
 
-  /// Delete file from both storages.
+  /// Delete file from storage.
+  ///
+  /// If [box] is specified, deletes from the custom box only.
+  /// If [box] is null, deletes from all file boxes (normal files, secure files, and all custom file boxes).
+  ///
   /// Throws [StorageError] if the operation fails.
-  Future<void> deleteFile(String key);
+  /// Throws [BoxNotFoundError] if the specified box was not registered during init.
+  Future<void> deleteFile(String key, {String? box});
 
   /// Clean up resources.
   /// Throws [StorageError] if the operation fails.

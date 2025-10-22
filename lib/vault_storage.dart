@@ -6,11 +6,13 @@
 /// feature modules from the internal implementation details of the service.
 library;
 
+import 'package:vault_storage/src/entities/box_config.dart';
 import 'package:vault_storage/src/interface/i_vault_storage.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
 export 'src/constants/config.dart';
+export 'src/entities/box_config.dart';
 export 'src/errors/storage_error.dart';
 // Interfaces and Models
 export 'src/interface/i_vault_storage.dart';
@@ -47,10 +49,10 @@ export 'src/security/vault_security_config.dart';
 ///   ),
 /// );
 /// await secureStorage.init(
-///   packageName: 'com.mycompany.myapp',   // Android only
-///   signingCertHashes: ['your_cert_hash'], // Android only
-///   bundleId: 'com.mycompany.myapp',      // iOS only
-///   teamId: 'YOUR_TEAM_ID',               // iOS only
+///   androidPackageName: 'com.mycompany.myapp',   // Android only
+///   androidSigningCertHashes: ['your_cert_hash'], // Android only
+///   iosBundleId: 'com.mycompany.myapp',          // iOS only
+///   iosTeamId: 'YOUR_TEAM_ID',                   // iOS only
 /// );
 ///
 /// // Key-value storage
@@ -78,6 +80,41 @@ class VaultStorage {
   /// [securityConfig] - Optional security configuration for enabling
   /// jailbreak protection and other security features. Only effective on
   /// Android and iOS platforms.
-  static IVaultStorage create({VaultSecurityConfig? securityConfig}) =>
-      VaultStorageImpl(securityConfig: securityConfig);
+  ///
+  /// [customBoxes] - Optional list of custom storage boxes to create.
+  /// Custom boxes allow you to organize data into separate logical containers
+  /// beyond the default `normal` and `secure` boxes. Each box can be configured
+  /// with its own encryption settings.
+  ///
+  /// [storageDirectory] - Optional subdirectory name for Hive storage.
+  /// If provided, Hive will store data in a subdirectory within the app's documents directory.
+  /// Useful for organizing data or using different directories for different purposes.
+  /// Example: 'vault_data', 'user_123', 'production', etc.
+  ///
+  /// Example:
+  /// ```dart
+  /// final storage = VaultStorage.create(
+  ///   customBoxes: [
+  ///     BoxConfig(name: 'themes', encrypted: false),
+  ///     BoxConfig(name: 'auth_info', encrypted: true),
+  ///     BoxConfig(name: 'prescriptions', encrypted: true),
+  ///   ],
+  ///   storageDirectory: 'vault_data', // Optional subdirectory
+  /// );
+  /// await storage.init();
+  ///
+  /// // Use custom boxes
+  /// await storage.saveNormal(key: 'dark_mode', value: true, box: 'themes');
+  /// await storage.saveSecure(key: 'token', value: 'jwt', box: 'auth_info');
+  /// ```
+  static IVaultStorage create({
+    VaultSecurityConfig? securityConfig,
+    List<BoxConfig>? customBoxes,
+    String? storageDirectory,
+  }) =>
+      VaultStorageImpl(
+        securityConfig: securityConfig,
+        customBoxes: customBoxes,
+        storageDirectory: storageDirectory,
+      );
 }

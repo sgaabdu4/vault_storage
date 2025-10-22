@@ -4,6 +4,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vault_storage/src/constants/config.dart';
 import 'package:vault_storage/src/constants/storage_keys.dart';
+import 'package:vault_storage/src/entities/box_config.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
@@ -24,9 +25,14 @@ class VaultStorageImpl implements IVaultStorage {
   final Uuid _uuid;
   final IFileOperations _fileOperations;
   final VaultSecurityConfig? _securityConfig;
+  final List<BoxConfig>? _customBoxConfigs;
+  final String? _storageDirectory;
 
   @visibleForTesting
   final Map<BoxType, BoxBase<dynamic>> boxes = {};
+
+  @visibleForTesting
+  final Map<String, BoxBase<dynamic>> customBoxes = {};
 
   @visibleForTesting
   bool isVaultStorageReady = false;
@@ -40,18 +46,17 @@ class VaultStorageImpl implements IVaultStorage {
     Uuid? uuid,
     IFileOperations? fileOperations,
     VaultSecurityConfig? securityConfig,
+    List<BoxConfig>? customBoxes,
+    String? storageDirectory,
   })  : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _uuid = uuid ?? const Uuid(),
         _fileOperations = fileOperations ?? FileOperations(),
-        _securityConfig = securityConfig;
+        _securityConfig = securityConfig,
+        _customBoxConfigs = customBoxes,
+        _storageDirectory = storageDirectory;
 
   @override
-  Future<void> init({
-    String? packageName,
-    List<String>? signingCertHashes,
-    String? bundleId,
-    String? teamId,
-  }) async {
+  Future<void> init() async {
     if (isVaultStorageReady) return;
 
     try {
@@ -61,10 +66,10 @@ class VaultStorageImpl implements IVaultStorage {
         if (defaultTargetPlatform == TargetPlatform.android ||
             defaultTargetPlatform == TargetPlatform.iOS) {
           await _initializeRaspProtection(
-            packageName: packageName,
-            signingCertHashes: signingCertHashes,
-            bundleId: bundleId,
-            teamId: teamId,
+            packageName: _securityConfig?.androidPackageName,
+            signingCertHashes: _securityConfig?.androidSigningCertHashes,
+            bundleId: _securityConfig?.iosBundleId,
+            teamId: _securityConfig?.iosTeamId,
           );
         } else {
           // Log that security features are not available on this platform
@@ -76,9 +81,15 @@ class VaultStorageImpl implements IVaultStorage {
         }
       }
 
-      await Hive.initFlutter();
+      await Hive.initFlutter(_storageDirectory);
       final key = await getOrCreateSecureKey();
       await openBoxes(key);
+
+      // Open custom boxes if provided
+      if (_customBoxConfigs != null && _customBoxConfigs!.isNotEmpty) {
+        await _openCustomBoxes(_customBoxConfigs!, key);
+      }
+
       isVaultStorageReady = true;
     } catch (e) {
       throw StorageInitializationError('Failed to initialize vault storage', e);
@@ -90,34 +101,90 @@ class VaultStorageImpl implements IVaultStorage {
   // ==========================================
 
   @override
-  Future<T?> get<T>(String key, {bool? isSecure}) async {
+  Future<T?> get<T>(String key, {bool? isSecure, String? box}) async {
     _ensureInitialized();
 
     try {
-      switch (isSecure) {
-        case false:
-          // Only check normal storage
-          return await getFromBox<T>(BoxType.normal, key);
-        case true:
-          // Only check secure storage
-          return await getFromBox<T>(BoxType.secure, key);
-        case null:
-          // Check both: normal first (performance), then secure
-          final normalValue = await getFromBox<T>(BoxType.normal, key);
-          if (normalValue != null) return normalValue;
-          return await getFromBox<T>(BoxType.secure, key);
+      // If a specific box is requested, only check that box
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+        return await _getFromBoxBase<T>(customBox, key);
       }
+
+      // If isSecure is specified, use default boxes
+      if (isSecure != null) {
+        switch (isSecure) {
+          case false:
+            return await getFromBox<T>(BoxType.normal, key);
+          case true:
+            return await getFromBox<T>(BoxType.secure, key);
+        }
+      }
+
+      // Search all boxes and detect ambiguity
+      final foundBoxes = <String>[];
+      T? result;
+
+      // Check default normal box
+      final normalValue = await getFromBox<T>(BoxType.normal, key);
+      if (normalValue != null) {
+        foundBoxes.add('normal');
+        result = normalValue;
+      }
+
+      // Check default secure box
+      final secureValue = await getFromBox<T>(BoxType.secure, key);
+      if (secureValue != null) {
+        foundBoxes.add('secure');
+        result = secureValue;
+      }
+
+      // Check custom boxes
+      for (final entry in customBoxes.entries) {
+        final value = await _getFromBoxBase<T>(entry.value, key);
+        if (value != null) {
+          foundBoxes.add(entry.key);
+          result = value;
+        }
+      }
+
+      // If found in multiple boxes, throw ambiguity error
+      if (foundBoxes.length > 1) {
+        throw AmbiguousKeyError(
+          key,
+          foundBoxes,
+          'Key "$key" found in multiple boxes: ${foundBoxes.join(", ")}. '
+          'Specify the box parameter to disambiguate.',
+        );
+      }
+
+      return result;
     } catch (e) {
+      if (e is StorageError) rethrow;
       throw StorageReadError('Failed to get "$key"', e);
     }
   }
 
   @override
-  Future<void> saveSecure<T>({required String key, required T value}) async {
+  Future<void> saveSecure<T>({required String key, required T value, String? box}) async {
     _ensureInitialized();
     _validateSecureEnvironment();
 
     try {
+      // If box specified, use custom box (encryption determined by box config)
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+        await _putInBoxBase(customBox, key, value);
+        return;
+      }
+
+      // Default: use secure box
       await setInBox(BoxType.secure, key, value);
 
       // Optional: Remove from normal box if it exists there
@@ -126,32 +193,67 @@ class VaultStorageImpl implements IVaultStorage {
         await normalBox!.delete(key);
       }
     } catch (e) {
+      if (e is StorageError) rethrow;
       throw StorageWriteError('Failed to set secure "$key"', e);
     }
   }
 
   @override
-  Future<void> saveNormal<T>({required String key, required T value}) async {
+  Future<void> saveNormal<T>({required String key, required T value, String? box}) async {
     _ensureInitialized();
 
     try {
+      // If box specified, use custom box (encryption determined by box config)
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+        await _putInBoxBase(customBox, key, value);
+        return;
+      }
+
+      // Default: use normal box
       await setInBox(BoxType.normal, key, value);
     } catch (e) {
+      if (e is StorageError) rethrow;
       throw StorageWriteError('Failed to set normal "$key"', e);
     }
   }
 
   @override
-  Future<void> delete(String key) async {
+  Future<void> delete(String key, {String? box}) async {
     _ensureInitialized();
 
     try {
-      // Delete from both key-value boxes
-      await Future.wait<void>([
+      // If box specified, delete from custom box only
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+        if (customBox.containsKey(key)) {
+          await customBox.delete(key);
+        }
+        return;
+      }
+
+      // Delete from all boxes
+      final deleteFutures = <Future<void>>[
         if (boxes[BoxType.normal]?.containsKey(key) == true) boxes[BoxType.normal]!.delete(key),
         if (boxes[BoxType.secure]?.containsKey(key) == true) boxes[BoxType.secure]!.delete(key),
-      ]);
+      ];
+
+      // Delete from custom boxes
+      for (final entry in customBoxes.entries) {
+        if (entry.value.containsKey(key)) {
+          deleteFutures.add(entry.value.delete(key));
+        }
+      }
+
+      await Future.wait<void>(deleteFutures);
     } catch (e) {
+      if (e is StorageError) rethrow;
       throw StorageDeleteError('Failed to delete "$key"', e);
     }
   }
@@ -259,10 +361,32 @@ class VaultStorageImpl implements IVaultStorage {
     required Uint8List fileBytes,
     String? originalFileName,
     Map<String, dynamic>? metadata,
+    String? box,
   }) async {
     _ensureInitialized();
 
     try {
+      // If box specified, use custom box (encryption determined by box config)
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+
+        // For custom boxes, store the file bytes directly as base64 in metadata
+        // (simpler approach for custom boxes - no file_operations complexity)
+        final base64Data = await fileBytes.encodeBase64Safely(context: 'custom box file');
+        final toStore = <String, dynamic>{
+          'base64Data': base64Data,
+          'extension': originalFileName?.split('.').last ?? 'bin',
+          'isCustomBox': true,
+          if (metadata != null) 'userMetadata': metadata,
+        };
+        await _putInBoxBase(customBox, key, toStore);
+        return;
+      }
+
+      // Default secure file storage logic
       final ext = originalFileName?.split('.').last ?? 'bin';
       final shouldStream = fileBytes.length >= VaultStorageConfig.secureFileStreamingThresholdBytes;
 
@@ -308,10 +432,31 @@ class VaultStorageImpl implements IVaultStorage {
     required Uint8List fileBytes,
     String? originalFileName,
     Map<String, dynamic>? metadata,
+    String? box,
   }) async {
     _ensureInitialized();
 
     try {
+      // If box specified, use custom box (encryption determined by box config)
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+
+        // For custom boxes, store the file bytes directly as base64 in metadata
+        final base64Data = await fileBytes.encodeBase64Safely(context: 'custom box file');
+        final toStore = <String, dynamic>{
+          'base64Data': base64Data,
+          'extension': originalFileName?.split('.').last ?? 'bin',
+          'isCustomBox': true,
+          if (metadata != null) 'userMetadata': metadata,
+        };
+        await _putInBoxBase(customBox, key, toStore);
+        return;
+      }
+
+      // Default normal file storage logic
       final fileMetadata = await _fileOperations.saveNormalFile(
         fileBytes: fileBytes,
         fileExtension: originalFileName?.split('.').last ?? 'bin',
@@ -340,31 +485,97 @@ class VaultStorageImpl implements IVaultStorage {
   // Note: streaming is handled internally based on threshold above
 
   @override
-  Future<Uint8List?> getFile(String key, {bool? isSecure}) async {
+  Future<Uint8List?> getFile(String key, {bool? isSecure, String? box}) async {
     _ensureInitialized();
 
     try {
-      // First get file metadata to determine which box it's in
-      final metadata = await getFileMetadata(key, isSecure: isSecure);
-      if (metadata == null) return null;
+      // If box specified, get from custom box only
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+        final metadata = await _getFromBoxBase<Map<String, dynamic>>(customBox, key);
+        if (metadata == null) return null;
 
-      // Determine if this is a secure file based on returned metadata
-      final isSecureFile = metadata['isSecure'] as bool? ?? false;
+        // Custom boxes store data as base64
+        if (metadata['isCustomBox'] == true) {
+          final base64Data = metadata['base64Data'] as String;
+          return base64Data.decodeBase64Safely(context: 'custom box file');
+        }
+        throw StorageReadError('Invalid custom box file metadata for "$key"');
+      }
 
-      if (isSecureFile) {
-        return await _fileOperations.getSecureFile(
-          fileMetadata: metadata,
-          isWeb: kIsWeb,
-          secureStorage: _secureStorage,
-          getBox: getInternalBox,
-        );
-      } else {
-        return await _fileOperations.getNormalFile(
-          fileMetadata: metadata,
+      // If isSecure is specified, use default file boxes
+      if (isSecure != null) {
+        final metadata = await getFileMetadata(key, isSecure: isSecure);
+        if (metadata == null) return null;
+
+        final isSecureFile = metadata['isSecure'] as bool? ?? false;
+        if (isSecureFile) {
+          return await _fileOperations.getSecureFile(
+            fileMetadata: metadata,
+            isWeb: kIsWeb,
+            secureStorage: _secureStorage,
+            getBox: getInternalBox,
+          );
+        } else {
+          return await _fileOperations.getNormalFile(
+            fileMetadata: metadata,
+            isWeb: kIsWeb,
+            getBox: getInternalBox,
+          );
+        }
+      }
+
+      // Search all file boxes and detect ambiguity
+      final foundBoxes = <String>[];
+      Uint8List? result;
+
+      // Check default normal files
+      final normalMetadata = await getFileMetadata(key, isSecure: false);
+      if (normalMetadata != null) {
+        foundBoxes.add('normal_files');
+        result = await _fileOperations.getNormalFile(
+          fileMetadata: normalMetadata,
           isWeb: kIsWeb,
           getBox: getInternalBox,
         );
       }
+
+      // Check default secure files
+      final secureMetadata = await getFileMetadata(key, isSecure: true);
+      if (secureMetadata != null) {
+        foundBoxes.add('secure_files');
+        result = await _fileOperations.getSecureFile(
+          fileMetadata: secureMetadata,
+          isWeb: kIsWeb,
+          secureStorage: _secureStorage,
+          getBox: getInternalBox,
+        );
+      }
+
+      // Check custom boxes
+      for (final entry in customBoxes.entries) {
+        final metadata = await _getFromBoxBase<Map<String, dynamic>>(entry.value, key);
+        if (metadata != null && metadata['isCustomBox'] == true) {
+          foundBoxes.add(entry.key);
+          final base64Data = metadata['base64Data'] as String;
+          result = await base64Data.decodeBase64Safely(context: 'custom box file');
+        }
+      }
+
+      // If found in multiple boxes, throw ambiguity error
+      if (foundBoxes.length > 1) {
+        throw AmbiguousKeyError(
+          key,
+          foundBoxes,
+          'File key "$key" found in multiple boxes: ${foundBoxes.join(", ")}. '
+          'Specify the box parameter to disambiguate.',
+        );
+      }
+
+      return result;
     } catch (e) {
       if (e is StorageError) rethrow;
       throw StorageReadError('Failed to get file "$key"', e);
@@ -372,10 +583,23 @@ class VaultStorageImpl implements IVaultStorage {
   }
 
   @override
-  Future<void> deleteFile(String key) async {
+  Future<void> deleteFile(String key, {String? box}) async {
     _ensureInitialized();
 
     try {
+      // If box specified, delete from custom box only
+      if (box != null) {
+        final customBox = customBoxes[box];
+        if (customBox == null) {
+          throw BoxNotFoundError('Box "$box" not found. Register it during init()');
+        }
+        if (customBox.containsKey(key)) {
+          await customBox.delete(key);
+        }
+        return;
+      }
+
+      // Delete from all boxes
       // Fetch metadata for normal and secure files if present
       final normalMetadata = await getFileMetadata(key, isSecure: false);
       final secureMetadata = await getFileMetadata(key, isSecure: true);
@@ -398,14 +622,24 @@ class VaultStorageImpl implements IVaultStorage {
         );
       }
 
-      // Finally, remove the user-facing metadata entries from both boxes
-      await Future.wait<void>([
+      // Remove from default file boxes
+      final deleteFutures = <Future<void>>[
         if (boxes[BoxType.normalFiles]?.containsKey(key) == true)
           boxes[BoxType.normalFiles]!.delete(key),
         if (boxes[BoxType.secureFiles]?.containsKey(key) == true)
           boxes[BoxType.secureFiles]!.delete(key),
-      ]);
+      ];
+
+      // Delete from custom boxes
+      for (final entry in customBoxes.entries) {
+        if (entry.value.containsKey(key)) {
+          deleteFutures.add(entry.value.delete(key));
+        }
+      }
+
+      await Future.wait<void>(deleteFutures);
     } catch (e) {
+      if (e is StorageError) rethrow;
       throw StorageDeleteError('Failed to delete file "$key"', e);
     }
   }
@@ -423,6 +657,17 @@ class VaultStorageImpl implements IVaultStorage {
           }
         }
         boxes.clear();
+
+        // Close custom boxes
+        for (final box in customBoxes.values) {
+          try {
+            await box.close();
+          } catch (_) {
+            // Ignore close errors during disposal
+          }
+        }
+        customBoxes.clear();
+
         isVaultStorageReady = false;
       }
     } catch (e) {
@@ -462,6 +707,36 @@ class VaultStorageImpl implements IVaultStorage {
 
     if (jsonString == null) return null;
     return jsonString.decodeJsonSafely<T>();
+  }
+
+  /// Get value from any BoxBase (custom boxes)
+  Future<T?> _getFromBoxBase<T>(BoxBase<dynamic> box, String key) async {
+    String? jsonString;
+    if (box is LazyBox<dynamic>) {
+      if (!box.containsKey(key)) return null;
+      jsonString = await box.get(key) as String?;
+    } else if (box is Box<dynamic>) {
+      if (!box.containsKey(key)) return null;
+      jsonString = box.get(key) as String?;
+    } else {
+      return null;
+    }
+
+    if (jsonString == null) return null;
+    return jsonString.decodeJsonSafely<T>();
+  }
+
+  /// Put value into any BoxBase (custom boxes)
+  Future<void> _putInBoxBase<T>(BoxBase<dynamic> box, String key, T value) async {
+    final jsonString = await value.encodeJsonSafely();
+
+    if (box is LazyBox<dynamic>) {
+      await box.put(key, jsonString);
+    } else if (box is Box<dynamic>) {
+      await box.put(key, jsonString);
+    } else {
+      throw const StorageWriteError('Unsupported box type');
+    }
   }
 
   /// Set value in a specific box
@@ -641,10 +916,10 @@ class VaultStorageImpl implements IVaultStorage {
   /// This method is only called on Android and iOS platforms.
   /// On other platforms, security initialization is skipped automatically.
   Future<void> _initializeRaspProtection({
-    String? packageName,
-    List<String>? signingCertHashes,
-    String? bundleId,
-    String? teamId,
+    String? packageName, // Keep internal param name for FreeRASP API
+    List<String>? signingCertHashes, // Keep internal param name for FreeRASP API
+    String? bundleId, // Keep internal param name for FreeRASP API
+    String? teamId, // Keep internal param name for FreeRASP API
   }) async {
     final config = _securityConfig!;
 
@@ -975,6 +1250,39 @@ class VaultStorageImpl implements IVaultStorage {
       );
     } catch (e) {
       throw StorageInitializationError('Failed to open storage boxes', e);
+    }
+  }
+
+  /// Open custom boxes defined by user
+  Future<void> _openCustomBoxes(List<BoxConfig> configs, List<int> encryptionKey) async {
+    try {
+      // Custom compaction strategy
+      bool vaultCompactionStrategy(int entries, int deletedEntries) {
+        if (entries == 0) return false;
+        const deletedRatio = 0.10;
+        const deletedThreshold = 30;
+        return deletedEntries > deletedThreshold && deletedEntries / entries > deletedRatio;
+      }
+
+      for (final config in configs) {
+        final cipher = config.encrypted ? HiveAesCipher(encryptionKey) : null;
+
+        if (config.lazy) {
+          customBoxes[config.name] = await Hive.openLazyBox<String>(
+            config.name,
+            encryptionCipher: cipher,
+            compactionStrategy: vaultCompactionStrategy,
+          );
+        } else {
+          customBoxes[config.name] = await Hive.openBox<String>(
+            config.name,
+            encryptionCipher: cipher,
+            compactionStrategy: vaultCompactionStrategy,
+          );
+        }
+      }
+    } catch (e) {
+      throw StorageInitializationError('Failed to open custom boxes', e);
     }
   }
 }
