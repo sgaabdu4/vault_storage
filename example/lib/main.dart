@@ -1,8 +1,9 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:vault_storage/vault_storage.dart';
 
 /*
@@ -114,10 +115,11 @@ import 'package:vault_storage/vault_storage.dart';
  *    ```
  * 
  * 2. SECURE STORAGE:
- *    Windows Credential Manager stores ONLY the master encryption key.
+ *    Windows uses DPAPI (Data Protection API) to encrypt the master encryption key.
+ *    The encrypted key is stored in a file: %APPDATA%\<app_name>\flutter_secure_storage.dat
  *    Your actual data is encrypted with AES-256-GCM and stored in Hive boxes.
- *    You'll see one entry in Credential Manager (hive_encryption_key), not individual entries.
- *    This provides better performance and scalability.
+ *    The DPAPI encryption is tied to your Windows user account for security.
+ *    This provides better performance and scalability than Windows Credential Manager.
  * 
  * 3. FILE PERMISSIONS:
  *    For file operations, ensure app has write permissions to selected directories.
@@ -650,6 +652,71 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     }
   }
 
+  Future<void> _showStorageLocation() async {
+    _clearMessages();
+    try {
+      final appSupportDir = await getApplicationSupportDirectory();
+      final encryptedFilePath = '${appSupportDir.path}${Platform.pathSeparator}flutter_secure_storage.dat';
+      final fileExists = await File(encryptedFilePath).exists();
+      
+      final message = '''
+Storage Location Information:
+
+📁 Application Support Directory:
+${appSupportDir.path}
+
+🔐 Encrypted Key File:
+$encryptedFilePath
+
+File exists: ${fileExists ? '✅ YES' : '❌ NO'}
+
+${fileExists ? '''
+To view in File Explorer:
+1. Press Win+R
+2. Paste: ${appSupportDir.path}
+3. Look for: flutter_secure_storage.dat
+
+This file contains your encryption key encrypted with Windows DPAPI.
+The key 'hive_encryption_key' is stored inside this file.
+''' : '''
+The file will be created when you first save secure data.
+Try saving a secure value first.
+'''}
+      ''';
+
+      if (mounted) {
+        showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Storage Location'),
+            content: SingleChildScrollView(
+              child: SelectableText(message),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: appSupportDir.path));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Path copied to clipboard!')),
+                    );
+                  }
+                },
+                child: const Text('Copy Path'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _errorMessage = 'Error getting storage location: $e');
+    }
+  }
+
   Future<void> _clearSecureStorage() async {
     _clearMessages();
     try {
@@ -758,6 +825,9 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 const Text('Clear Storage:'),
                 _buildButton('Clear Secure Storage', _clearSecureStorage),
                 _buildButton('Clear Normal Storage', _clearNormalStorage),
+                const SizedBox(height: 16),
+                const Text('Debug:'),
+                _buildButton('🔍 Show Storage Location', _showStorageLocation),
                 if (_availableKeys.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text('Available Keys:'),

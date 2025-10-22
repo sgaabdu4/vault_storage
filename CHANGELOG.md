@@ -1,3 +1,13 @@
+## [2.3.3] - 2025-10-22
+### Documentation Fixes
+- **docs: Corrected Windows storage mechanism** - Fixed incorrect references to Windows Credential Manager. Windows actually uses DPAPI (Data Protection API) with file-based storage at `%APPDATA%\<app_name>\flutter_secure_storage.dat`
+- **docs: Added storage location debug feature** - Example app now includes "Show Storage Location" button to help users verify where encryption keys are stored
+- **docs: Updated README Windows section** - Clarified that encryption key is stored in encrypted file, not Windows Credential Manager
+
+### Breaking Documentation Changes
+- Previous documentation incorrectly stated Windows uses Credential Manager
+- Actual implementation uses DPAPI file encryption (this was always the case, only docs were wrong)
+
 ## [2.3.2] - 2025-10-22
 ### New Features
 - **feat: Custom box support** - Create and manage multiple custom storage boxes with independent security configurations

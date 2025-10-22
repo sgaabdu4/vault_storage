@@ -744,12 +744,34 @@ For runtime: `libsecret-1-0` and `libjsoncpp1`
 No additional configuration required.
 
 **How Secure Storage Works on Windows:**
-- Windows Credential Manager stores only the master encryption key (via `flutter_secure_storage`)
+- Windows uses **DPAPI (Data Protection API)** to encrypt the master encryption key (via `flutter_secure_storage`)
+- The encrypted key is stored in a file at: `%APPDATA%\<app_name>\flutter_secure_storage.dat`
 - Your actual data is encrypted with AES-256-GCM and stored in Hive boxes on disk
-- You'll see one entry in Credential Manager (`hive_encryption_key`), not individual key-value pairs
-- This architecture provides better performance and scalability than storing each entry in Credential Manager
+- The DPAPI encryption is tied to your Windows user account, making it inaccessible to other users or machines
+- This architecture provides better performance and scalability than Windows Credential Manager
+- The key file (`hive_encryption_key`) is stored inside the encrypted `.dat` file, not in Windows Credential Manager
 
 **Note:** `readAll` and `deleteAll` operations have limitations on Windows due to `flutter_secure_storage` constraints.
+
+**Debug: Finding the encrypted file on Windows:**
+
+To verify where your encryption key is stored, you can use the example app's debug feature:
+
+1. Run the example app: `cd example && flutter run -d windows`
+2. Click the "🔍 Show Storage Location" button
+3. The dialog will show you the exact path, typically:
+   - `C:\Users\<username>\AppData\Roaming\<app_name>\flutter_secure_storage.dat`
+
+You can also programmatically get this path using `path_provider`:
+```dart
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
+final appSupportDir = await getApplicationSupportDirectory();
+final encryptedKeyFile = File('${appSupportDir.path}${Platform.pathSeparator}flutter_secure_storage.dat');
+print('Encrypted key location: ${encryptedKeyFile.path}');
+print('File exists: ${await encryptedKeyFile.exists()}');
+```
 
 ### Web
 
