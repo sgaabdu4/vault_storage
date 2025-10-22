@@ -955,7 +955,7 @@ void main() {
         // Act & Assert
         expect(
           () => testContext.vaultStorage.get<String>(key, isSecure: false),
-          throwsA(isA<StorageReadError>()),
+          throwsA(isA<StorageSerializationError>()),
         );
       });
 

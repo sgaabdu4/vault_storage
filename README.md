@@ -2,6 +2,8 @@
 
 A secure, fast, and simple local storage solution for Flutter. Built on Hive and Flutter Secure Storage with AES-GCM encryption. Provides key-value storage and encrypted file storage with full web compatibility. Heavy crypto/JSON/base64 work runs in background isolates to keep your UI smooth.
 
+**NEW in v2.3.0**: Custom boxes support for multi-tenant applications and data isolation!
+
 **NEW in v2.2.0**: FreeRASP integration brings optional jailbreak protection and runtime security monitoring!
 
 ### Migration Benefits
@@ -185,28 +187,27 @@ import 'package:vault_storage/vault_storage.dart';
 final storage = VaultStorage.create(
   securityConfig: VaultSecurityConfig.production(
     watcherMail: 'security@mycompany.com',
+    androidPackageName: 'com.mycompany.myapp',
+    androidSigningCertHashes: ['your_cert_hash'],
+    iosBundleId: 'com.mycompany.myapp',
+    iosTeamId: 'YOUR_TEAM_ID',
     threatCallbacks: {
       SecurityThreat.jailbreak: () {
-      // Custom handling - log event, show warning, etc.
-      print('Warning: Jailbreak detected - limiting functionality');
-    },
-    SecurityThreat.tampering: () {
-      // Handle app tampering - could exit app
-      print('Alert: App integrity compromised');
-      exit(0);
-    },
+        // Custom handling - log event, show warning, etc.
+        print('Warning: Jailbreak detected - limiting functionality');
+      },
+      SecurityThreat.tampering: () {
+        // Handle app tampering - could exit app
+        print('Alert: App integrity compromised');
+        exit(0);
+      },
     },
   ),
 );
 
-// Initialize with platform-specific security config
+// Initialize storage
 // Note: Security features only work on Android and iOS
-await storage.init(
-  packageName: 'com.mycompany.myapp',           // Android
-  signingCertHashes: ['your_cert_hash'],       // Android signing cert
-  bundleId: 'com.mycompany.myapp',             // iOS
-  teamId: 'YOUR_TEAM_ID',                      // iOS team ID
-);
+await storage.init();
 
 // Use normally - security runs automatically in background
 await storage.saveSecure(key: 'api_key', value: 'secret');
@@ -544,6 +545,53 @@ final normalOnly = await storage.get<String>('theme', isSecure: false);
 ```
 
 The factory returns `IVaultStorage` and hides implementation details.
+
+### Custom Boxes (NEW in v2.3.0)
+
+Create multiple isolated storage boxes for advanced use cases like multi-tenancy or feature separation:
+
+```dart
+import 'package:vault_storage/vault_storage.dart';
+
+// Create storage with custom boxes
+final storage = VaultStorage.create(
+  customBoxes: [
+    BoxConfig(name: 'user_123', isSecure: true),
+    BoxConfig(name: 'workspace_abc', isSecure: true),
+    BoxConfig(name: 'cache', isSecure: false),
+  ],
+);
+
+// Initialize storage
+await storage.init();
+
+// Use specific boxes
+await storage.saveSecure(
+  key: 'api_key',
+  value: 'secret',
+  box: 'user_123', // Store in custom box
+);
+
+// Read from specific box
+final value = await storage.get<String>(
+  'api_key',
+  box: 'user_123',
+  isSecure: true,
+);
+
+// Each box is completely isolated
+await storage.saveNormal(
+  key: 'preferences',
+  value: {'theme': 'dark'},
+  box: 'workspace_abc',
+);
+```
+
+**Use Cases for Custom Boxes:**
+- **Multi-tenant apps**: Separate storage per user or organization
+- **Feature isolation**: Independent storage for different app modules
+- **Data lifecycle**: Separate boxes for cache vs. persistent data
+- **Workspace management**: Multiple workspaces with isolated data
 
 ## Platform Setup
 

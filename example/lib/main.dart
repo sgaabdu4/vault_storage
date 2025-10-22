@@ -223,11 +223,38 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       // Clear any previous threats
       _securityThreats.clear();
 
-      // Create VaultStorage with threat collection (no dialogs in callbacks)
+      // Create VaultStorage with optional features:
+      // - customBoxes: Organize data into separate logical containers
+      // - storageDirectory: Set custom subdirectory for Hive storage
+      // - securityConfig: Configure runtime security with FreeRASP (Android/iOS only)
+      //
+      // Example with all features:
+      // vaultStorage = VaultStorage.create(
+      //   customBoxes: [
+      //     BoxConfig(name: 'themes', encrypted: false),
+      //     BoxConfig(name: 'auth', encrypted: true),
+      //   ],
+      //   storageDirectory: 'my_app_data',
+      //   securityConfig: VaultSecurityConfig.production(
+      //     watcherMail: 'security@example.com',
+      //     androidPackageName: 'com.example.app',           // Android
+      //     androidSigningCertHashes: ['your_cert_hash'],    // Android
+      //     iosBundleId: 'com.example.app',                  // iOS
+      //     iosTeamId: 'YOUR_TEAM_ID',                       // iOS
+      //     threatCallbacks: { ... },
+      //   ),
+      // );
+
+      // Create VaultStorage with security features for production
       // Note: Security features only work on Android and iOS platforms
       vaultStorage = VaultStorage.create(
         securityConfig: VaultSecurityConfig.production(
           watcherMail: 'security@example.com',
+          // Platform identifiers for FreeRASP security
+          iosBundleId: 'com.example.storageService.example', // iOS
+          iosTeamId: 'YOUR_TEAM_ID', // iOS
+          // androidPackageName: 'com.example.storage_service',   // Android
+          // androidSigningCertHashes: ['your_cert_hash'],        // Android
           threatCallbacks: {
             SecurityThreat.jailbreak: () =>
                 _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
@@ -253,11 +280,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
         ),
       );
 
-      // Initialize storage (this will trigger security checks)
-      await vaultStorage.init(
-        bundleId: 'com.example.storageService.example',
-        teamId: 'YOUR_TEAM_ID',
-      );
+      // Initialize storage - all config is in create(), so init() takes no params
+      await vaultStorage.init();
 
       // Load existing keys
       final keys = await vaultStorage.keys();

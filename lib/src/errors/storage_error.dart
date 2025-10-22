@@ -63,3 +63,27 @@ class StorageSerializationError extends StorageError {
   /// Creates a new [StorageSerializationError].
   const StorageSerializationError(super.message, [super.originalException]);
 }
+
+/// An error that occurs when attempting to access a custom box that was not registered during init.
+///
+/// Custom boxes must be defined when creating the VaultStorage instance.
+class BoxNotFoundError extends StorageError {
+  /// Creates a new [BoxNotFoundError].
+  const BoxNotFoundError(super.message, [super.originalException]);
+}
+
+/// An error that occurs when a key exists in multiple boxes and no specific box is specified.
+///
+/// When calling get() without specifying a box parameter, if the key exists in more than
+/// one box (including default normal/secure boxes and custom boxes), this error is thrown
+/// to prevent ambiguity.
+class AmbiguousKeyError extends StorageError {
+  /// The key that exists in multiple boxes.
+  final String key;
+
+  /// The names of the boxes where the key was found.
+  final List<String> foundInBoxes;
+
+  /// Creates a new [AmbiguousKeyError].
+  const AmbiguousKeyError(this.key, this.foundInBoxes, super.message, [super.originalException]);
+}

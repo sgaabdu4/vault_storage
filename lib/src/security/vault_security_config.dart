@@ -16,14 +16,14 @@ typedef SecurityThreatCallback = void Function();
 ///
 /// Example:
 /// ```dart
-/// final securityConfig = VaultSecurityConfig(
-///   enableRaspProtection: true,
-///   isProd: false, // Development mode
-///   watcherMail: 'security@myapp.com',
-///   blockOnJailbreak: true,
+/// final securityConfig = VaultSecurityConfig.production(
+///   watcherMail: 'security@example.com',
+///   androidPackageName: 'com.example.app',      // Android
+///   androidSigningCertHashes: ['cert_hash'],    // Android
+///   iosBundleId: 'com.example.app',             // iOS
+///   iosTeamId: 'YOUR_TEAM_ID',                  // iOS
 ///   threatCallbacks: {
 ///     SecurityThreat.jailbreak: () => print('Jailbreak detected!'),
-///     SecurityThreat.tampering: () => exit(0),
 ///   },
 /// );
 /// ```
@@ -32,12 +32,24 @@ class VaultSecurityConfig {
   final bool enableRaspProtection;
 
   /// Whether this is a production build
-  /// - true: Enables all security features
-  /// - false: Development mode with reduced security checks
+  /// - Production mode: Strict security, blocks threats, minimal logging
+  /// - Development mode: Logs all threats but doesn't block, allows debugging/emulators
   final bool isProd;
 
-  /// Email for security notifications and monitoring
+  /// Email for security notifications and monitoring dashboard
   final String? watcherMail;
+
+  /// Android package name (e.g., 'com.example.app')
+  final String? androidPackageName;
+
+  /// Android signing certificate hashes in Base64 format
+  final List<String>? androidSigningCertHashes;
+
+  /// iOS bundle identifier (e.g., 'com.example.app')
+  final String? iosBundleId;
+
+  /// iOS team identifier from Apple Developer account
+  final String? iosTeamId;
 
   /// Custom callbacks for different security threats
   final Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks;
@@ -67,6 +79,10 @@ class VaultSecurityConfig {
     this.enableRaspProtection = false,
     this.isProd = true,
     this.watcherMail,
+    this.androidPackageName,
+    this.androidSigningCertHashes,
+    this.iosBundleId,
+    this.iosTeamId,
     this.threatCallbacks,
     this.blockOnJailbreak = true,
     this.blockOnDebug = false,
@@ -77,23 +93,31 @@ class VaultSecurityConfig {
     this.enableLogging = false,
   });
 
-  /// Creates a development-friendly configuration
+  /// Creates a development-friendly configuration for testing
   ///
-  /// This configuration is suitable for development and testing:
-  /// - Production mode disabled
-  /// - Most blocking features disabled
-  /// - Logging enabled
+  /// Use this during development and testing:
+  /// - **Logs all threats** but doesn't block app functionality
+  /// - Allows debugging, emulators, and development tools
+  /// - Platform params optional (can test without real app IDs)
   ///
   /// **Note**: Security features only work on Android and iOS platforms.
   /// On other platforms, this configuration will be ignored.
   static VaultSecurityConfig development({
     String? watcherMail,
+    String? androidPackageName,
+    List<String>? androidSigningCertHashes,
+    String? iosBundleId,
+    String? iosTeamId,
     Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks,
   }) {
     return VaultSecurityConfig(
       enableRaspProtection: true,
       isProd: false,
       watcherMail: watcherMail,
+      androidPackageName: androidPackageName,
+      androidSigningCertHashes: androidSigningCertHashes,
+      iosBundleId: iosBundleId,
+      iosTeamId: iosTeamId,
       threatCallbacks: threatCallbacks,
       blockOnJailbreak: false,
       blockOnTampering: false,
@@ -102,25 +126,34 @@ class VaultSecurityConfig {
     );
   }
 
-  /// Creates a production-ready configuration
+  /// Creates a production-ready configuration with strict security
   ///
-  /// This configuration provides maximum security for production:
-  /// - Production mode enabled
-  /// - All critical security features enabled
-  /// - Blocks on major threats
+  /// Use this for production releases:
+  /// - **Blocks jailbreak, tampering, unofficial stores**
+  /// - Minimal logging to avoid leaking security info
+  /// - Requires real app identifiers for Android/iOS
   ///
   /// **Note**: Security features only work on Android and iOS platforms.
   /// On other platforms, this configuration will be ignored.
   static VaultSecurityConfig production({
     required String watcherMail,
+    String? androidPackageName, // Required for Android
+    List<String>? androidSigningCertHashes, // Required for Android
+    String? iosBundleId, // Required for iOS
+    String? iosTeamId, // Required for iOS
     Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks,
   }) {
     return VaultSecurityConfig(
       enableRaspProtection: true,
       watcherMail: watcherMail,
+      androidPackageName: androidPackageName,
+      androidSigningCertHashes: androidSigningCertHashes,
+      iosBundleId: iosBundleId,
+      iosTeamId: iosTeamId,
       threatCallbacks: threatCallbacks,
-      blockOnDebug: true,
+      blockOnDebug: true, // Block debugging in production
       blockOnUnofficialStore: true,
+      // enableLogging defaults to false
     );
   }
 
@@ -129,6 +162,10 @@ class VaultSecurityConfig {
     bool? enableRaspProtection,
     bool? isProd,
     String? watcherMail,
+    String? androidPackageName,
+    List<String>? androidSigningCertHashes,
+    String? iosBundleId,
+    String? iosTeamId,
     Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks,
     bool? blockOnJailbreak,
     bool? blockOnDebug,
@@ -142,6 +179,10 @@ class VaultSecurityConfig {
       enableRaspProtection: enableRaspProtection ?? this.enableRaspProtection,
       isProd: isProd ?? this.isProd,
       watcherMail: watcherMail ?? this.watcherMail,
+      androidPackageName: androidPackageName ?? this.androidPackageName,
+      androidSigningCertHashes: androidSigningCertHashes ?? this.androidSigningCertHashes,
+      iosBundleId: iosBundleId ?? this.iosBundleId,
+      iosTeamId: iosTeamId ?? this.iosTeamId,
       threatCallbacks: threatCallbacks ?? this.threatCallbacks,
       blockOnJailbreak: blockOnJailbreak ?? this.blockOnJailbreak,
       blockOnDebug: blockOnDebug ?? this.blockOnDebug,

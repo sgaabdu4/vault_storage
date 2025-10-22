@@ -36,6 +36,7 @@ coverage/
 # Generated files
 *_box.hive
 *_box.lock
+test-file-id*
 
 example/macos
 example/ios

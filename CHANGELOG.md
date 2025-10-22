@@ -1,3 +1,36 @@
+## \[2.3.0\] - 2025-10-22
+### New Features
+- **feat: Custom box support** - Create and manage multiple custom storage boxes with independent security configurations
+- **feat: Box isolation** - Each custom box maintains separate encryption and storage, enabling multi-tenancy and data segregation
+- **feat: Dynamic box management** - Add custom boxes at initialization with flexible configuration options
+- **feat: BoxConfig entity** - Immutable configuration with Freezed for type-safe box definitions
+
+### API Enhancements
+- **feat: Enhanced create() factory** - Added optional `customBoxes` parameter to define additional storage boxes at creation
+- **feat: Box parameter in storage methods** - All storage methods now accept optional `box` parameter to target specific custom boxes
+- **feat: Factory method parameters** - VaultStorage.create() now supports customBoxes and storageDirectory parameters
+
+### Documentation Updates
+- **docs: Custom boxes usage guide** - Comprehensive examples for multi-tenant and isolated storage scenarios
+- **docs: BoxConfig examples** - Configuration patterns for secure and normal custom boxes
+- **docs: Migration examples** - Clear guidance for adopting custom boxes in existing applications
+
+### Testing Improvements
+- **test: Custom box comprehensive tests** - Full test coverage for custom box operations
+- **test: Box isolation validation** - Ensure data segregation between boxes
+- **test: BoxConfig entity tests** - Verify immutability and equality behavior
+
+### Use Cases
+- **Multi-tenant applications**: Separate storage per user or organization
+- **Feature isolation**: Independent storage for different app features
+- **Data categorization**: Organize data by type, sensitivity, or lifecycle
+- **Workspace management**: Multiple workspaces with isolated data
+
+### Backward Compatibility
+- **No breaking changes** - Custom boxes are completely optional
+- **Default behavior unchanged** - Existing code works without modification
+- **Gradual migration** - Add custom boxes incrementally as needed
+
 ## \[2.2.2\] - 2025-10-13
 ### Dependency Updates
 - **chore: Upgrade freerasp** - Updated from `^7.2.1` to `^7.2.2` for latest security improvements and bug fixes
@@ -60,19 +93,20 @@
 ### 🚀 Usage Examples
 #### Basic usage (no security)
     final storage = VaultStorage.create();
-    await storage.init();#### With security features
+    await storage.init();
+
+#### With security features
     final storage = VaultStorage.create(
       securityConfig: VaultSecurityConfig.production(
         watcherMail: 'security@mycompany.com',
+        androidPackageName: 'com.mycompany.myapp',
+        androidSigningCertHashes: ['your_cert_hash'],
+        iosBundleId: 'com.mycompany.myapp',
+        iosTeamId: 'YOUR_TEAM_ID',
       ),
     );
     // Security features will only be active on Android and iOS
-    await storage.init(
-      packageName: 'com.mycompany.myapp',   // Android only
-      signingCertHashes: ['your_cert_hash'], // Android only
-      bundleId: 'com.mycompany.myapp',      // iOS only
-      teamId: 'YOUR_TEAM_ID',               // iOS only
-    );## \[2.1.2\] - 2025-08-15
+    await storage.init();## \[2.1.2\] - 2025-08-15
 ### Documentation improvements
 - docs: Enhanced macOS setup documentation with complete entitlement files and codesigning requirements
 - docs: Added comprehensive troubleshooting steps for `StorageInitializationError` on macOS
