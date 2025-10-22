@@ -576,7 +576,6 @@ await storage.saveSecure(
 final value = await storage.get<String>(
   'api_key',
   box: 'user_123',
-  isSecure: true,
 );
 
 // Each box is completely isolated
