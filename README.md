@@ -741,7 +741,15 @@ For runtime: `libsecret-1-0` and `libjsoncpp1`
 
 ### Windows
 
-No additional configuration required. Note: `readAll` and `deleteAll` operations have limitations on Windows.
+No additional configuration required.
+
+**How Secure Storage Works on Windows:**
+- Windows Credential Manager stores only the master encryption key (via `flutter_secure_storage`)
+- Your actual data is encrypted with AES-256-GCM and stored in Hive boxes on disk
+- You'll see one entry in Credential Manager (`hive_encryption_key`), not individual key-value pairs
+- This architecture provides better performance and scalability than storing each entry in Credential Manager
+
+**Note:** `readAll` and `deleteAll` operations have limitations on Windows due to `flutter_secure_storage` constraints.
 
 ### Web
 
