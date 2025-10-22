@@ -113,9 +113,11 @@ import 'package:vault_storage/vault_storage.dart';
  *    set(CMAKE_CXX_STANDARD 17)
  *    ```
  * 
- * 2. DEPENDENCIES:
- *    Windows uses Windows Credential Manager for secure storage.
- *    No additional setup required for basic functionality.
+ * 2. SECURE STORAGE:
+ *    Windows Credential Manager stores ONLY the master encryption key.
+ *    Your actual data is encrypted with AES-256-GCM and stored in Hive boxes.
+ *    You'll see one entry in Credential Manager (hive_encryption_key), not individual entries.
+ *    This provides better performance and scalability.
  * 
  * 3. FILE PERMISSIONS:
  *    For file operations, ensure app has write permissions to selected directories.

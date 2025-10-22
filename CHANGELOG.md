@@ -1,4 +1,4 @@
-## \[2.3.0\] - 2025-10-22
+## [2.3.0] - 2025-10-22
 ### New Features
 - **feat: Custom box support** - Create and manage multiple custom storage boxes with independent security configurations
 - **feat: Box isolation** - Each custom box maintains separate encryption and storage, enabling multi-tenancy and data segregation
@@ -31,12 +31,12 @@
 - **Default behavior unchanged** - Existing code works without modification
 - **Gradual migration** - Add custom boxes incrementally as needed
 
-## \[2.2.2\] - 2025-10-13
+## [2.2.2] - 2025-10-13
 ### Dependency Updates
 - **chore: Upgrade freerasp** - Updated from `^7.2.1` to `^7.2.2` for latest security improvements and bug fixes
 - **chore: Upgrade hive_ce** - Updated from `^2.13.2` to `^2.15.0` for improved performance and stability
 
-## \[2.2.1\] - 2025-09-21
+## [2.2.1] - 2025-09-21
 ### Web Compatibility Improvements
 - **fix: Add WASM compatibility** - Implemented conditional imports for FreeRASP to ensure package works in WASM runtime
 - **feat: FreeRASP mock implementation** - Added comprehensive mock for FreeRASP on unsupported platforms (Web, Windows, Linux, macOS)
@@ -46,7 +46,7 @@
 - **refactor: Conditional imports for security features** - FreeRASP is only imported when `dart.library.io` is available
 - **docs: Updated platform compatibility notes** - Clarified that security features work seamlessly across all platforms with automatic fallback
 
-## \[2.2.0\] - 2025-09-21
+## [2.2.0] - 2025-09-21
 ### New Security Features
 - **feat: Optional jailbreak protection with FreeRASP integration** - Add runtime security monitoring to protect your app and user data
 - **feat: Comprehensive threat detection** - Detect jailbreak/root, app tampering, debugging, hooking frameworks, emulators, and more
@@ -106,7 +106,7 @@
       ),
     );
     // Security features will only be active on Android and iOS
-    await storage.init();## \[2.1.2\] - 2025-08-15
+    await storage.init();## [2.1.2] - 2025-08-15
 ### Documentation improvements
 - docs: Enhanced macOS setup documentation with complete entitlement files and codesigning requirements
 - docs: Added comprehensive troubleshooting steps for `StorageInitializationError` on macOS
@@ -114,7 +114,7 @@
 - docs: Added step-by-step codesigning setup instructions in Xcode
 - docs: Clarified why keychain access and codesigning are required for VaultStorage initialization
 
-## \[2.1.1\] - 2025-08-11
+## [2.1.1] - 2025-08-11
 ### Web compatibility and quality
 - fix: Remove `dart:isolate` from the public import graph and use `compute` from `flutter/foundation`, enabling web platform detection on pub.dev.
 - fix: Use conditional imports that default to web-safe stubs and import `dart:io` only behind `dart.library.io`.
@@ -122,7 +122,7 @@
 - chore: Add IO stubs in web mocks to satisfy analyzer for conditional imports.
 - fix: Address analyzer warnings (avoid `await` on synchronous `containsKey`).
 
-## \[2.1.0\] - 2025-08-10
+## [2.1.0] - 2025-08-10
 ### New Features
 - feat: Add `clearAll({bool includeFiles = true})` to wipe both key-value and file storage in one call
 - feat: Extend `clearNormal()` and `clearSecure()` with `includeFiles` (default `false`) to optionally delete underlying files and file metadata for the respective storage
@@ -131,7 +131,7 @@
 - refactor: Consolidate file-clearing logic into `clearAllFilesInBox(...)` with `@visibleForTesting` for easier testing
 - test: Add coverage for `clearAll`, and `includeFiles` behavior in `clearNormal` and `clearSecure`
 
-## \[2.0.0\] - 2025-08-08
+## [2.0.0] - 2025-08-08
 This release delivers a simpler, clearer API and improved performance characteristics. It replaces the BoxType/Either-based surface with intent-driven methods and exception-based error handling. File APIs are simplified to use your own keys instead of passing metadata around.
 
 ### Breaking Changes
@@ -187,7 +187,7 @@ This release delivers a simpler, clearer API and improved performance characteri
 
 Refer to the README Migration Guide for full examples.
 
-## \[1.2.1\] - 2025-07-13
+## [1.2.1] - 2025-07-13
 ### New Features
 - **feat: Automatic file downloads on web platforms** - `getSecureFile()` and `getNormalFile()` now automatically trigger downloads in web browsers while maintaining native platform behavior
 - **feat: Custom download filenames** - Added optional `downloadFileName` parameter to file retrieval methods for custom web download names
@@ -218,7 +218,7 @@ Refer to the README Migration Guide for full examples.
 ### Dependencies
 - **Added**: `web: ^1.1.1` for modern web API access
 
-## \[1.1.0\] - 2025-07-05
+## [1.1.0] - 2025-07-05
 ### Bug Fixes
 - **fix: Android compilation issues** - Fixed Android build failures by migrating from unmaintained `cryptography` package to actively maintained `cryptography_plus`
 - **fix: AGP 8.x compatibility** - Resolved Android Gradle Plugin 8.x compatibility issues that prevented compilation on newer Android projects
@@ -232,7 +232,7 @@ Refer to the README Migration Guide for full examples.
 - **Android compatibility**: Projects that previously failed to compile on Android with AGP 8.x will now work correctly
 - **Breaking changes**: None for end users - all public APIs remain the same
 
-## \[1.0.1\] - 2025-06-27
+## [1.0.1] - 2025-06-27
 ### Documentation Improvements
 - **docs: Fix incorrect parameter name in README.md** - Corrected `metadata:` to `fileMetadata:` in `getSecureFile` method example
 - **docs: Fix version inconsistencies** - Updated all version references from `^0.1.1` to `^1.0.0` to match current package version
@@ -243,7 +243,7 @@ Refer to the README Migration Guide for full examples.
 - **fix: Correct API usage examples** - All code examples now use the correct method signatures and parameter names
 - **fix: Improve error handling patterns** - Better distinction between functional error handling (Either) and exception-based error handling (try-catch)
 
-## \[1.0.0\] - 2025-06-26
+## [1.0.0] - 2025-06-26
 ### Breaking Changes
 - **BREAKING: Remove built-in Riverpod provider** - The package no longer includes a built-in Riverpod provider to remain framework-agnostic
 - **BREAKING: Hide implementation details** - Use `VaultStorage.create()` factory method instead
@@ -276,13 +276,13 @@ Replace direct instantiation with the factory method:
     // After
     final storage = VaultStorage.create();This change makes the package more flexible, reduces its dependency footprint, and provides a cleaner API.
 
-## \[0.1.1\] - 2025-06-24
+## [0.1.1] - 2025-06-24
 - refactor: Remove export of unused storage\_keys constant from vault\_storage.dart
 - chore: Update build\_runner dependency to version 2.5.4 in pubspec.yaml
 - chore: Update \_fe\_analyzer\_shared and analyzer versions in pubspec.lock
 - test: Refactor error handling tests to use async/await for improved readability
 
-## \[0.1.0\] - 2025-06-22
+## [0.1.0] - 2025-06-22
 ### Features
 - **feat: Add support for normal file storage** - Complete implementation with save, retrieve, and delete functionalities
 - **feat: Add JsonSafe utility** - Safe JSON encoding and decoding with comprehensive error handling
@@ -313,17 +313,17 @@ Replace direct instantiation with the factory method:
 - **security: Add production use disclaimers** - Clear security limitations and audit requirements
 - **platform: Add macOS entitlements documentation** - Required keychain access setup for macOS apps
 
-## \[0.0.4\] - 2025-06-20
+## [0.0.4] - 2025-06-20
 - refactor: Rename storageService to vaultStorage for consistency in README and tests
 - chore: Update README for web compatibility and usage improvements
 - docs: Clarify Riverpod dev version requirement and that generated files are included
 - docs: Improve code examples and error handling documentation
 - docs: Add comprehensive usage examples for both key-value and secure file storage
 
-## \[0.0.3\] - 2025-06-19
+## [0.0.3] - 2025-06-19
 - fix: Update conditional imports for web compatibility in vault\_storage\_impl.dart, from dart.library.html to dart.library.js\_interop
 
-## \[0.0.2\] - 2025-06-18
+## [0.0.2] - 2025-06-18
 - Added web compatibility for vault\_storage package.
 - Enhanced storage capabilities:
   - Added secure file storage with new Hive box.
@@ -338,7 +338,7 @@ Replace direct instantiation with the factory method:
   - Cleaned up unused code in test files.
   - Refactored implementation for better maintainability.
 
-## \[0.0.1\] - 2025-06-17
+## [0.0.1] - 2025-06-17
 - Initial release of the `vault_storage` package.
 - Provides secure key-value and file storage using Hive and `flutter_secure_storage`.
 - Features include:
@@ -347,5 +347,3 @@ Replace direct instantiation with the factory method:
   - Cryptographic operations offloaded to background isolates.
   - Type-safe error handling with `fpdart`.
   - Riverpod provider for easy dependency injection.
-
-## 2.2.0 - 2025-09-21
