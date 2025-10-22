@@ -7,6 +7,35 @@ on:
     branches: [main]
 
 jobs:
+  version-check:
+    name: Check Version Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check version consistency
+        run: |
+          # Extract version from pubspec.yaml
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | tr -d '\r')
+          echo "Version in pubspec.yaml: $PUBSPEC_VERSION"
+          
+          # Extract version from CHANGELOG.md (first occurrence of ## [version])
+          CHANGELOG_VERSION=$(grep -m 1 '## \[' CHANGELOG.md | sed 's/.*\[\(.*\)\].*/\1/' | tr -d '\r')
+          echo "Version in CHANGELOG.md: $CHANGELOG_VERSION"
+          
+          # Compare versions
+          if [ "$PUBSPEC_VERSION" != "$CHANGELOG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   pubspec.yaml: $PUBSPEC_VERSION"
+            echo "   CHANGELOG.md: $CHANGELOG_VERSION"
+            echo ""
+            echo "Please ensure the version in CHANGELOG.md matches pubspec.yaml"
+            exit 1
+          else
+            echo "✅ Version consistency check passed: $PUBSPEC_VERSION"
+          fi
+
   format:
     name: Check Formatting
     runs-on: ubuntu-latest
