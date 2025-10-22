@@ -1,4 +1,4 @@
-## [2.3.0] - 2025-10-22
+## [2.3.2] - 2025-10-22
 ### New Features
 - **feat: Custom box support** - Create and manage multiple custom storage boxes with independent security configurations
 - **feat: Box isolation** - Each custom box maintains separate encryption and storage, enabling multi-tenancy and data segregation
