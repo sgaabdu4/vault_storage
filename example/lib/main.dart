@@ -658,7 +658,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       final appSupportDir = await getApplicationSupportDirectory();
       final encryptedFilePath =
           '${appSupportDir.path}${Platform.pathSeparator}flutter_secure_storage.dat';
-      final fileExists = await File(encryptedFilePath).exists();
+      final fileExists = File(encryptedFilePath).existsSync();
 
       final message = '''
 Storage Location Information:
