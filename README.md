@@ -556,9 +556,9 @@ import 'package:vault_storage/vault_storage.dart';
 // Create storage with custom boxes
 final storage = VaultStorage.create(
   customBoxes: [
-    BoxConfig(name: 'user_123', isSecure: true),
-    BoxConfig(name: 'workspace_abc', isSecure: true),
-    BoxConfig(name: 'cache', isSecure: false),
+    BoxConfig(name: 'user_123', encrypted: true),
+    BoxConfig(name: 'workspace_abc', encrypted: true),
+    BoxConfig(name: 'cache', encrypted: false),
   ],
 );
 

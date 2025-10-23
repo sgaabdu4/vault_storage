@@ -1,3 +1,7 @@
+## [2.3.4] - 2025-10-23
+### Documentation Fixes
+- **docs: Fixed BoxConfig parameter name** - Corrected README example showing `isSecure` parameter instead of correct `encrypted` parameter
+
 ## [2.3.3] - 2025-10-22
 ### Documentation Fixes
 - **docs: Corrected Windows storage mechanism** - Fixed incorrect references to Windows Credential Manager. Windows actually uses DPAPI (Data Protection API) with file-based storage at `%APPDATA%\<app_name>\flutter_secure_storage.dat`
