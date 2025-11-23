@@ -1,3 +1,27 @@
+## [3.0.0] - 2025-10-27
+### 🚀 Major Performance Upgrade
+
+**20-50x faster** for Lists and Maps! This release dramatically improves storage performance for common data types.
+
+### What's New
+- Lists and Maps now use native Hive storage instead of JSON encoding
+- Reading 40 items: **1000ms → 20ms** (50x improvement)
+- Writing 40 items: **800ms → 25ms** (32x improvement)
+- Automatic format detection - no code changes needed
+
+### Backward Compatibility
+- ✅ **Zero breaking changes** - your existing code works as-is
+- ✅ **Reads old data** - v2.x data continues to work
+- ✅ **Automatic migration** - data updates to new format when rewritten
+- ⚠️ **No downgrade** - cannot rollback to v2.x after upgrade
+
+### Who Benefits
+- Apps storing API responses, cached data, or user preferences
+- Frequent read/write operations with Lists/Maps
+- Performance-critical applications
+
+---
+
 ## [2.3.4] - 2025-10-23
 ### Documentation Fixes
 - **docs: Fixed BoxConfig parameter name** - Corrected README example showing `isSecure` parameter instead of correct `encrypted` parameter

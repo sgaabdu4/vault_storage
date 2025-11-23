@@ -344,11 +344,15 @@ void main() {
           }
         };
 
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
+        // Accept dynamic since we now store Maps natively wrapped
+        when(() => testContext.mockNormalBox.put(any<String>(), any<dynamic>()))
             .thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('deep')).thenReturn(true);
-        when(() => testContext.mockNormalBox.get('deep'))
-            .thenReturn('{"level1":{"level2":{"level3":{"level4":{"value":"deep"}}}}}');
+        // Return the wrapped format for native storage
+        when(() => testContext.mockNormalBox.get('deep')).thenReturn({
+          '__VST_STRATEGY__': 0, // StorageStrategy.native.index
+          '__VST_VALUE__': deepMap,
+        });
         when(() => testContext.mockSecureBox.containsKey('deep')).thenReturn(false);
 
         await testContext.vaultStorage.saveNormal(key: 'deep', value: deepMap);
@@ -359,10 +363,15 @@ void main() {
 
       test('should handle lists with mixed types', () async {
         final mixedList = [1, 'two', 3.0, true, null];
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
+        // Accept dynamic since we now store Lists natively wrapped
+        when(() => testContext.mockNormalBox.put(any<String>(), any<dynamic>()))
             .thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('mixed')).thenReturn(true);
-        when(() => testContext.mockNormalBox.get('mixed')).thenReturn('[1,"two",3.0,true,null]');
+        // Return the wrapped format for native storage
+        when(() => testContext.mockNormalBox.get('mixed')).thenReturn({
+          '__VST_STRATEGY__': 0, // StorageStrategy.native.index
+          '__VST_VALUE__': mixedList,
+        });
         when(() => testContext.mockSecureBox.containsKey('mixed')).thenReturn(false);
 
         await testContext.vaultStorage.saveNormal(key: 'mixed', value: mixedList);
@@ -445,15 +454,15 @@ void main() {
     });
 
     group('Custom Box Operations', () {
-      late MockBox<String> mockCustomBox;
+      late MockBox<dynamic> mockCustomBox;
 
       setUp(() {
-        mockCustomBox = MockBox<String>();
+        mockCustomBox = MockBox<dynamic>();
         testContext.vaultStorage.customBoxes['testBox'] = mockCustomBox;
       });
 
       test('should save to custom box successfully', () async {
-        when(() => mockCustomBox.put(any<String>(), any<String>())).thenAnswer((_) async {});
+        when(() => mockCustomBox.put(any<String>(), any<dynamic>())).thenAnswer((_) async {});
         when(() => mockCustomBox.containsKey('custom_key')).thenReturn(true);
         when(() => mockCustomBox.get('custom_key')).thenReturn('"custom_value"');
 
@@ -464,7 +473,7 @@ void main() {
         );
 
         // Verify skipped - internal serialization format may vary
-        verify(() => mockCustomBox.put(any<String>(), any<String>())).called(1);
+        verify(() => mockCustomBox.put(any<String>(), any<dynamic>())).called(1);
       });
 
       test('should get from custom box successfully', () async {
@@ -495,7 +504,7 @@ void main() {
       });
 
       test('should save secure to custom box', () async {
-        when(() => mockCustomBox.put(any<String>(), any<String>())).thenAnswer((_) async {});
+        when(() => mockCustomBox.put(any<String>(), any<dynamic>())).thenAnswer((_) async {});
 
         await testContext.vaultStorage.saveSecure(
           key: 'secure_key',
@@ -504,11 +513,11 @@ void main() {
         );
 
         // Verify skipped - internal serialization format may vary
-        verify(() => mockCustomBox.put(any<String>(), any<String>())).called(1);
+        verify(() => mockCustomBox.put(any<String>(), any<dynamic>())).called(1);
       });
 
       test('should save file to custom box successfully', () async {
-        when(() => mockCustomBox.put(any<String>(), any<String>())).thenAnswer((_) async {});
+        when(() => mockCustomBox.put(any<String>(), any<dynamic>())).thenAnswer((_) async {});
 
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         await testContext.vaultStorage.saveNormalFile(
@@ -518,7 +527,7 @@ void main() {
           box: 'testBox',
         );
 
-        verify(() => mockCustomBox.put('file_key', any<String>())).called(1);
+        verify(() => mockCustomBox.put('file_key', any<dynamic>())).called(1);
       });
 
       test('should get file from custom box successfully', () async {
