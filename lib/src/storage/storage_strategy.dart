@@ -71,26 +71,52 @@ class StorageStrategyHelper {
 
   /// Checks if a value can be stored natively by Hive without JSON encoding
   static bool _isNativelyStorable(dynamic value) {
-    // Handle null
-    if (value == null) return true;
+    final stack = [value];
 
-    // Primitives
-    if (value is String || value is num || value is bool) return true;
+    while (stack.isNotEmpty) {
+      final current = stack.removeLast();
 
-    // Binary data
-    if (value is Uint8List) return true;
+      // Handle null
+      if (current == null) continue;
 
-    // Lists - check if all elements are natively storable
-    if (value is List) {
-      return value.every(_isNativelyStorable);
+      // Primitives
+      if (current is String || current is num || current is bool) continue;
+
+      // Binary data
+      if (current is Uint8List) continue;
+
+      // Lists - check if all elements are natively storable
+      if (current is List) {
+        for (final item in current) {
+          if (item == null || item is String || item is num || item is bool || item is Uint8List) {
+            continue;
+          }
+          stack.add(item);
+        }
+        continue;
+      }
+
+      // Maps - check if all keys and values are natively storable
+      if (current is Map) {
+        for (final key in current.keys) {
+          if (key == null || key is String || key is num || key is bool || key is Uint8List) {
+            continue;
+          }
+          stack.add(key);
+        }
+        for (final val in current.values) {
+          if (val == null || val is String || val is num || val is bool || val is Uint8List) {
+            continue;
+          }
+          stack.add(val);
+        }
+        continue;
+      }
+
+      // Everything else needs JSON encoding
+      return false;
     }
 
-    // Maps - check if all keys and values are natively storable
-    if (value is Map) {
-      return value.keys.every(_isNativelyStorable) && value.values.every(_isNativelyStorable);
-    }
-
-    // Everything else needs JSON encoding
-    return false;
+    return true;
   }
 }

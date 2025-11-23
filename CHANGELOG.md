@@ -1,4 +1,4 @@
-## [3.0.0] - 2025-10-27
+## [3.0.0] - 2025-11-23
 ### 🚀 Major Performance Upgrade
 
 **20-50x faster** for Lists and Maps! This release dramatically improves storage performance for common data types.
