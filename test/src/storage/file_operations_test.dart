@@ -104,7 +104,7 @@ void main() {
               key: 'file_key_$testFileId',
               value: any(named: 'value'),
             )).called(1);
-        verify(() => mockBox.put(testFileId, any())).called(1);
+        verify(() => mockBox.put(testFileId, any<dynamic>())).called(1);
       });
 
       test('should throw StorageWriteError when encryption fails', () async {
@@ -448,7 +448,7 @@ void main() {
         expect(result['filePath'], isNull); // Web doesn't use file paths
 
         verify(() => testContext.mockUuid.v4()).called(1);
-        verify(() => mockBox.put(testFileId, any())).called(1);
+        verify(() => mockBox.put(testFileId, any<dynamic>())).called(1);
       });
 
       test('should throw StorageWriteError when save fails', () async {

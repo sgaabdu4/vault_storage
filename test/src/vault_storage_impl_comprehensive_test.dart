@@ -226,7 +226,7 @@ void main() {
         await testContext.vaultStorage.saveSecure(key: key, value: value);
 
         // Assert
-        verify(() => testContext.mockSecureBox.put(key, any<String>())).called(1);
+        verify(() => testContext.mockSecureBox.put(key, any<dynamic>())).called(1);
         verify(() => testContext.mockNormalBox.containsKey(key)).called(1);
       });
 
@@ -244,7 +244,7 @@ void main() {
         await testContext.vaultStorage.saveSecure(key: key, value: value);
 
         // Assert
-        verify(() => testContext.mockSecureBox.put(key, any())).called(1);
+        verify(() => testContext.mockSecureBox.put(key, any<dynamic>())).called(1);
         verify(() => testContext.mockNormalBox.containsKey(key)).called(1);
         verify(() => testContext.mockNormalBox.delete(key)).called(1);
       });
@@ -261,7 +261,7 @@ void main() {
         await testContext.vaultStorage.saveNormal(key: key, value: value);
 
         // Assert
-        verify(() => testContext.mockNormalBox.put(key, any())).called(1);
+        verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(1);
       });
 
       test('should throw StorageWriteError when save fails', () async {
@@ -400,7 +400,7 @@ void main() {
               uuid: any(named: 'uuid'),
               getBox: any(named: 'getBox'),
             )).called(1);
-        verify(() => testContext.mockSecureFilesBox.put(key, any())).called(1);
+        verify(() => testContext.mockSecureFilesBox.put(key, any<dynamic>())).called(1);
       });
 
       test('should save normal file successfully', () async {
@@ -435,7 +435,7 @@ void main() {
               uuid: any(named: 'uuid'),
               getBox: any(named: 'getBox'),
             )).called(1);
-        verify(() => testContext.mockNormalFilesBox.put(key, any())).called(1);
+        verify(() => testContext.mockNormalFilesBox.put(key, any<dynamic>())).called(1);
       });
 
       test('should return null when file does not exist', () async {
@@ -582,7 +582,7 @@ void main() {
         await testContext.vaultStorage.setInBox(BoxType.normal, key, value);
 
         // Assert
-        verify(() => testContext.mockNormalBox.put(key, any())).called(1);
+        verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(1);
       });
 
       test('should throw StorageInitializationError when box is not opened', () async {
@@ -659,7 +659,7 @@ void main() {
         // Assert - Should complete without throwing
         await Future.wait(futures);
 
-        verify(() => testContext.mockNormalBox.put(key, any())).called(10);
+        verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(10);
       });
     });
   });
