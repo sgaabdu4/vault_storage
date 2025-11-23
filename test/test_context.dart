@@ -13,15 +13,15 @@ class TestContext {
   late VaultStorageImpl vaultStorage;
   late MockFlutterSecureStorage mockSecureStorage;
   late MockUuid mockUuid;
-  late MockBox<String> mockSecureBox;
-  late MockBox<String> mockNormalBox;
-  late MockLazyBox<String> mockSecureFilesBox;
-  late MockLazyBox<String> mockNormalFilesBox;
+  late MockBox<dynamic> mockSecureBox;
+  late MockBox<dynamic> mockNormalBox;
+  late MockLazyBox<dynamic> mockSecureFilesBox;
+  late MockLazyBox<dynamic> mockNormalFilesBox;
   late MockFileOperations mockFileOperations;
 
   // Convenience getters for common naming patterns
-  MockLazyBox<String> get mockSecureFileStorageBox => mockSecureFilesBox;
-  MockLazyBox<String> get mockNormalFileStorageBox => mockNormalFilesBox;
+  MockLazyBox<dynamic> get mockSecureFileStorageBox => mockSecureFilesBox;
+  MockLazyBox<dynamic> get mockNormalFileStorageBox => mockNormalFilesBox;
 
   // Get box function for FileOperations testing
   BoxBase<dynamic> getBox(BoxType type) {
@@ -42,10 +42,10 @@ class TestContext {
 
     mockSecureStorage = MockFlutterSecureStorage();
     mockUuid = MockUuid();
-    mockSecureBox = MockBox<String>();
-    mockNormalBox = MockBox<String>();
-    mockSecureFilesBox = MockLazyBox<String>();
-    mockNormalFilesBox = MockLazyBox<String>();
+    mockSecureBox = MockBox<dynamic>();
+    mockNormalBox = MockBox<dynamic>();
+    mockSecureFilesBox = MockLazyBox<dynamic>();
+    mockNormalFilesBox = MockLazyBox<dynamic>();
     mockFileOperations = MockFileOperations();
 
     vaultStorage = VaultStorageImpl(

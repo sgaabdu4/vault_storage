@@ -244,22 +244,22 @@ class JsonSafe {
       // Check for type markers (primitive optimizations)
       if (encodedValue.startsWith(_stringMarker)) {
         final value = encodedValue.substring(_stringMarker.length);
-        return value as T;
+        return _coerceType<T>(value);
       }
 
       if (encodedValue.startsWith(_intMarker)) {
         final value = int.parse(encodedValue.substring(_intMarker.length));
-        return value as T;
+        return _coerceType<T>(value);
       }
 
       if (encodedValue.startsWith(_doubleMarker)) {
         final value = double.parse(encodedValue.substring(_doubleMarker.length));
-        return value as T;
+        return _coerceType<T>(value);
       }
 
       if (encodedValue.startsWith(_boolMarker)) {
         final value = encodedValue.substring(_boolMarker.length) == 'true';
-        return value as T;
+        return _coerceType<T>(value);
       }
 
       // Handle JSON-encoded values
@@ -272,15 +272,61 @@ class JsonSafe {
       }
 
       // Size-based optimization for JSON decoding
-      if (jsonString.length > _isolateThreshold) {
-        return await compute(_decodeInIsolate<T>, jsonString);
-      }
+      final decoded = jsonString.length > _isolateThreshold
+          ? await compute(_decodeInIsolate, jsonString)
+          : json.decode(jsonString);
 
-      // Small JSON - decode synchronously
-      return json.decode(jsonString) as T;
+      // Legacy v2.x compatibility: Handle type coercion for primitives
+      // v2.x stored primitives as JSON strings without type markers
+      return _coerceType<T>(decoded);
     } catch (e) {
       throw StorageSerializationError('Failed to decode value', e);
     }
+  }
+
+  /// Coerces decoded value to expected type T for legacy v2.x compatibility
+  ///
+  /// v2.x stored primitives as JSON-encoded strings without type markers.
+  /// Simple type coercion only - complex migrations should be handled by users.
+  static T _coerceType<T>(dynamic value) {
+    // If value is already the correct type, return it
+    if (value is T) return value;
+
+    // Simple primitive conversions for v2.x compatibility
+    if (T == int && value is String) {
+      try {
+        return int.parse(value) as T;
+      } catch (e) {
+        throw StorageSerializationError(
+          'Type mismatch: Cannot parse "$value" as int. '
+          'Consider clearing corrupted data.',
+          e,
+        );
+      }
+    }
+    if (T == int && value is num) return value.toInt() as T;
+
+    if (T == double && value is String) {
+      try {
+        return double.parse(value) as T;
+      } catch (e) {
+        throw StorageSerializationError(
+          'Type mismatch: Cannot parse "$value" as double. '
+          'Consider clearing corrupted data.',
+          e,
+        );
+      }
+    }
+    if (T == double && value is num) return value.toDouble() as T;
+
+    if (T == bool && value is String) return (value.toLowerCase() == 'true') as T;
+    if (T == String && value != null) return value.toString() as T;
+
+    // Type mismatch - throw clear error
+    throw StorageSerializationError(
+      'Type mismatch: Cannot convert "$value" (${value.runtimeType}) to type $T. '
+      'Consider clearing corrupted data.',
+    );
   }
 
   /// Encodes complex objects (non-primitives) with isolate optimization
@@ -358,9 +404,11 @@ String _encodeInIsolate(Object? value) {
   }
 }
 
-T _decodeInIsolate<T>(String jsonString) {
+/// Generic JSON decode in isolate - returns decoded value
+/// The caller must handle type casting
+Object? _decodeInIsolate(String jsonString) {
   try {
-    return json.decode(jsonString) as T;
+    return json.decode(jsonString);
   } catch (e) {
     throw StorageSerializationError('Failed to decode JSON string', e);
   }

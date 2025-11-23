@@ -1,5 +1,6 @@
-import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:vault_storage/src/errors/errors.dart';
@@ -12,19 +13,39 @@ void main() {
   group('FileOperations - Comprehensive Tests', () {
     late FileOperations fileOperations;
     late TestContext testContext;
+    late Directory tempDir;
 
     setUpAll(() {
       MocksHelper.registerFallbackValues();
     });
 
-    setUp(() {
+    setUp(() async {
       testContext = TestContext();
       testContext.setUpCommon();
       fileOperations = FileOperations();
+
+      // Create a temporary directory for file operations
+      tempDir = await Directory.systemTemp.createTemp('vault_storage_test');
+
+      // Mock path_provider to return the temporary directory
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      TestWidgetsFlutterBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return tempDir.path;
+          }
+          return null;
+        },
+      );
     });
 
-    tearDown(() {
+    tearDown(() async {
       testContext.tearDownCommon();
+      // Clean up the temporary directory
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
     });
 
     group('saveSecureFile', () {
@@ -258,7 +279,7 @@ void main() {
         expect(result['filePath'], isNull); // Web doesn't use file paths
 
         verify(() => testContext.mockUuid.v4()).called(1);
-        verify(() => testContext.mockNormalFilesBox.put(testFileId, any())).called(1);
+        verify(() => testContext.mockNormalFilesBox.put(testFileId, any<String>())).called(1);
       });
 
       test('should generate proper metadata for native', () async {

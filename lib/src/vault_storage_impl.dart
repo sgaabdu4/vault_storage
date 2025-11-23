@@ -15,6 +15,7 @@ import 'package:vault_storage/src/mock/freerasp_mock.dart'
 import 'package:vault_storage/src/security/security_exceptions.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
+import 'package:vault_storage/src/storage/storage_strategy.dart';
 
 /// Simple, secure storage implementation for Flutter apps.
 ///
@@ -317,31 +318,27 @@ class VaultStorageImpl implements IVaultStorage {
     try {
       final result = <String>{};
 
-      // Helper to collect keys from a box
-      Future<void> collect(BoxType type) async {
+      // Helper to collect keys from a box (both Box and LazyBox expose keys)
+      void collect(BoxType type) {
         final box = boxes[type];
-        if (box == null) return;
-        if (box is Box) {
-          result.addAll(box.keys.whereType<String>());
-        } else if (box is LazyBox) {
-          // LazyBox exposes keys via keys property (sync) in Hive_ce
+        if (box != null) {
           result.addAll(box.keys.whereType<String>());
         }
       }
 
       switch (isSecure) {
         case true:
-          await collect(BoxType.secure);
-          if (includeFiles) await collect(BoxType.secureFiles);
+          collect(BoxType.secure);
+          if (includeFiles) collect(BoxType.secureFiles);
         case false:
-          await collect(BoxType.normal);
-          if (includeFiles) await collect(BoxType.normalFiles);
+          collect(BoxType.normal);
+          if (includeFiles) collect(BoxType.normalFiles);
         case null:
-          await collect(BoxType.normal);
-          await collect(BoxType.secure);
+          collect(BoxType.normal);
+          collect(BoxType.secure);
           if (includeFiles) {
-            await collect(BoxType.normalFiles);
-            await collect(BoxType.secureFiles);
+            collect(BoxType.normalFiles);
+            collect(BoxType.secureFiles);
           }
       }
 
@@ -690,53 +687,60 @@ class VaultStorageImpl implements IVaultStorage {
   @visibleForTesting
   Future<T?> getFromBox<T>(BoxType boxType, String key) async {
     final box = boxes[boxType];
-    if (box == null) return null;
-
-    String? jsonString;
-    if (box is LazyBox<dynamic>) {
-      // Handle lazy boxes (files) - asynchronous get, sync containsKey in Hive_ce
-      if (!box.containsKey(key)) return null;
-      jsonString = await box.get(key) as String?;
-    } else if (box is Box<dynamic>) {
-      // Handle normal boxes (key-value) - synchronous access but async decode
-      if (!box.containsKey(key)) return null;
-      jsonString = box.get(key) as String?;
-    } else {
-      return null;
-    }
-
-    if (jsonString == null) return null;
-    return jsonString.decodeJsonSafely<T>();
+    return box == null ? null : await _getFromBoxBase<T>(box, key);
   }
 
-  /// Get value from any BoxBase (custom boxes)
+  /// Get value from any BoxBase (handles Box and LazyBox, with legacy support)
   Future<T?> _getFromBoxBase<T>(BoxBase<dynamic> box, String key) async {
-    String? jsonString;
-    if (box is LazyBox<dynamic>) {
-      if (!box.containsKey(key)) return null;
-      jsonString = await box.get(key) as String?;
-    } else if (box is Box<dynamic>) {
-      if (!box.containsKey(key)) return null;
-      jsonString = box.get(key) as String?;
-    } else {
-      return null;
+    if (!box.containsKey(key)) return null;
+
+    // Get value (sync for Box, async for LazyBox)
+    final stored = box is LazyBox<dynamic> ? await box.get(key) : (box as Box<dynamic>).get(key);
+    if (stored == null) return null;
+
+    // Legacy support - if it's a plain string, decode as JSON
+    if (stored is String) {
+      return stored.decodeJsonSafely<T>();
     }
 
-    if (jsonString == null) return null;
-    return jsonString.decodeJsonSafely<T>();
+    // New format - check if it's wrapped
+    if (stored is Map && StoredValue.isWrapped(stored)) {
+      final wrapper = StoredValue.fromHiveMap(stored);
+
+      if (wrapper.strategy == StorageStrategy.native) {
+        // Native storage - may need type coercion for primitives
+        return _coerceToType<T>(wrapper.value);
+      } else {
+        // JSON strategy - decode the JSON string
+        final jsonString = wrapper.value as String;
+        return jsonString.decodeJsonSafely<T>();
+      }
+    }
+
+    // Fallback for unexpected format or raw primitive values
+    // Handle type coercion for primitives that may have been stored directly
+    return _coerceToType<T>(stored);
   }
 
-  /// Put value into any BoxBase (custom boxes)
-  Future<void> _putInBoxBase<T>(BoxBase<dynamic> box, String key, T value) async {
-    final jsonString = await value.encodeJsonSafely();
+  /// Coerces a value to the expected type T
+  ///
+  /// Handles backward compatibility for values that may be stored as different types.
+  /// Throws StorageReadError on type mismatch to allow graceful error handling.
+  T _coerceToType<T>(dynamic value) {
+    // If value is already the correct type, return it
+    if (value is T) return value;
 
-    if (box is LazyBox<dynamic>) {
-      await box.put(key, jsonString);
-    } else if (box is Box<dynamic>) {
-      await box.put(key, jsonString);
-    } else {
-      throw const StorageWriteError('Unsupported box type');
-    }
+    // Simple type conversions only - no complex migrations
+    if (T == int && value is num) return value.toInt() as T;
+    if (T == double && value is num) return value.toDouble() as T;
+    if (T == String && value != null) return value.toString() as T;
+
+    // Type mismatch - throw clear error
+    throw StorageReadError(
+      'Type mismatch: Cannot convert stored value to type $T. '
+      'Stored: "$value" (${value.runtimeType}), Expected: $T. '
+      'Consider clearing this key if the data is corrupted.',
+    );
   }
 
   /// Set value in a specific box
@@ -746,117 +750,52 @@ class VaultStorageImpl implements IVaultStorage {
     if (box == null) {
       throw StorageInitializationError('Box ${boxType.name} not opened. Ensure init() was called.');
     }
+    await _putInBoxBase(box, key, value);
+  }
 
-    final jsonString = await value.encodeJsonSafely();
+  /// Put value into any BoxBase (handles both Box and LazyBox)
+  Future<void> _putInBoxBase<T>(BoxBase<dynamic> box, String key, T value) async {
+    final strategy = StorageStrategyHelper.determineStrategy(value);
 
-    if (box is LazyBox<dynamic>) {
-      // Handle lazy boxes (files)
-      await box.put(key, jsonString);
-    } else if (box is Box<dynamic>) {
-      // Handle normal boxes (key-value)
-      await box.put(key, jsonString);
-    } else {
-      throw StorageWriteError('Unsupported box type for ${boxType.name}');
-    }
+    final toStore = strategy == StorageStrategy.native
+        ? StoredValue(value, strategy).toHiveMap() // Wrap for native storage
+        : StoredValue(await value.encodeJsonSafely(), strategy)
+            .toHiveMap(); // JSON encode then wrap
+
+    // Put into box (both Box and LazyBox have async put)
+    await box.put(key, toStore);
   }
 
   /// Get file metadata with optional storage type specification
   @visibleForTesting
   Future<Map<String, dynamic>?> getFileMetadata(String key, {bool? isSecure}) async {
-    switch (isSecure) {
-      case false:
-        final box = boxes[BoxType.normalFiles];
-        if (box == null) return null;
+    // Helper to get metadata from a specific box
+    Future<Map<String, dynamic>?> getFromFileBox(BoxType boxType, bool isSecureFile) async {
+      final box = boxes[boxType];
+      if (box == null || !box.containsKey(key)) return null;
 
-        String? jsonString;
-        if (box is LazyBox<dynamic>) {
-          if (!box.containsKey(key)) return null;
-          jsonString = await box.get(key) as String?;
-        } else if (box is Box<dynamic>) {
-          if (!box.containsKey(key)) return null;
-          jsonString = box.get(key) as String?;
-        }
+      // Get JSON string (sync for Box, async for LazyBox)
+      final jsonString = box is LazyBox<dynamic>
+          ? await box.get(key) as String?
+          : (box as Box<dynamic>).get(key) as String?;
 
-        if (jsonString == null) return null;
-        try {
-          final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
-          // Explicitly tag source
-          return <String, dynamic>{...result, 'isSecure': false};
-        } catch (e) {
-          return null;
-        }
-      case true:
-        final box = boxes[BoxType.secureFiles];
-        if (box == null) return null;
+      if (jsonString == null) return null;
 
-        String? jsonString;
-        if (box is LazyBox<dynamic>) {
-          if (!box.containsKey(key)) return null;
-          jsonString = await box.get(key) as String?;
-        } else if (box is Box<dynamic>) {
-          if (!box.containsKey(key)) return null;
-          jsonString = box.get(key) as String?;
-        }
-
-        if (jsonString == null) return null;
-        try {
-          final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
-          // Explicitly tag source
-          return <String, dynamic>{...result, 'isSecure': true};
-        } catch (e) {
-          return null;
-        }
-      case null:
-        // Check normal files first, then secure files
-        final normalBox = boxes[BoxType.normalFiles];
-        if (normalBox != null) {
-          String? normalJsonString;
-          if (normalBox is LazyBox<dynamic>) {
-            if (normalBox.containsKey(key)) {
-              normalJsonString = await normalBox.get(key) as String?;
-            }
-          } else if (normalBox is Box<dynamic>) {
-            if (normalBox.containsKey(key)) {
-              normalJsonString = normalBox.get(key) as String?;
-            }
-          }
-
-          if (normalJsonString != null) {
-            try {
-              final normalMetadata =
-                  await normalJsonString.decodeJsonSafely<Map<String, dynamic>>();
-              return <String, dynamic>{...normalMetadata, 'isSecure': false};
-            } catch (e) {
-              // Continue to secure files
-            }
-          }
-        }
-
-        final secureBox = boxes[BoxType.secureFiles];
-        if (secureBox != null) {
-          String? secureJsonString;
-          if (secureBox is LazyBox<dynamic>) {
-            if (secureBox.containsKey(key)) {
-              secureJsonString = await secureBox.get(key) as String?;
-            }
-          } else if (secureBox is Box<dynamic>) {
-            if (secureBox.containsKey(key)) {
-              secureJsonString = secureBox.get(key) as String?;
-            }
-          }
-
-          if (secureJsonString != null) {
-            try {
-              final secureMetadata =
-                  await secureJsonString.decodeJsonSafely<Map<String, dynamic>>();
-              return <String, dynamic>{...secureMetadata, 'isSecure': true};
-            } catch (e) {
-              return null;
-            }
-          }
-        }
+      try {
+        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+        return <String, dynamic>{...result, 'isSecure': isSecureFile};
+      } catch (e) {
         return null;
+      }
     }
+
+    // If isSecure specified, check only that box
+    if (isSecure == false) return getFromFileBox(BoxType.normalFiles, false);
+    if (isSecure == true) return getFromFileBox(BoxType.secureFiles, true);
+
+    // Otherwise, check both (normal first, then secure)
+    return await getFromFileBox(BoxType.normalFiles, false) ??
+        await getFromFileBox(BoxType.secureFiles, true);
   }
 
   /// Get a box from storage - returns the box directly
@@ -872,19 +811,15 @@ class VaultStorageImpl implements IVaultStorage {
     final box = boxes[boxType];
     if (box == null) return;
 
-    Iterable<dynamic> keyIterable;
-    if (box is LazyBox) {
-      keyIterable = box.keys;
-    } else if (box is Box) {
-      keyIterable = box.keys;
-    } else {
-      return;
-    }
+    // Get all keys (both Box and LazyBox expose keys)
+    final keyIterable = box.keys;
 
     for (final key in keyIterable.whereType<String>()) {
       try {
         final metadata = await getFileMetadata(key, isSecure: isSecure);
         if (metadata == null) continue;
+
+        // Delete underlying file
         if (isSecure) {
           await _fileOperations.deleteSecureFile(
             fileMetadata: metadata,
@@ -1228,23 +1163,23 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       // Open key-value storage boxes (normal boxes for fast access)
-      boxes[BoxType.secure] = await Hive.openBox<String>(
+      boxes[BoxType.secure] = await Hive.openBox<dynamic>(
         StorageKeys.secureBox,
         encryptionCipher: cipher,
         compactionStrategy: vaultCompactionStrategy,
       );
-      boxes[BoxType.normal] = await Hive.openBox<String>(
+      boxes[BoxType.normal] = await Hive.openBox<dynamic>(
         StorageKeys.normalBox,
         compactionStrategy: vaultCompactionStrategy,
       );
 
       // Open file storage boxes (lazy boxes for better memory usage)
-      boxes[BoxType.secureFiles] = await Hive.openLazyBox<String>(
+      boxes[BoxType.secureFiles] = await Hive.openLazyBox<dynamic>(
         StorageKeys.secureFilesBox,
         encryptionCipher: cipher,
         compactionStrategy: vaultCompactionStrategy,
       );
-      boxes[BoxType.normalFiles] = await Hive.openLazyBox<String>(
+      boxes[BoxType.normalFiles] = await Hive.openLazyBox<dynamic>(
         StorageKeys.normalFilesBox,
         compactionStrategy: vaultCompactionStrategy,
       );
@@ -1268,13 +1203,13 @@ class VaultStorageImpl implements IVaultStorage {
         final cipher = config.encrypted ? HiveAesCipher(encryptionKey) : null;
 
         if (config.lazy) {
-          customBoxes[config.name] = await Hive.openLazyBox<String>(
+          customBoxes[config.name] = await Hive.openLazyBox<dynamic>(
             config.name,
             encryptionCipher: cipher,
             compactionStrategy: vaultCompactionStrategy,
           );
         } else {
-          customBoxes[config.name] = await Hive.openBox<String>(
+          customBoxes[config.name] = await Hive.openBox<dynamic>(
             config.name,
             encryptionCipher: cipher,
             compactionStrategy: vaultCompactionStrategy,
