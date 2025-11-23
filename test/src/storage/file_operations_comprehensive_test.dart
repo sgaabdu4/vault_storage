@@ -43,8 +43,8 @@ void main() {
     tearDown(() async {
       testContext.tearDownCommon();
       // Clean up the temporary directory
-      if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
       }
     });
 
