@@ -1,5 +1,9 @@
+## [3.0.1] - 2026-01-15
+### Upgrade Dependencies
+- upgraded all dependencies to latest versions for improved security and performance
+
 ## [3.0.0] - 2025-11-23
-### 🚀 Major Performance Upgrade
+### Major Performance Upgrade
 
 **20-50x faster** for Lists and Maps! This release dramatically improves storage performance for common data types.
 
@@ -10,10 +14,10 @@
 - Automatic format detection - no code changes needed
 
 ### Backward Compatibility
-- ✅ **Zero breaking changes** - your existing code works as-is
-- ✅ **Reads old data** - v2.x data continues to work
-- ✅ **Automatic migration** - data updates to new format when rewritten
-- ⚠️ **No downgrade** - cannot rollback to v2.x after upgrade
+- **Zero breaking changes** - your existing code works as-is
+- **Reads old data** - v2.x data continues to work
+- **Automatic migration** - data updates to new format when rewritten
+- **No downgrade** - cannot rollback to v2.x after upgrade
 
 ### Who Benefits
 - Apps storing API responses, cached data, or user preferences
