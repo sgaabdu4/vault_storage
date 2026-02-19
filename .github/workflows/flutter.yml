@@ -175,6 +175,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      tag_created: ${{ steps.tag.outputs.tag_created }}
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -182,11 +185,14 @@ jobs:
           fetch-depth: 0
 
       - name: Create tag if version changed
+        id: tag
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | tr -d '\r')
           TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "ℹ️ Tag $TAG already exists — skipping"
+            echo "tag_created=false" >> "$GITHUB_OUTPUT"
           else
             echo "🏷️ Creating tag $TAG"
             git config user.name "github-actions[bot]"
@@ -194,4 +200,44 @@ jobs:
             git tag "$TAG"
             git push origin "$TAG"
             echo "✅ Tag $TAG created and pushed"
+            echo "tag_created=true" >> "$GITHUB_OUTPUT"
           fi
+
+  publish:
+    name: Publish to pub.dev
+    if: needs.tag.outputs.tag_created == 'true'
+    needs: tag
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify version
+        run: |
+          EXPECTED="${{ needs.tag.outputs.version }}"
+          ACTUAL=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | tr -d '\r')
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "❌ Version mismatch: expected $EXPECTED, got $ACTUAL"
+            exit 1
+          fi
+          echo "✅ Version verified: $ACTUAL"
+
+      - name: Dry run publish
+        run: dart pub publish --dry-run
+
+      - name: Publish to pub.dev
+        run: dart pub publish --force
