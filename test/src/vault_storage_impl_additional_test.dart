@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/errors/errors.dart';
@@ -89,10 +91,16 @@ void main() {
       });
 
       test('should handle empty custom boxes list', () async {
+        final tempDir = Directory.systemTemp.createTempSync('vault_empty_boxes_test_');
+        addTearDown(() async {
+          await Hive.close();
+          if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+        });
         final storage = VaultStorageImpl(
           secureStorage: testContext.mockSecureStorage,
           uuid: testContext.mockUuid,
           customBoxes: [],
+          storageDirectory: tempDir.path,
         );
 
         final base64Key = base64Encode(Uint8List(32));
