@@ -1,10 +1,11 @@
 import 'dart:typed_data' show Uint8List;
+
 import 'package:vault_storage/src/errors/storage_error.dart';
 
 /// Simple, secure storage for Flutter apps.
 ///
 /// This interface provides a clean API for both key-value storage and file storage,
-/// with automatic encryption for secure data. Methods throw [StorageError]
+/// with automatic encryption for secure data. Methods throw [VaultStorageError]
 /// exceptions when operations fail.
 abstract class IVaultStorage {
   /// Initialize storage. Call this once when your app starts.
@@ -24,7 +25,7 @@ abstract class IVaultStorage {
   /// await storage.init();
   /// ```
   ///
-  /// Throws [StorageError] if initialization fails.
+  /// Throws [VaultStorageError] if initialization fails.
   /// Throws [SecurityThreatException] if security threats are detected during init.
   Future<void> init();
 
@@ -41,7 +42,7 @@ abstract class IVaultStorage {
   /// - If [isSecure] is false: Only searches normal storage
   ///
   /// Returns null if the key is not found in the specified storage(s).
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   /// Throws [AmbiguousKeyError] if the key exists in multiple boxes and no specific box is specified.
   Future<T?> get<T>(String key, {bool? isSecure, String? box});
@@ -51,7 +52,7 @@ abstract class IVaultStorage {
   /// If [box] is specified, stores in the custom box (encryption determined by box config).
   /// If [box] is null, stores in the default secure box.
   ///
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> saveSecure<T>({required String key, required T value, String? box});
 
@@ -60,7 +61,7 @@ abstract class IVaultStorage {
   /// If [box] is specified, stores in the custom box (encryption determined by box config).
   /// If [box] is null, stores in the default normal box.
   ///
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> saveNormal<T>({required String key, required T value, String? box});
 
@@ -69,7 +70,7 @@ abstract class IVaultStorage {
   /// If [box] is specified, deletes from the custom box only.
   /// If [box] is null, deletes from all boxes (normal, secure, and all custom boxes).
   ///
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> delete(String key, {String? box});
 
@@ -77,14 +78,14 @@ abstract class IVaultStorage {
   ///
   /// When [includeFiles] is true, also deletes normal file metadata and the
   /// underlying file contents.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<void> clearNormal({bool includeFiles = false});
 
   /// Clear all secure storage.
   ///
   /// When [includeFiles] is true, also deletes secure file metadata and the
   /// underlying encrypted file contents.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<void> clearSecure({bool includeFiles = false});
 
   /// Clear all storage in one call.
@@ -96,7 +97,7 @@ abstract class IVaultStorage {
   ///
   /// When [includeFiles] is false, only key-value data is cleared and the master
   /// encryption key is preserved.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<void> clearAll({bool includeFiles = true});
 
   /// List stored keys.
@@ -118,7 +119,7 @@ abstract class IVaultStorage {
   /// If [box] is specified, stores in the custom box (encryption determined by box config).
   /// If [box] is null, stores in the default secure files box.
   ///
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> saveSecureFile({
     required String key,
@@ -133,7 +134,7 @@ abstract class IVaultStorage {
   /// If [box] is specified, stores in the custom box (encryption determined by box config).
   /// If [box] is null, stores in the default normal files box.
   ///
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> saveNormalFile({
     required String key,
@@ -152,7 +153,7 @@ abstract class IVaultStorage {
   /// If [isSecure] is false: Only searches normal files storage
   ///
   /// Returns null if the file is not found.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   /// Throws [AmbiguousKeyError] if the key exists in multiple boxes and no specific box is specified.
   Future<Uint8List?> getFile(String key, {bool? isSecure, String? box});
@@ -162,11 +163,11 @@ abstract class IVaultStorage {
   /// If [box] is specified, deletes from the custom box only.
   /// If [box] is null, deletes from all file boxes (normal files, secure files, and all custom file boxes).
   ///
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   /// Throws [BoxNotFoundError] if the specified box was not registered during init.
   Future<void> deleteFile(String key, {String? box});
 
   /// Clean up resources.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<void> dispose();
 }

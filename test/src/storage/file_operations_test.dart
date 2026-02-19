@@ -130,6 +130,62 @@ void main() {
     });
 
     group('saveSecureFileStream (streaming)', () {
+      test('should throw StorageWriteError when chunkSize is zero', () async {
+        // Arrange
+        final stream = Stream<List<int>>.fromIterable([
+          Uint8List.fromList([1, 2, 3]),
+        ]);
+        when(() => testContext.mockUuid.v4()).thenReturn('chunk-test-id');
+
+        // Act & Assert
+        expect(
+          () => fileOperations.saveSecureFileStream(
+            stream: stream,
+            fileExtension: 'bin',
+            isWeb: true,
+            secureStorage: testContext.mockSecureStorage,
+            uuid: testContext.mockUuid,
+            getBox: testContext.getBox,
+            chunkSize: 0,
+          ),
+          throwsA(
+            isA<StorageWriteError>().having(
+              (e) => e.message,
+              'message',
+              contains('Chunk size must be positive'),
+            ),
+          ),
+        );
+      });
+
+      test('should throw StorageWriteError when chunkSize is negative', () async {
+        // Arrange
+        final stream = Stream<List<int>>.fromIterable([
+          Uint8List.fromList([1, 2, 3]),
+        ]);
+        when(() => testContext.mockUuid.v4()).thenReturn('chunk-test-id');
+
+        // Act & Assert
+        expect(
+          () => fileOperations.saveSecureFileStream(
+            stream: stream,
+            fileExtension: 'bin',
+            isWeb: true,
+            secureStorage: testContext.mockSecureStorage,
+            uuid: testContext.mockUuid,
+            getBox: testContext.getBox,
+            chunkSize: -1,
+          ),
+          throwsA(
+            isA<StorageWriteError>().having(
+              (e) => e.message,
+              'message',
+              contains('Chunk size must be positive'),
+            ),
+          ),
+        );
+      });
+
       test('should save streaming secure file successfully on web', () async {
         // Arrange
         final parts = [
@@ -663,6 +719,68 @@ void main() {
             getBox: testContext.getBox,
           ),
           throwsA(isA<StorageWriteError>()),
+        );
+      });
+
+      test('saveSecureFile should rethrow StorageError without wrapping', () async {
+        when(() => testContext.mockUuid.v4())
+            .thenThrow(const StorageWriteError('pre-existing error'));
+
+        expect(
+          () => fileOperations.saveSecureFile(
+            fileBytes: Uint8List.fromList([1, 2, 3]),
+            fileExtension: 'bin',
+            isWeb: false,
+            secureStorage: testContext.mockSecureStorage,
+            uuid: testContext.mockUuid,
+            getBox: testContext.getBox,
+          ),
+          throwsA(isA<StorageWriteError>().having(
+            (e) => e.message,
+            'message',
+            equals('pre-existing error'),
+          )),
+        );
+      });
+
+      test('saveSecureFileStream should rethrow StorageError without wrapping', () async {
+        when(() => testContext.mockUuid.v4())
+            .thenThrow(const StorageWriteError('stream pre-existing error'));
+
+        expect(
+          () => fileOperations.saveSecureFileStream(
+            stream: Stream<List<int>>.value([1, 2, 3]),
+            fileExtension: 'bin',
+            isWeb: false,
+            secureStorage: testContext.mockSecureStorage,
+            uuid: testContext.mockUuid,
+            getBox: testContext.getBox,
+          ),
+          throwsA(isA<StorageWriteError>().having(
+            (e) => e.message,
+            'message',
+            equals('stream pre-existing error'),
+          )),
+        );
+      });
+
+      test('saveNormalFile should rethrow StorageError without wrapping', () async {
+        when(() => testContext.mockUuid.v4())
+            .thenThrow(const StorageWriteError('normal pre-existing error'));
+
+        expect(
+          () => fileOperations.saveNormalFile(
+            fileBytes: Uint8List.fromList([1, 2, 3]),
+            fileExtension: 'bin',
+            isWeb: false,
+            uuid: testContext.mockUuid,
+            getBox: testContext.getBox,
+          ),
+          throwsA(isA<StorageWriteError>().having(
+            (e) => e.message,
+            'message',
+            equals('normal pre-existing error'),
+          )),
         );
       });
     });

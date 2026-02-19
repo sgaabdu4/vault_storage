@@ -30,7 +30,7 @@ class FileOperations implements IFileOperations {
   /// Save a secure (encrypted) file
   ///
   /// Returns metadata needed to retrieve the file later.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Map<String, dynamic>> saveSecureFile({
     required Uint8List fileBytes,
@@ -78,7 +78,8 @@ class FileOperations implements IFileOperations {
         'extension': fileExtension, // Store the original extension
       };
     } catch (e) {
-      throw StorageWriteError('Failed to save secure file', e);
+      if (e is VaultStorageError) rethrow;
+      throw VaultStorageWriteError('Failed to save secure file', e);
     }
   }
 
@@ -99,8 +100,11 @@ class FileOperations implements IFileOperations {
       final secretKey = await encryptionAlgorithm.newSecretKey();
       final keyBytes = await secretKey.extractBytes();
 
-      // Chunk config
+      // Chunk config – guard against zero/negative size to avoid infinite loop
       final size = chunkSize ?? (2 << 20); // 2MB default
+      if (size <= 0) {
+        throw VaultStorageWriteError('Chunk size must be positive, got $size');
+      }
       final chunksMeta = <Map<String, dynamic>>[];
 
       // Native: framed single file for IO efficiency
@@ -219,7 +223,8 @@ class FileOperations implements IFileOperations {
         'chunks': chunksMeta,
       };
     } catch (e) {
-      throw StorageWriteError('Failed to save secure file (stream)', e);
+      if (e is VaultStorageError) rethrow;
+      throw VaultStorageWriteError('Failed to save secure file (stream)', e);
     }
   }
 
@@ -227,7 +232,7 @@ class FileOperations implements IFileOperations {
   ///
   /// Returns the decrypted file contents as a byte array.
   /// On web platforms, also triggers an automatic download.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Uint8List> getSecureFile({
     required Map<String, dynamic> fileMetadata,
@@ -254,6 +259,13 @@ class FileOperations implements IFileOperations {
         final out = BytesBuilder(copy: false);
 
         if (isWeb ?? kIsWeb) {
+          // Read encryption key once before the loop
+          final keyString = await secureStorage.read(key: secureKeyName);
+          if (keyString == null) {
+            throw KeyNotFoundError(secureKeyName);
+          }
+          final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
+
           for (var i = 0; i < chunkCount; i++) {
             final entry = chunks[i];
             final nonceB =
@@ -266,12 +278,6 @@ class FileOperations implements IFileOperations {
               throw FileNotFoundError(fileId, 'Hive secure files chunk $i');
             }
             final enc = await b64.decodeBase64Safely(context: 'encrypted chunk');
-            // Defer key fetch until we know data exists
-            final keyString = await secureStorage.read(key: secureKeyName);
-            if (keyString == null) {
-              throw KeyNotFoundError(secureKeyName);
-            }
-            final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
             final dec = await compute(
               decryptInIsolate,
               DecryptRequest(
@@ -397,15 +403,15 @@ class FileOperations implements IFileOperations {
       }
 
       return decryptedBytes;
-    } on StorageError {
+    } on VaultStorageError {
       rethrow;
     } catch (e) {
-      throw StorageReadError('Failed to read secure file', e);
+      throw VaultStorageReadError('Failed to read secure file', e);
     }
   }
 
   /// Delete a secure file and its associated encryption key
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<void> deleteSecureFile({
     required Map<String, dynamic> fileMetadata,
@@ -450,15 +456,15 @@ class FileOperations implements IFileOperations {
       // Delete the encryption key
       await secureStorage.delete(key: secureKeyName);
     } catch (e) {
-      if (e is StorageError) rethrow;
-      throw StorageDeleteError('Failed to delete secure file', e);
+      if (e is VaultStorageError) rethrow;
+      throw VaultStorageDeleteError('Failed to delete secure file', e);
     }
   }
 
   /// Save a normal (unencrypted) file
   ///
   /// Returns metadata needed to retrieve the file later.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Map<String, dynamic>> saveNormalFile({
     required Uint8List fileBytes,
@@ -490,7 +496,8 @@ class FileOperations implements IFileOperations {
         'extension': fileExtension,
       };
     } catch (e) {
-      throw StorageWriteError('Failed to save normal file', e);
+      if (e is VaultStorageError) rethrow;
+      throw VaultStorageWriteError('Failed to save normal file', e);
     }
   }
 
@@ -498,7 +505,7 @@ class FileOperations implements IFileOperations {
   ///
   /// Returns the file contents as a byte array.
   /// On web platforms, also triggers an automatic download.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Uint8List> getNormalFile({
     required Map<String, dynamic> fileMetadata,
@@ -549,13 +556,13 @@ class FileOperations implements IFileOperations {
         return await file.readAsBytes();
       }
     } catch (e) {
-      if (e is StorageError) rethrow;
-      throw StorageReadError('Failed to retrieve normal file', e);
+      if (e is VaultStorageError) rethrow;
+      throw VaultStorageReadError('Failed to retrieve normal file', e);
     }
   }
 
   /// Delete a normal file
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<void> deleteNormalFile({
     required Map<String, dynamic> fileMetadata,
@@ -580,8 +587,8 @@ class FileOperations implements IFileOperations {
         }
       }
     } catch (e) {
-      if (e is StorageError) rethrow;
-      throw StorageDeleteError('Failed to delete normal file', e);
+      if (e is VaultStorageError) rethrow;
+      throw VaultStorageDeleteError('Failed to delete normal file', e);
     }
   }
 

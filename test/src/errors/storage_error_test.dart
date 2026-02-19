@@ -3,92 +3,92 @@ import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 
 void main() {
-  group('StorageError', () {
-    group('StorageInitializationError', () {
+  group('VaultStorageError', () {
+    group('VaultStorageInitializationError', () {
       test('should create with message only', () {
-        const error = StorageInitializationError('Init failed');
+        const error = VaultStorageInitializationError('Init failed');
         expect(error.message, equals('Init failed'));
         expect(error.originalException, isNull);
       });
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageInitializationError('Init failed', exception);
+        final error = VaultStorageInitializationError('Init failed', exception);
         expect(error.message, equals('Init failed'));
         expect(error.originalException, equals(exception));
       });
     });
 
-    group('StorageReadError', () {
+    group('VaultStorageReadError', () {
       test('should create with message only', () {
-        const error = StorageReadError('Read failed');
+        const error = VaultStorageReadError('Read failed');
         expect(error.message, equals('Read failed'));
         expect(error.originalException, isNull);
       });
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageReadError('Read failed', exception);
+        final error = VaultStorageReadError('Read failed', exception);
         expect(error.message, equals('Read failed'));
         expect(error.originalException, equals(exception));
       });
     });
 
-    group('StorageWriteError', () {
+    group('VaultStorageWriteError', () {
       test('should create with message only', () {
-        const error = StorageWriteError('Write failed');
+        const error = VaultStorageWriteError('Write failed');
         expect(error.message, equals('Write failed'));
         expect(error.originalException, isNull);
       });
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageWriteError('Write failed', exception);
+        final error = VaultStorageWriteError('Write failed', exception);
         expect(error.message, equals('Write failed'));
         expect(error.originalException, equals(exception));
       });
     });
 
-    group('StorageDeleteError', () {
+    group('VaultStorageDeleteError', () {
       test('should create with message only', () {
-        const error = StorageDeleteError('Delete failed');
+        const error = VaultStorageDeleteError('Delete failed');
         expect(error.message, equals('Delete failed'));
         expect(error.originalException, isNull);
       });
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageDeleteError('Delete failed', exception);
+        final error = VaultStorageDeleteError('Delete failed', exception);
         expect(error.message, equals('Delete failed'));
         expect(error.originalException, equals(exception));
       });
     });
 
-    group('StorageDisposalError', () {
+    group('VaultStorageDisposalError', () {
       test('should create with message only', () {
-        const error = StorageDisposalError('Disposal failed');
+        const error = VaultStorageDisposalError('Disposal failed');
         expect(error.message, equals('Disposal failed'));
         expect(error.originalException, isNull);
       });
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageDisposalError('Disposal failed', exception);
+        final error = VaultStorageDisposalError('Disposal failed', exception);
         expect(error.message, equals('Disposal failed'));
         expect(error.originalException, equals(exception));
       });
     });
 
-    group('StorageSerializationError', () {
+    group('VaultStorageSerializationError', () {
       test('should create with message only', () {
-        const error = StorageSerializationError('Serialization failed');
+        const error = VaultStorageSerializationError('Serialization failed');
         expect(error.message, equals('Serialization failed'));
         expect(error.originalException, isNull);
       });
 
       test('should create with message and exception', () {
         final exception = Exception('Original error');
-        final error = StorageSerializationError('Serialization failed', exception);
+        final error = VaultStorageSerializationError('Serialization failed', exception);
         expect(error.message, equals('Serialization failed'));
         expect(error.originalException, equals(exception));
       });

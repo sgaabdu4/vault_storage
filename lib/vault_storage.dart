@@ -13,7 +13,7 @@ import 'package:vault_storage/src/vault_storage_impl.dart';
 
 export 'src/constants/config.dart';
 export 'src/entities/box_config.dart';
-export 'src/errors/storage_error.dart';
+export 'src/errors/errors.dart';
 // Interfaces and Models
 export 'src/interface/i_vault_storage.dart';
 // Security features
@@ -43,17 +43,16 @@ export 'src/security/vault_security_config.dart';
 /// final secureStorage = VaultStorage.create(
 ///   securityConfig: VaultSecurityConfig.production(
 ///     watcherMail: 'security@myapp.com',
+///     androidPackageName: 'com.mycompany.myapp',
+///     androidSigningCertHashes: ['your_cert_hash'],
+///     iosBundleId: 'com.mycompany.myapp',
+///     iosTeamId: 'YOUR_TEAM_ID',
 ///     threatCallbacks: {
 ///       SecurityThreat.jailbreak: () => print('Jailbreak detected!'),
 ///     },
 ///   ),
 /// );
-/// await secureStorage.init(
-///   androidPackageName: 'com.mycompany.myapp',   // Android only
-///   androidSigningCertHashes: ['your_cert_hash'], // Android only
-///   iosBundleId: 'com.mycompany.myapp',          // iOS only
-///   iosTeamId: 'YOUR_TEAM_ID',                   // iOS only
-/// );
+/// await secureStorage.init();
 ///
 /// // Key-value storage
 /// await storage.saveSecure(key: 'auth_token', value: 'jwt123');

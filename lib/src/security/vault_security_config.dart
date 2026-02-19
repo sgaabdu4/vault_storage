@@ -258,4 +258,7 @@ enum SecurityThreat {
 
   /// Multiple instances of app running
   multiInstance,
+
+  /// Automation tools detected
+  automation,
 }

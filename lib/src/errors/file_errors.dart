@@ -4,7 +4,7 @@ import 'package:vault_storage/src/errors/storage_error.dart';
 ///
 /// This is thrown when attempting to decode a base64 string (for file content,
 /// encryption keys, nonces, etc.) and the operation fails due to invalid encoding.
-class Base64DecodeError extends StorageReadError {
+class Base64DecodeError extends VaultStorageReadError {
   /// Creates a new [Base64DecodeError].
   ///
   /// The [context] parameter specifies what was being decoded (e.g., "file content", "encryption key").
@@ -16,7 +16,7 @@ class Base64DecodeError extends StorageReadError {
 ///
 /// This is thrown when attempting to encode binary data to base64 string
 /// and the operation fails.
-class Base64EncodeError extends StorageWriteError {
+class Base64EncodeError extends VaultStorageWriteError {
   /// Creates a new [Base64EncodeError].
   ///
   /// The [context] parameter specifies what was being encoded (e.g., "file content", "binary data").
@@ -28,7 +28,7 @@ class Base64EncodeError extends StorageWriteError {
 ///
 /// This can happen when trying to retrieve a file from storage (Hive or file system)
 /// and it doesn't exist.
-class FileNotFoundError extends StorageReadError {
+class FileNotFoundError extends VaultStorageReadError {
   /// Creates a new [FileNotFoundError].
   ///
   /// The [fileId] is the identifier used to locate the file.
@@ -41,7 +41,7 @@ class FileNotFoundError extends StorageReadError {
 ///
 /// This is thrown when the metadata required to access a file is missing critical
 /// information like a file path or identifier.
-class InvalidMetadataError extends StorageReadError {
+class InvalidMetadataError extends VaultStorageReadError {
   /// Creates a new [InvalidMetadataError].
   ///
   /// The [missingField] specifies which field was missing or invalid in the metadata.
@@ -52,7 +52,7 @@ class InvalidMetadataError extends StorageReadError {
 ///
 /// This can happen when trying to access an encryption key that should exist in
 /// secure storage but doesn't, possibly due to manual deletion or corruption.
-class KeyNotFoundError extends StorageReadError {
+class KeyNotFoundError extends VaultStorageReadError {
   /// Creates a new [KeyNotFoundError].
   ///
   /// The [keyName] is the identifier used to locate the key in secure storage.

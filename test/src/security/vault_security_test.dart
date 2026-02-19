@@ -184,6 +184,7 @@ void main() {
           SecurityThreat.developerMode,
           SecurityThreat.adbEnabled,
           SecurityThreat.multiInstance,
+          SecurityThreat.automation,
         ];
 
         expect(SecurityThreat.values, containsAll(expectedThreats));

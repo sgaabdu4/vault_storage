@@ -13,7 +13,7 @@ abstract class IFileOperations {
   /// Save a secure (encrypted) file
   ///
   /// Returns metadata needed to retrieve the file later.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<Map<String, dynamic>> saveSecureFile({
     required Uint8List fileBytes,
     required String fileExtension,
@@ -26,7 +26,7 @@ abstract class IFileOperations {
   /// Save a secure (encrypted) file using a stream, encrypting in chunks.
   ///
   /// Useful for large files to reduce peak memory usage. Returns metadata
-  /// needed to retrieve the file later. Throws [StorageError] on failure.
+  /// needed to retrieve the file later. Throws [VaultStorageError] on failure.
   Future<Map<String, dynamic>> saveSecureFileStream({
     required Stream<List<int>> stream,
     required String fileExtension,
@@ -40,7 +40,7 @@ abstract class IFileOperations {
   /// Get a secure (encrypted) file
   ///
   /// Retrieves and decrypts the file using the provided metadata.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<Uint8List> getSecureFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
@@ -52,7 +52,7 @@ abstract class IFileOperations {
   /// Delete a secure (encrypted) file
   ///
   /// Removes the file and its encryption key from storage.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<void> deleteSecureFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
@@ -63,7 +63,7 @@ abstract class IFileOperations {
   /// Save a normal (unencrypted) file
   ///
   /// Returns metadata needed to retrieve the file later.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<Map<String, dynamic>> saveNormalFile({
     required Uint8List fileBytes,
     required String fileExtension,
@@ -75,7 +75,7 @@ abstract class IFileOperations {
   /// Get a normal (unencrypted) file
   ///
   /// Retrieves the file using the provided metadata.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<Uint8List> getNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
@@ -86,7 +86,7 @@ abstract class IFileOperations {
   /// Delete a normal (unencrypted) file
   ///
   /// Removes the file from storage.
-  /// Throws [StorageError] if the operation fails.
+  /// Throws [VaultStorageError] if the operation fails.
   Future<void> deleteNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
