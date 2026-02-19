@@ -203,6 +203,15 @@ jobs:
             echo "tag_created=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Create GitHub Release with changelog
+        if: steps.tag.outputs.tag_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.tag.outputs.version }}"
+          awk '/^## \['"${{ steps.tag.outputs.version }}"'\]/{found=1; next} /^## \[/{if(found) exit} found' CHANGELOG.md > /tmp/release_notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file /tmp/release_notes.md
+
   publish:
     name: Publish to pub.dev
     if: needs.tag.outputs.tag_created == 'true'
