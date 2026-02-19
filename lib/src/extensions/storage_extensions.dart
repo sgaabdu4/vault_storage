@@ -146,8 +146,7 @@ extension Base64EncodingExtension on List<int> {
   }
 
   /// Legacy method for backwards compatibility - encodes bytes to a base64Url string
-  ///
-  /// @deprecated Use [encodeBase64Safely] for better performance and error handling
+  @Deprecated('Use encodeBase64Safely for better performance and error handling')
   String encodeBase64() {
     return base64Url.encode(this);
   }
@@ -196,7 +195,7 @@ class JsonSafe {
   /// - Primitives (String, int, double, bool) bypass JSON encoding
   /// - Small objects use synchronous encoding
   /// - Large objects use isolate-based encoding to prevent UI blocking
-  /// Throws [StorageSerializationError] if encoding fails.
+  /// Throws [VaultStorageSerializationError] if encoding fails.
   static Future<String> encode(Object? value) async {
     try {
       // Type-based optimization for primitives
@@ -228,7 +227,7 @@ class JsonSafe {
       // Complex types (Map, List, custom objects) - use JSON
       return await _encodeComplex(value);
     } catch (e) {
-      throw StorageSerializationError('Failed to encode object', e);
+      throw VaultStorageSerializationError('Failed to encode object', e);
     }
   }
 
@@ -238,7 +237,7 @@ class JsonSafe {
   /// - Type-optimized primitives
   /// - Small JSON strings (sync decoding)
   /// - Large JSON strings (isolate-based decoding)
-  /// Throws [StorageSerializationError] if decoding fails.
+  /// Throws [VaultStorageSerializationError] if decoding fails.
   static Future<T> decode<T>(String encodedValue) async {
     try {
       // Check for type markers (primitive optimizations)
@@ -280,7 +279,7 @@ class JsonSafe {
       // v2.x stored primitives as JSON strings without type markers
       return _coerceType<T>(decoded);
     } catch (e) {
-      throw StorageSerializationError('Failed to decode value', e);
+      throw VaultStorageSerializationError('Failed to decode value', e);
     }
   }
 
@@ -297,7 +296,7 @@ class JsonSafe {
       try {
         return int.parse(value) as T;
       } catch (e) {
-        throw StorageSerializationError(
+        throw VaultStorageSerializationError(
           'Type mismatch: Cannot parse "$value" as int. '
           'Consider clearing corrupted data.',
           e,
@@ -310,7 +309,7 @@ class JsonSafe {
       try {
         return double.parse(value) as T;
       } catch (e) {
-        throw StorageSerializationError(
+        throw VaultStorageSerializationError(
           'Type mismatch: Cannot parse "$value" as double. '
           'Consider clearing corrupted data.',
           e,
@@ -323,7 +322,7 @@ class JsonSafe {
     if (T == String && value != null) return value.toString() as T;
 
     // Type mismatch - throw clear error
-    throw StorageSerializationError(
+    throw VaultStorageSerializationError(
       'Type mismatch: Cannot convert "$value" (${value.runtimeType}) to type $T. '
       'Consider clearing corrupted data.',
     );
@@ -357,7 +356,7 @@ extension JsonDecodingExtension on String {
   ///
   /// For small JSON strings, uses synchronous decoding for better performance.
   /// For large JSON strings, uses isolate-based decoding to prevent UI blocking.
-  /// Throws [StorageSerializationError] if decoding fails.
+  /// Throws [VaultStorageSerializationError] if decoding fails.
   ///
   /// Example:
   /// ```dart
@@ -379,7 +378,7 @@ extension JsonEncodingExtension on Object? {
   ///
   /// For small objects, uses synchronous encoding for better performance.
   /// For large objects, uses isolate-based encoding to prevent UI blocking.
-  /// Throws [StorageSerializationError] if encoding fails.
+  /// Throws [VaultStorageSerializationError] if encoding fails.
   ///
   /// Example:
   /// ```dart
@@ -400,7 +399,7 @@ String _encodeInIsolate(Object? value) {
   try {
     return json.encode(value);
   } catch (e) {
-    throw StorageSerializationError('Failed to encode object to JSON', e);
+    throw VaultStorageSerializationError('Failed to encode object to JSON', e);
   }
 }
 
@@ -410,6 +409,6 @@ Object? _decodeInIsolate(String jsonString) {
   try {
     return json.decode(jsonString);
   } catch (e) {
-    throw StorageSerializationError('Failed to decode JSON string', e);
+    throw VaultStorageSerializationError('Failed to decode JSON string', e);
   }
 }

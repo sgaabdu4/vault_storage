@@ -1,3 +1,33 @@
+## [3.1.0] - 2026-02-19
+### API
+- **Rename `StorageError` → `VaultStorageError`** - Prefixes all error classes with `VaultStorage` to prevent name collisions. Old names stay as deprecated typedefs until v4.0.0, existing catch blocks and type checks keep working.
+
+### Bug Fixes
+- **fix: Init re-entrancy** - Use Future memoization instead of Completer to prevent duplicate init() emissions
+- **fix: clearAll custom box ordering** - Clear custom boxes before the `includeFiles=false` early return
+- **fix: clearNormal/clearSecure rethrow** - Rethrow VaultStorageError directly instead of double-wrapping
+- **fix: keys() custom boxes** - Include custom box keys in results
+- **fix: dispose in-flight init** - Await and nullify in-flight init before cleanup
+- **fix: getFileMetadata rethrow** - Rethrow VaultStorageError instead of wrapping in VaultStorageReadError
+- **fix: file_operations rethrow guards** - Rethrow VaultStorageError in saveSecureFile, saveSecureFileStream, saveNormalFile
+- **fix: Barrel export path** - Point errors export to errors.dart barrel
+- **fix: Doc example** - Remove non-existent named parameters from init() call
+
+### CI & Automation
+- **ci: Publish workflow** - OIDC-based auto-publish to pub.dev on tag push (no stored secrets)
+- **ci: Auto-tagging** - Create version tags automatically after merge to main
+- **ci: Dependabot auto-merge** - Auto-merge dependency PRs after CI passes
+- **ci: Action upgrades** - actions/cache v3 → v4, remove Codecov, consolidate PANA into single step
+- **ci: Branch protection** - Require all CI checks on main; admin can bypass
+
+### CHANGELOG
+- Add missing entries for v2.3.0, v2.3.1, and v1.2.0
+- Fix broken markdown between v2.2.0 and v2.1.2 entries
+
+### Testing
+- Add 84 tests covering all bug fixes (402 total, all passing)
+- Improve coverage: vault_storage_impl.dart 53.7% → 69.2%, storage_error.dart → 100%, overall 63.8% → 69.3%
+
 ## [3.0.1] - 2026-01-15
 ### Upgrade Dependencies
 - upgraded all dependencies to latest versions for improved security and performance
@@ -72,6 +102,18 @@
 - **No breaking changes** - Custom boxes are completely optional
 - **Default behavior unchanged** - Existing code works without modification
 - **Gradual migration** - Add custom boxes incrementally as needed
+
+## [2.3.1] - 2025-10-22
+### Internal
+- **ci: Version consistency check** - CI verifies pubspec.yaml and CHANGELOG.md versions match on push/PR
+- **docs: CHANGELOG formatting** - Normalize section headings, remove duplicate version lines
+
+## [2.3.0] - 2025-10-22
+### New Features
+- **feat: Custom box support** - Multiple storage boxes with independent encryption (see 2.3.2 for full notes)
+- **feat: Box isolation** - Separate encryption and storage per box
+- **feat: BoxConfig entity** - Freezed-based immutable box configuration
+- **feat: Enhanced create() factory** - Accept `customBoxes` parameter
 
 ## [2.2.2] - 2025-10-13
 ### Dependency Updates
@@ -148,7 +190,9 @@
       ),
     );
     // Security features will only be active on Android and iOS
-    await storage.init();## [2.1.2] - 2025-08-15
+    await storage.init();
+
+## [2.1.2] - 2025-08-15
 ### Documentation improvements
 - docs: Enhanced macOS setup documentation with complete entitlement files and codesigning requirements
 - docs: Added comprehensive troubleshooting steps for `StorageInitializationError` on macOS
@@ -259,6 +303,12 @@ Refer to the README Migration Guide for full examples.
 
 ### Dependencies
 - **Added**: `web: ^1.1.1` for modern web API access
+
+## [1.2.0] - 2025-07-13
+### New Features
+- **feat: Web file downloads** - Auto-download files on web platforms
+- **feat: Modern web APIs** - Migrate from `dart:html` to `package:web` for WASM compatibility
+- **feat: File extension metadata** - Store extensions in metadata for filename generation
 
 ## [1.1.0] - 2025-07-05
 ### Bug Fixes

@@ -90,6 +90,7 @@ class ThreatCallback {
     this.onPasscodeDisabled,
     this.onPasscodeChange,
     this.onBiometryChange,
+    this.onAutomation,
   });
 
   /// Privileged access callback
@@ -175,6 +176,9 @@ class ThreatCallback {
 
   /// Biometry change callback (legacy)
   final void Function()? onBiometryChange;
+
+  /// Automation callback
+  final void Function()? onAutomation;
 }
 
 /// Mock Talsec instance

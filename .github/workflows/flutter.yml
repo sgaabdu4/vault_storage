@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 jobs:
   version-check:
@@ -50,7 +51,7 @@ jobs:
           cache: true
 
       - name: Cache Flutter dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
@@ -79,7 +80,7 @@ jobs:
           cache: true
 
       - name: Cache Flutter dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
@@ -108,7 +109,7 @@ jobs:
           cache: true
 
       - name: Cache Flutter dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
@@ -122,12 +123,6 @@ jobs:
 
       - name: Run tests
         run: flutter test --coverage
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: coverage/lcov.info
-        if: success()
 
   pana:
     name: Package Analysis (PANA)
@@ -143,7 +138,7 @@ jobs:
           cache: true
 
       - name: Cache Flutter dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
@@ -158,18 +153,45 @@ jobs:
       - name: Activate PANA
         run: dart pub global activate pana
 
-      - name: Run PANA analysis
-        run: dart pub global run pana . --exit-code-threshold 0
-
-      - name: Check PANA score
+      - name: Run PANA analysis and check score
         run: |
-          SCORE=$(dart pub global run pana . --json | jq '.scores.grantedPoints')
-          TOTAL=$(dart pub global run pana . --json | jq '.scores.maxPoints')
+          RESULT=$(dart pub global run pana . --json)
+          SCORE=$(echo "$RESULT" | jq '.scores.grantedPoints')
+          TOTAL=$(echo "$RESULT" | jq '.scores.maxPoints')
           echo "PANA Score: $SCORE/$TOTAL"
           if [ "$SCORE" -lt "$TOTAL" ]; then
+            echo "$RESULT" | jq '.suggestions'
             echo "❌ PANA analysis failed. Score: $SCORE/$TOTAL"
             echo "Package must achieve maximum PANA score including WASM compatibility"
             exit 1
           else
             echo "✅ PANA analysis passed. Perfect score: $SCORE/$TOTAL"
+          fi
+
+  tag:
+    name: Auto-Tag Release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [version-check, format, analyze, test, pana]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag if version changed
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | tr -d '\r')
+          TAG="v$VERSION"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "ℹ️ Tag $TAG already exists — skipping"
+          else
+            echo "🏷️ Creating tag $TAG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "✅ Tag $TAG created and pushed"
           fi

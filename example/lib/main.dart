@@ -303,22 +303,26 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
         _showSecurityDialog();
       }
     } on JailbreakDetectedException {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Security Warning: Jailbreak detected - app may have limited functionality';
         _isInitialized = false;
       });
     } on TamperingDetectedException {
+      if (!mounted) return;
       setState(() {
         _errorMessage =
             'Security Error: App tampering detected - please reinstall from official source';
         _isInitialized = false;
       });
     } on SecurityThreatException catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Security threat detected: ${e.threatType} - ${e.message}';
         _isInitialized = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Initialization Error: $e';
       });
@@ -849,7 +853,11 @@ Try saving a secure value first.
 
   @override
   void dispose() {
-    vaultStorage.dispose();
+    try {
+      vaultStorage.dispose();
+    } catch (_) {
+      // Ignore errors if vaultStorage was never initialized
+    }
     super.dispose();
   }
 }
