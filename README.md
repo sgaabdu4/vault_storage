@@ -2,6 +2,8 @@
 
 Secure, fast key-value and file storage for Flutter. Built on Hive and flutter_secure_storage with AES-GCM encryption, full web support, and background isolates for heavy crypto work.
 
+**NEW in v4.0.0**: **Binary TypeAdapter storage** — ~30–50% faster key-value reads/writes. Each entry drops from ~36 bytes of wrapper overhead to 2 bytes. Web files stored as `Uint8List` (no base64 round-trip). Fully automatic — no code changes needed. ⚠️ Downgrade from v4.x to v3.x is not supported.
+
 **NEW in v3.0.0**: **20-50x faster** List and Map operations via native storage. Automatic migration from v2.x, no breaking changes.
 
 **NEW in v2.3.0**: Custom boxes for multi-tenant apps and data isolation.
@@ -404,7 +406,7 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^2.0.0 # Replace with the latest version
+  vault_storage: ^4.0.0 # Replace with the latest version
 ```
 
 Then run:
@@ -956,7 +958,7 @@ The package handles platform differences automatically:
 #### File Storage
 
 - **Native platforms** (iOS, Android, macOS, Windows, Linux): Files stored in the app's documents directory
-- **Web**: Files stored as base64-encoded strings in encrypted Hive boxes (browser storage)
+- **Web**: Encrypted and normal file bytes stored as `Uint8List` directly in Hive boxes (browser storage). Legacy base64 data from v3.x is read automatically.
 
 #### Automatic MIME Type Detection (Web)
 
@@ -1027,6 +1029,21 @@ await vaultStorage.dispose();
 
 ## Performance Tuning
 
+### V4.0 Performance Improvements
+
+V4.0 uses a custom Hive TypeAdapter for internal storage metadata:
+
+**What changed:**
+- Per-entry overhead: ~36 bytes (old Map wrapper) → 2 bytes (TypeAdapter)
+- One fewer Map allocation and two fewer string lookups on every read/write
+- File metadata stored as binary — no JSON encode/decode round-trip
+- Web file bytes stored as `Uint8List` directly — no base64 encode/decode per file save/read
+- WASM int warning from hive_ce v2.9.0 eliminated
+
+**Migration:**
+- ✅ Fully automatic — v2.x and v3.x data still read correctly
+- ⚠️ Cannot downgrade to v3.x after writing new entries
+
 ### V3.0 Performance Improvements
 
 V3.0 reads Lists and Maps **20-50x faster**:
@@ -1039,7 +1056,7 @@ V3.0 reads Lists and Maps **20-50x faster**:
 **Migration:**
 - ✅ Fully automatic - existing code works as-is
 - ✅ Backward compatible - reads v2.x data without issues
-- ⚠️ Cannot downgrade to v2.x after upgrade
+- ⚠️ Cannot downgrade to v2.x after upgrade (v3.x). Cannot downgrade to v3.x after v4.x upgrade.
 
 ### Configurable Thresholds
 

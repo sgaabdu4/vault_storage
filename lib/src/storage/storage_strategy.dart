@@ -55,7 +55,7 @@ class StoredValue {
   /// Checks if a value from Hive is wrapped with our metadata
   static bool isWrapped(dynamic value) {
     if (value is! Map) return false;
-    return value.containsKey(_strategyKey) && value.containsKey(_valueKey);
+    return value.length == 2 && value.containsKey(_strategyKey) && value.containsKey(_valueKey);
   }
 }
 

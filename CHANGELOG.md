@@ -1,3 +1,18 @@
+## [4.0.0] - 2026-02-27
+### Breaking changes
+- **Binary TypeAdapter storage** — All key-value writes now use a custom Hive TypeAdapter for `StoredValue` (typeId 200) instead of the previous `Map<String, dynamic>` wrapper. Per-entry overhead drops from ~36 bytes to 2 bytes and one fewer Map allocation per read/write.
+- **Downgrade not supported** — Keys written by v4.x cannot be read by v3.x. Upgrade is one-way. All v2.x and v3.x data remains readable by v4.x via existing fallback paths.
+
+### Performance improvements
+- **Key-value reads/writes ~30–50% faster** — Eliminated Map allocation, two string key lookups, and `Map.containsKey` calls on every read/write path (all boxes, including custom boxes).
+- **Web file content stored as `Uint8List`** — Encrypted and normal file bytes are written to Hive directly instead of base64-encoded strings. Removes one encode + one decode per web file save/retrieve.
+- **File metadata stored as binary Map** — `saveSecureFile` and `saveNormalFile` now use the TypeAdapter path instead of `encodeJsonSafely` + raw put. Eliminates JSON serialisation round-trip for file metadata on every save.
+- **WASM int warning fixed** — The old Map wrapper stored `{__VST_STRATEGY__: 0}`, an int inside a Map, triggering hive_ce v2.9.0's WASM integer warning. The TypeAdapter uses `writeByte` for the strategy index, which avoids this.
+
+### Migration
+- No data migration required. v4.x reads all existing v2.x (JSON string) and v3.x (Map-wrapped) formats automatically.
+- Web apps: old base64 file content (`String`) is decoded on read; new files are stored as `Uint8List`. Both formats coexist indefinitely.
+
 ## [3.1.0] - 2026-02-19
 ### API
 - **Rename `StorageError` → `VaultStorageError`** - Prefixes all error classes with `VaultStorage` to prevent name collisions. Old names stay as deprecated typedefs until v4.0.0, existing catch blocks and type checks keep working.

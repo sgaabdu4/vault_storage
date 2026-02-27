@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
+import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import '../mocks.dart';
@@ -660,6 +661,120 @@ void main() {
         await Future.wait(futures);
 
         verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(10);
+      });
+    });
+
+    group('Mixed v2/v3/v4 format backward compatibility', () {
+      test('reads v2.x plain JSON string format', () async {
+        const key = 'legacy_v2';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        // v2.x stored raw JSON strings
+        when(() => testContext.mockNormalBox.get(key)).thenReturn('"hello"');
+
+        final result = await testContext.vaultStorage.get<String>(key, isSecure: false);
+        expect(result, equals('hello'));
+      });
+
+      test('reads v3.x Map-wrapped StoredValue format', () async {
+        const key = 'legacy_v3';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        // v3.x stored Map with __VST_STRATEGY__ and __VST_VALUE__ keys
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(<String, dynamic>{
+          '__VST_STRATEGY__': 0, // native
+          '__VST_VALUE__': 42,
+        });
+
+        final result = await testContext.vaultStorage.get<int>(key, isSecure: false);
+        expect(result, equals(42));
+      });
+
+      test('reads v3.x Map-wrapped JSON strategy format', () async {
+        const key = 'legacy_v3_json';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(<String, dynamic>{
+          '__VST_STRATEGY__': 1, // json
+          '__VST_VALUE__': '{"name":"test"}',
+        });
+
+        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        expect(result, equals({'name': 'test'}));
+      });
+
+      test('reads v4.x TypeAdapter StoredValue format (native)', () async {
+        const key = 'new_v4';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        // v4.x returns StoredValue objects directly (deserialized by TypeAdapter)
+        when(() => testContext.mockNormalBox.get(key))
+            .thenReturn(const StoredValue(42, StorageStrategy.native));
+
+        final result = await testContext.vaultStorage.get<int>(key, isSecure: false);
+        expect(result, equals(42));
+      });
+
+      test('reads v4.x TypeAdapter StoredValue format (json)', () async {
+        const key = 'new_v4_json';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        when(() => testContext.mockNormalBox.get(key))
+            .thenReturn(const StoredValue('{"items":[1,2]}', StorageStrategy.json));
+
+        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        expect(result, equals({'items': [1, 2]}));
+      });
+
+      test('reads mixed formats from different keys in same box', () async {
+        // v2 key
+        when(() => testContext.mockNormalBox.containsKey('k_v2')).thenReturn(true);
+        when(() => testContext.mockNormalBox.get('k_v2')).thenReturn('"old_string"');
+
+        // v3 key
+        when(() => testContext.mockNormalBox.containsKey('k_v3')).thenReturn(true);
+        when(() => testContext.mockNormalBox.get('k_v3')).thenReturn(<String, dynamic>{
+          '__VST_STRATEGY__': 0,
+          '__VST_VALUE__': 100,
+        });
+
+        // v4 key
+        when(() => testContext.mockNormalBox.containsKey('k_v4')).thenReturn(true);
+        when(() => testContext.mockNormalBox.get('k_v4'))
+            .thenReturn(const StoredValue('new_string', StorageStrategy.native));
+
+        // All three should be readable
+        expect(await testContext.vaultStorage.get<String>('k_v2', isSecure: false), 'old_string');
+        expect(await testContext.vaultStorage.get<int>('k_v3', isSecure: false), 100);
+        expect(await testContext.vaultStorage.get<String>('k_v4', isSecure: false), 'new_string');
+      });
+
+      test('coerces v4.x native Map<dynamic,dynamic> to Map<String,dynamic>', () async {
+        const key = 'map_coerce';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        // Hive deserializes Maps as Map<dynamic, dynamic> after TypeAdapter round-trip
+        final hiveMap = <dynamic, dynamic>{'name': 'test', 'count': 5};
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(
+          StoredValue(hiveMap, StorageStrategy.native),
+        );
+
+        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        expect(result, equals({'name': 'test', 'count': 5}));
+        expect(result, isA<Map<String, dynamic>>());
+      });
+
+      test('does not misidentify user Map with extra keys as v3.x wrapper', () async {
+        const key = 'user_map';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        // User Map that has the wrapper keys PLUS extra keys - should NOT be treated as wrapper
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(<String, dynamic>{
+          '__VST_STRATEGY__': 0,
+          '__VST_VALUE__': 'payload',
+          'extra_key': true,
+        });
+
+        // Should hit fallback path and coerce as raw Map, not as v3.x wrapper
+        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        expect(result, equals({
+          '__VST_STRATEGY__': 0,
+          '__VST_VALUE__': 'payload',
+          'extra_key': true,
+        }));
       });
     });
   });
