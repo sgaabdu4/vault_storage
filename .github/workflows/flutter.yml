@@ -212,19 +212,13 @@ jobs:
           awk '/^## \['"${{ steps.tag.outputs.version }}"'\]/{found=1; next} /^## \[/{if(found) exit} found' CHANGELOG.md > /tmp/release_notes.md
           gh release create "$TAG" --title "$TAG" --notes-file /tmp/release_notes.md
 
-  publish:
-    name: Trigger Publish
-    if: needs.tag.outputs.tag_created == 'true'
-    needs: tag
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Trigger publish workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh workflow run publish.yml \
-            --repo "${{ github.repository }}" \
-            --ref "v${{ needs.tag.outputs.version }}"
-          echo "✅ Triggered publish.yml for v${{ needs.tag.outputs.version }}"
+  # Publishing is handled by publish.yml, triggered by tag push.
+  # Tags pushed by GITHUB_TOKEN don't trigger other workflows, so
+  # after CI creates the tag, manually re-push it from your terminal:
+  #
+  #   git fetch --tags
+  #   git push origin :refs/tags/v<VERSION>   # delete remote tag
+  #   git push origin v<VERSION>              # re-push (triggers publish.yml)
+  #
+  # Or use a PAT in the tag job above to push the tag (see Dart docs:
+  # https://dart.dev/tools/pub/automated-publishing).
