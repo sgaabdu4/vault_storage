@@ -2,17 +2,17 @@
 
 Secure, fast key-value and file storage for Flutter. Built on Hive and flutter_secure_storage with AES-GCM encryption, full web support, and background isolates for heavy crypto work.
 
-**NEW in v4.0.0**: **Binary TypeAdapter storage** — ~30–50% faster key-value reads/writes. Each entry drops from ~36 bytes of wrapper overhead to 2 bytes. Web files stored as `Uint8List` (no base64 round-trip). Fully automatic — no code changes needed. ⚠️ Downgrade from v4.x to v3.x is not supported.
+**v4.0.0**: Binary TypeAdapter storage — each entry drops from ~36 bytes of wrapper overhead to 2 bytes, yielding ~30-50% faster key-value reads/writes. Web files stored as `Uint8List` (no base64 round-trip). Fully automatic — no code changes needed. Downgrade from v4.x to v3.x is not supported.
 
-**NEW in v3.0.0**: **20-50x faster** List and Map operations via native storage. Automatic migration from v2.x, no breaking changes.
+**v3.0.0**: 20-50x faster List and Map operations via native storage. Automatic migration from v2.x, no breaking changes.
 
-**NEW in v2.3.0**: Custom boxes for multi-tenant apps and data isolation.
+**v2.3.0**: Custom boxes for multi-tenant apps and data isolation.
 
-**NEW in v2.2.0**: Optional FreeRASP integration — jailbreak detection and runtime security monitoring.
+**v2.2.0**: Optional FreeRASP integration — jailbreak detection and runtime security monitoring.
 
 ### Migration Benefits
 
-Switching from the "package dance":
+One package replaces the multi-package dance:
 
 #### Before (Multiple Packages)
 ```dart
@@ -58,21 +58,14 @@ await storage.saveSecureFile(
 );
 ```
 
-#### Results
-- **90% less boilerplate code**
-- **Single API to learn and maintain** 
-- **Built-in encryption** - no manual crypto implementation
-- **Consistent error handling** across all storage types
-- **Web compatibility** without extra platform logic
+One API replaces four packages. Encryption is built in. Error handling is consistent across all storage types, and web works without extra platform logic.
 
 ## Table of Contents
 
 - [Features](#features)
 - [Use Cases](#use-cases)
-- [Why Choose Vault Storage?](#why-choose-vault-storage)
-- [Security Features (NEW!)](#security-features-new)
-- [Important Notes for Production Use](#important-notes-for-production-use)
-- [Compliance & Standards](#compliance--standards)
+- [Security Features](#security-features)
+- [Production Notes](#production-notes)
 - [Getting Started](#getting-started)
 - [Migration Guide: 1.x -> 2.0](#migration-guide-1x---20)
 - [Quick Start](#quick-start)
@@ -85,100 +78,42 @@ await storage.saveSecureFile(
 
 ## Features
 
-- **Simple API**: Clear-intent methods (`saveSecure`/`saveNormal`/`get`/`delete`/`clear`)
-- **Smart lookups**: `get()` checks normal first, then secure; constrain via `isSecure`
-- **List stored keys**: `keys()` returns stored keys (filter by secure/normal, include file keys)
-- **Encrypted file storage**: AES-GCM 256-bit and normal file storage, unified API across platforms
-- **Jailbreak protection**: Optional FreeRASP integration for runtime security
-- **Threat detection**: Detect rooting, debugging, and app tampering
-- **Web compatible**: Native file system on devices; web stores bytes in Hive with auto-download
-- **Fast by default**: Crypto, JSON, and base64 offloaded to isolates for large payloads
-- **Large-file streaming**: Chunked encryption reduces memory pressure for big files
-- **Configurable performance**: Adjust isolate thresholds via `VaultStorageConfig`
-- **Framework agnostic**: Works with any state management or none
+- **Clear-intent API**: `saveSecure`, `saveNormal`, `get`, `delete`, `clear` — plus `keys()` to list stored keys by type
+- **Smart lookups**: `get()` checks normal first, then secure; constrain with `isSecure` or `box`
+- **AES-GCM 256-bit file encryption** and normal file storage, unified API across all platforms
+- **Optional runtime security**: FreeRASP integration detects jailbreaks, rooting, debugging, and tampering (Android/iOS)
+- **Web compatible**: Native file system on devices; web stores bytes in Hive with auto-download on retrieval
+- **Background processing**: Crypto, JSON, and base64 offloaded to isolates for large payloads; chunked encryption for big files
+- **Configurable thresholds**: Tune isolate cutoffs via `VaultStorageConfig`
+- **Custom boxes**: Isolated storage per tenant, feature, or data lifecycle (v2.3.0+)
+- **Typed errors**: `VaultStorageError` subclasses for every failure mode
+- **97.5% test coverage**
+
+Works with any state management solution or none.
 
 ## Use Cases
 
-### Healthcare & Medical Apps
-- **Patient Records**: Store medical data with HIPAA-grade encryption
-- **Medical Imaging**: Save diagnostic images offline with encryption
-- **Health Tracking**: Encrypt sensitive health data at rest
+Vault Storage fits any app that stores sensitive data locally. Healthcare apps can encrypt patient records and medical images at rest. Financial apps can protect auth tokens, transaction records, and payment credentials. Enterprise apps can isolate per-tenant data, encrypt API keys, and maintain audit trails with tamper detection.
 
-### Financial & Banking Apps
-- **Auth Tokens**: Store JWT tokens and API keys securely
-- **Transaction Data**: Encrypt financial records (PCI DSS compliant)
-- **Biometric Data**: Protect fingerprint and face ID templates
-- **Digital Wallets**: Secure cryptocurrency keys and payment info
+Consumer apps benefit too: password managers, messaging apps caching encrypted media, and personal vaults for IDs and certificates. On Android and iOS, FreeRASP blocks access on jailbroken or rooted devices.
 
-### Enterprise & Business Apps
-- **Corporate Docs**: Encrypt contracts and confidential documents
-- **Employee Data**: Encrypt credentials and personal info
-- **API Keys**: Encrypt third-party service credentials
-- **Audit Trails**: Maintain encrypted logs for compliance
-- **Tamper Protection**: Detect modified apps or compromised environments
+The same API works across mobile, web, and desktop. Files of any size stream through chunked encryption without blocking the UI. Offline-first architectures get local encryption with no server dependency.
 
-### Consumer Apps with Real Users
-- **Password Managers**: Store encrypted passwords and secure notes
-- **Messaging Apps**: Cache encrypted messages and media files
-- **Personal Vaults**: Encrypt IDs, certificates, and personal documents
-- **Social Apps**: Protect user data and private content
-- **Device Security**: Block access on jailbroken/rooted devices
+## Security Features
 
-### Cross-Platform Apps
-- **Consistent Security**: Same protection across mobile, web, and desktop
-- **Large Files**: Handle large encrypted files (images, videos, documents)
-- **Offline-First**: Secure local storage that works without internet
-
-### Why Choose Vault Storage?
-
-One package replaces several, with encryption built in.
-
-#### Built for Real-World Applications
-- **Security by Default**: AES-256-GCM encryption for all secure data, no manual setup
-- **Runtime Protection**: Optional jailbreak detection and app integrity monitoring
-- **Performance First**: Crypto and JSON work runs in background isolates; the UI thread stays free
-- **True Cross-Platform**: One API across mobile, web, and desktop
-- **Clear Error Handling**: Typed `VaultStorageError` subtypes for every failure mode
-
-#### Future-Proof Your App
-- **Scalable**: Start with key-value storage, add encrypted files later — same API
-- **Compliance Ready**: Covers GDPR, HIPAA, and PCI DSS data-at-rest requirements
-- **Production Ready**: Used in production apps handling sensitive user data
-- **Pragmatic**: Simple API, tested internals
-
-#### Developer Experience
-- **Clean API**: Methods that handle security internally
-- **Batteries Included**: Error types, utilities, and full documentation
-- **Well Tested**: 97.5% test coverage
-- **Complete Documentation**: Examples, use cases, and troubleshooting guides
-
-#### Perfect for Both Simple and Complex Apps
-
-**Growing app?** Start with preferences, add file encryption later — same API.
-
-**Enterprise app?** Security and compliance without the complexity.
-
-**Consumer app?** Protect user data without compromising performance.
-
-> **Pro Tip**: Even if you store only preferences today, secure storage from day one prevents costly migrations when you add accounts, premium features, or sensitive data.
-
-## Security Features (NEW!)
-
-Optional runtime security monitoring via [FreeRASP](https://freerasp.talsec.app/). Detects jailbreaks, tampering, hooking, and more on Android and iOS.
-
-**Platform Support**: Security features run **only on Android and iOS**. Other platforms ignore the configuration and work normally.
+Optional runtime security monitoring via [FreeRASP](https://freerasp.talsec.app/). Detects jailbreaks, tampering, hooking, and more on Android and iOS. Other platforms ignore the configuration and work normally.
 
 ### What's Protected
 
-- **Jailbreak/Root Detection**: Block access on compromised devices
-- **App Tampering**: Detect modified or repackaged apps  
-- **Debug Detection**: Prevent debugging in production builds
-- **Hook Detection**: Detect runtime manipulation (Frida, Xposed, etc.)
-- **Emulator Detection**: Detect emulators and simulators
-- **Unofficial Store**: Detect installation from unofficial app stores
-- **Screen Capture**: Monitor screenshots and screen recording
-- **System VPN**: Detect system VPN usage
-- **Device Security**: Check for device passcode and secure hardware
+- Jailbreak/root detection
+- App tampering and repackaging
+- Debug detection in production builds
+- Runtime manipulation (Frida, Xposed, etc.)
+- Emulator and simulator detection
+- Unofficial store installation
+- Screen capture monitoring
+- System VPN detection
+- Device passcode and secure hardware checks
 
 ### Quick Start with Security
 
@@ -316,88 +251,30 @@ For iOS, get your Team ID from Apple Developer Console.
 
 ### Security Monitoring Dashboard
 
-FreeRASP provides a free monitoring dashboard:
-- View security events from your apps
-- Compare threat levels to global averages  
-- Track security trends over time
-- Export security reports
-
-Register at [https://freerasp.talsec.app/](https://freerasp.talsec.app/) using the same email as `watcherMail`.
+FreeRASP provides a free monitoring dashboard at [https://freerasp.talsec.app/](https://freerasp.talsec.app/). Register with the same email as `watcherMail` to view security events, compare threat levels, and export reports.
 
 ### Without Security Features
 
-Security is optional. Without a `securityConfig`, storage works as before:
+Security is optional. Without a `securityConfig`, storage works on all platforms with no security overhead:
 
 ```dart
-// No security features - works on all platforms
 final storage = VaultStorage.create();
 await storage.init();
 ```
 
-**Cross-Platform Compatibility**: Security config is safe to include on all platforms:
-- **Android & iOS**: Full security monitoring and threat detection
-- **macOS, Windows, Linux, Web**: Normal vault storage without security features
+Security config is safe to include on all platforms. Android and iOS get full monitoring; macOS, Windows, Linux, and web operate normally without it. One codebase, no conditional logic.
 
-One codebase, all platforms — no conditional logic needed.
+## Production Notes
 
-## Important Notes for Production Use
+Vault Storage uses AES-GCM 256-bit encryption and follows security best practices, but no software guarantees absolute security. Audit independently before deploying with sensitive data.
 
-> **Security Disclaimer**: Vault Storage uses AES-GCM 256-bit encryption and follows security best practices, but **no software guarantees absolute security**. Conduct your own security audits before deploying to production with sensitive data.
-
-### Security Considerations
-- **Audit Required**: Audit independently before handling sensitive data
-- **Compliance**: Verify your implementation meets your regulatory requirements
-- **Key Management**: Secure storage quality varies by platform
-- **Testing**: Test encryption/decryption in your specific use case
-- **RASP Limitations**: FreeRASP adds runtime protection, but no security layer is infallible
-- **False Positives**: Security features may trigger false positives — test in your environment
-
-### Legal & Compliance
-- **Your Responsibility**: Ensure compliance with applicable laws and regulations
-- **Data Protection**: Review data protection requirements for your jurisdiction and industry
-- **User Consent**: Obtain user consent for data collection and storage
-- **Backup Strategy**: Plan for backup and recovery
-
-### Best Practices
-- **Regular Updates**: Keep the package and dependencies updated for security patches
-- **Error Handling**: Handle storage failures explicitly
-- **Data Minimisation**: Store only what you need
-- **Access Control**: Add access controls at the application layer
-- **Security Testing**: Test behavior when threats are detected
-- **Graceful Degradation**: Handle security blocks gracefully
-
-> **Recommendation**: For mission-critical applications, add certificate pinning, RASP, and regular penetration testing.
-
-## Compliance & Standards
-
-Vault Storage helps meet common regulatory requirements:
-
-### Healthcare (HIPAA)
-- **AES-256-GCM encryption** for all sensitive data
-- **Platform keychain storage** for encryption keys
-- **Secure file handling** for medical documents and images
-- **Access logging** capabilities for audit trails
-- **Data minimization** through selective encryption
-
-### Financial (PCI DSS)
-- **Strong cryptography** for payment data protection
-- **Secure key management** using platform secure storage
-- **File encryption** for financial documents
-- **Runtime security monitoring** (Android/iOS) to detect tampering
-
-### Enterprise (SOC 2)
-- **Data encryption at rest** for sensitive corporate data
-- **Access controls** through app-level implementation
-- **Security monitoring** with FreeRASP integration
-- **Error logging** for security event tracking
-
-### GDPR Compliance
-- **Data encryption** to protect personal information
-- **Right to deletion** through clear storage management
-- **Data portability** through standardized export/import
-- **Minimal data collection** - no analytics or telemetry
-
-> **Important**: Vault Storage provides security foundations; you are responsible for full regulatory compliance. Audit before deploying to production.
+- Verify your implementation meets your regulatory requirements (GDPR, HIPAA, PCI DSS, etc.)
+- Secure storage quality varies by platform — test encryption and decryption in your target environment
+- FreeRASP adds runtime protection but may produce false positives; test in your environment
+- Store only what you need and add access controls at the application layer
+- Handle storage failures explicitly and plan for backup and recovery
+- Keep the package and dependencies updated for security patches
+- Obtain required user consent for data collection and storage
 
 ## Getting Started
 
@@ -420,11 +297,11 @@ This release drops `BoxType` and `Either`, simplifying the API surface.
 
 ### Why this change?
 
-- **Clarity and intent**: `saveSecure`, `saveNormal`, and `get(..., isSecure)` name intent explicitly and reduce misuse
-- **Simpler error handling**: Typed `VaultStorageError` exceptions replace `Either`-based handling scattered across call sites
-- **Less leakage of internals**: Dropping `BoxType` decouples callers from storage internals
-- **Web and files ergonomics**: A key-based file API (with web auto-download) replaces metadata maps
-- **Performance and maintainability**: A smaller surface simplifies internal optimization and future changes
+- `saveSecure`, `saveNormal`, and `get(..., isSecure)` name intent explicitly and reduce misuse
+- Typed `VaultStorageError` exceptions replace `Either`-based handling
+- Dropping `BoxType` decouples callers from storage internals
+- A key-based file API (with web auto-download) replaces metadata maps
+- A smaller surface simplifies internal optimization and future changes
 
 **Trade-offs** (considered acceptable):
 - Exceptions require `try/catch` instead of `.fold()` patterns
@@ -458,7 +335,7 @@ This release drops `BoxType` and `Either`, simplifying the API surface.
 - Before: `Either<StorageError, T>` results
 - After: methods throw `VaultStorageError` subclasses (`VaultStorageReadError`, `VaultStorageWriteError`, etc.)
 
-5) Performance & internals
+5) Performance and internals
 - Large JSON/base64 handled via isolates; thresholds configurable in `VaultStorageConfig`
 - Large secure files use streaming encryption
 - More aggressive Hive compaction
@@ -490,7 +367,7 @@ final normalOnly = await storage.get<String>('theme', isSecure: false);
 
 The factory returns `IVaultStorage`, hiding implementation details.
 
-### Custom Boxes (NEW in v2.3.0)
+### Custom Boxes (v2.3.0+)
 
 Create isolated storage boxes for multi-tenancy or feature separation:
 
@@ -530,11 +407,7 @@ await storage.saveNormal(
 );
 ```
 
-**Custom box uses:**
-- **Multi-tenant apps**: Separate storage per user or organization
-- **Feature isolation**: Independent storage for different app modules
-- **Data lifecycle**: Separate boxes for cache vs. persistent data
-- **Workspace management**: Multiple workspaces with isolated data
+Custom boxes suit multi-tenant apps (separate storage per user or organization), feature isolation, cache vs. persistent data separation, and workspace management.
 
 ## Platform Setup
 
@@ -573,7 +446,7 @@ plugins {
 }
 ```
 
-**Note**: To prevent backup-related keystore issues, disable auto-backup in `AndroidManifest.xml`:
+To prevent backup-related keystore issues, disable auto-backup in `AndroidManifest.xml`:
 
 ```xml
 <application
@@ -593,7 +466,7 @@ For apps using security features, ensure Xcode 15+ is installed.
 
 ### macOS
 
-**Required**: Add Keychain entitlements and configure codesigning to prevent `VaultStorageInitializationError`.
+Add Keychain entitlements and configure codesigning. Without these, `VaultStorageInitializationError` is thrown because macOS blocks Keychain access.
 
 #### 1. Create or update entitlement files
 
@@ -669,8 +542,6 @@ If `VaultStorageInitializationError` persists:
 3. **Reset Keychain** (development only): Delete your app's keychain entries if corrupted
 4. **Check entitlements**: `codesign -d --entitlements - /path/to/your/app.app`
 
-**Why this is required**: VaultStorage stores encryption keys in macOS Keychain. Without entitlements and codesigning, the system blocks Keychain access and throws `VaultStorageInitializationError`.
-
 ### Linux
 
 Install required system dependencies:
@@ -700,7 +571,7 @@ No additional setup needed.
 To find the encryption key file, use the example app:
 
 1. Run the example app: `cd example && flutter run -d windows`
-2. Click the "🔍 Show Storage Location" button
+2. Click the "Show Storage Location" button
 3. The dialog will show you the exact path, typically:
    - `C:\Users\<username>\AppData\Roaming\<app_name>\flutter_secure_storage.dat`
 
@@ -766,19 +637,9 @@ class MyApp extends StatelessWidget {
 
 ## Usage
 
-### Framework-Agnostic Design
+Vault Storage has no state management dependency. Use it with Riverpod, Bloc, Provider, GetX, or direct instantiation.
 
-**Important**: Vault Storage has no state management dependency. It works with:
-- **No framework**: Direct instantiation and usage
-- **Riverpod**: Integration examples below
-- **Bloc**: Works with any Bloc pattern
-- **Provider**: Works with Provider  
-- **GetX**: Works with GetX
-- **Any other solution**: Use whatever suits your project
-
-### Basic Usage (No Dependencies)
-
-Use Vault Storage without any state management:
+### Basic Usage
 
 ```dart
 import 'package:vault_storage/vault_storage.dart';
@@ -805,8 +666,6 @@ Future<void> example() async {
 ```
 
 ### Using with Riverpod
-
-If you use Riverpod, create a provider:
 
 ```yaml
 dependencies:
@@ -886,8 +745,6 @@ Future<void> main() async {
 
 ### Key-Value Storage
 
-Store and retrieve key-value pairs:
-
 ```dart
 // Secure data (encrypted)
 await storage.saveSecure(key: 'user_token', value: 'jwt_token_here');
@@ -905,7 +762,7 @@ final token = await storage.get<String>('user_token', isSecure: true);
 final theme = await storage.get<String>('theme_mode', isSecure: false);
 ```
 
-### File Storage (Secure and Normal)
+### File Storage
 
 For images, documents, or binary data:
 
@@ -940,31 +797,16 @@ Future<void> handleFileStorage(IVaultStorage storage) async {
 }
 ```
 
-Note on web: `getFile()` auto-downloads using a filename derived from the stored extension. This API does not support custom download filenames.
-
-### Storage Classes Under the Hood
-
-Internally, Vault Storage keeps separate boxes for normal/secure key-value data and normal/secure files. The public API abstracts this; you provide keys and an optional `isSecure` flag.
+On web, `getFile()` auto-downloads using a filename derived from the stored extension. Custom download filenames are not supported in this API.
 
 ### Platform-Specific Behaviour
 
 The package handles platform differences automatically:
 
-#### File Retrieval
-
-- Web: Auto-downloads file, returns Uint8List
-- Native: Returns Uint8List (no download)
-
-#### File Storage
-
-- **Native platforms** (iOS, Android, macOS, Windows, Linux): Files stored in the app's documents directory
-- **Web**: Encrypted and normal file bytes stored as `Uint8List` directly in Hive boxes (browser storage). Legacy base64 data from v3.x is read automatically.
-
-#### Automatic MIME Type Detection (Web)
-
-For web downloads, MIME types are inferred from file extensions (PDF, images, docs, audio/video, archives, JSON/TXT, etc.). Unknown types default to `application/octet-stream`.
-
-No code changes needed.
+- **File retrieval**: Web auto-downloads and returns `Uint8List`; native returns `Uint8List` directly
+- **File storage (native)**: Files saved in the app's documents directory
+- **File storage (web)**: File bytes stored as `Uint8List` in Hive boxes (browser storage). Legacy base64 data from v3.x is read automatically.
+- **MIME types (web)**: Inferred from file extensions for downloads. Unknown types default to `application/octet-stream`.
 
 ### Initialisation in main()
 
@@ -1034,29 +876,28 @@ await vaultStorage.dispose();
 V4.0 uses a custom Hive TypeAdapter for internal storage metadata:
 
 **What changed:**
-- Per-entry overhead: ~36 bytes (old Map wrapper) → 2 bytes (TypeAdapter)
+- Per-entry overhead: ~36 bytes (old Map wrapper) to 2 bytes (TypeAdapter)
 - One fewer Map allocation and two fewer string lookups on every read/write
 - File metadata stored as binary — no JSON encode/decode round-trip
 - Web file bytes stored as `Uint8List` directly — no base64 encode/decode per file save/read
 - WASM int warning from hive_ce v2.9.0 eliminated
 
 **Migration:**
-- ✅ Fully automatic — v2.x and v3.x data still read correctly
-- ⚠️ Cannot downgrade to v3.x after writing new entries
+- Fully automatic — v2.x and v3.x data still read correctly
+- Cannot downgrade to v3.x after writing new entries
 
 ### V3.0 Performance Improvements
 
-V3.0 reads Lists and Maps **20-50x faster**:
+V3.0 reads Lists and Maps 20-50x faster:
 
-**Performance Gains:**
-- 40-item list: 1000ms → 20ms read time (50x faster)
-- 100-item list: 2500ms → 50ms read time (50x faster)
-- **Automatic optimization** - no code changes needed
+- 40-item list: 1000ms to 20ms read time (50x)
+- 100-item list: 2500ms to 50ms read time (50x)
+- Automatic — no code changes needed
 
 **Migration:**
-- ✅ Fully automatic - existing code works as-is
-- ✅ Backward compatible - reads v2.x data without issues
-- ⚠️ Cannot downgrade to v2.x after upgrade (v3.x). Cannot downgrade to v3.x after v4.x upgrade.
+- Fully automatic — existing code works as-is
+- Backward compatible — reads v2.x data without issues
+- Cannot downgrade to v2.x after upgrade (v3.x). Cannot downgrade to v3.x after v4.x upgrade.
 
 ### Configurable Thresholds
 
@@ -1078,14 +919,6 @@ Background isolates handle heavy operations:
 - **File I/O**: Large files are streamed to prevent memory spikes
 
 The UI thread stays responsive during large operations.
-
-### Benchmarks
-
-Compared with managing multiple packages separately:
-- **Initialization**: 2-3x faster setup with single `init()` call
-- **Memory usage**: 40% less memory overhead with unified storage
-- **Bundle size**: Eliminates 3-4 separate dependencies
-- **Error handling**: 80% reduction in error-handling code
 
 ## Troubleshooting
 
@@ -1158,15 +991,13 @@ flutter test
 
 ## Platform Support
 
-- **Android**
-- **iOS**  
-- **Web**
-- **macOS**
-- **Windows**
-- **Linux**
+- Android
+- iOS
+- Web
+- macOS
+- Windows
+- Linux
 
 ## License
 
 This project is licensed under the MIT License.
-
----

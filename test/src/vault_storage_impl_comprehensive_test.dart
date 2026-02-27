@@ -696,7 +696,8 @@ void main() {
           '__VST_VALUE__': '{"name":"test"}',
         });
 
-        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        final result =
+            await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
         expect(result, equals({'name': 'test'}));
       });
 
@@ -717,8 +718,13 @@ void main() {
         when(() => testContext.mockNormalBox.get(key))
             .thenReturn(const StoredValue('{"items":[1,2]}', StorageStrategy.json));
 
-        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
-        expect(result, equals({'items': [1, 2]}));
+        final result =
+            await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        expect(
+            result,
+            equals({
+              'items': [1, 2]
+            }));
       });
 
       test('reads mixed formats from different keys in same box', () async {
@@ -753,7 +759,8 @@ void main() {
           StoredValue(hiveMap, StorageStrategy.native),
         );
 
-        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        final result =
+            await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
         expect(result, equals({'name': 'test', 'count': 5}));
         expect(result, isA<Map<String, dynamic>>());
       });
@@ -769,12 +776,15 @@ void main() {
         });
 
         // Should hit fallback path and coerce as raw Map, not as v3.x wrapper
-        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
-        expect(result, equals({
-          '__VST_STRATEGY__': 0,
-          '__VST_VALUE__': 'payload',
-          'extra_key': true,
-        }));
+        final result =
+            await testContext.vaultStorage.get<Map<String, dynamic>>(key, isSecure: false);
+        expect(
+            result,
+            equals({
+              '__VST_STRATEGY__': 0,
+              '__VST_VALUE__': 'payload',
+              'extra_key': true,
+            }));
       });
     });
   });
