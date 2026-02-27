@@ -213,40 +213,18 @@ jobs:
           gh release create "$TAG" --title "$TAG" --notes-file /tmp/release_notes.md
 
   publish:
-    name: Publish to pub.dev
+    name: Trigger Publish
     if: needs.tag.outputs.tag_created == 'true'
     needs: tag
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      actions: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Verify version
+      - name: Trigger publish workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          EXPECTED="${{ needs.tag.outputs.version }}"
-          ACTUAL=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | tr -d '\r')
-          if [ "$EXPECTED" != "$ACTUAL" ]; then
-            echo "❌ Version mismatch: expected $EXPECTED, got $ACTUAL"
-            exit 1
-          fi
-          echo "✅ Version verified: $ACTUAL"
-
-      - name: Dry run publish
-        run: dart pub publish --dry-run
-
-      - name: Publish to pub.dev
-        run: dart pub publish --force
+          gh workflow run publish.yml \
+            --repo "${{ github.repository }}" \
+            --ref "v${{ needs.tag.outputs.version }}"
+          echo "✅ Triggered publish.yml for v${{ needs.tag.outputs.version }}"
