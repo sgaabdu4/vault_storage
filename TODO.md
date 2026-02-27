@@ -10,12 +10,12 @@ This document tracks technical debt and temporary code that should be addressed 
 - `lib/src/extensions/storage_extensions.dart` - `JsonSafe.decode()` method
 
 **Description:**
-Legacy support for reading v2.x data stored as plain JSON strings without type markers. In v3.0, we detect strings and decode them using `decodeJsonSafely<T>()`. This adds overhead to every read operation.
+Legacy support for reading v2.x data stored as plain JSON strings without type markers. In v3.0, we detect strings and decode them using `decodeJsonSafely<T>()`. In v4.0, a third path was added for `StoredValue` TypeAdapter instances. The String detection branch adds overhead to every read.
 
 **Migration Path:**
-- v3.x → v4.x: Keep backward compatibility, add deprecation warnings in docs
-- v5.0: Remove legacy string detection entirely
-- All data will be expected to use v3+ wrapper format with type markers
+- v3.x → v4.x: Kept backward compatibility, TypeAdapter for new writes
+- v5.0: Remove legacy String detection entirely (breaking change)
+- All data expected to use v4+ TypeAdapter format
 
 **Code to Remove:**
 ```dart
@@ -34,7 +34,7 @@ if (stored is String) {
 
 ## Medium Priority
 
-### 2. Simplify Type Coercion Logic (Target: v4.0)
+### 2. Simplify Type Coercion Logic (Target: v5.0)
 **Location:**
 - `lib/src/vault_storage_impl.dart` - `_coerceToType<T>()` method
 - `lib/src/extensions/storage_extensions.dart` - `JsonSafe._coerceType<T>()` method
@@ -73,7 +73,7 @@ if (T == String && value != null) return value.toString() as T;
 
 ---
 
-### 3. Remove Redundant Error Messages (Target: v4.0)
+### 3. Remove Redundant Error Messages (Target: v5.0)
 **Location:**
 - `lib/src/vault_storage_impl.dart` - `_coerceToType()` error messages
 - `lib/src/extensions/storage_extensions.dart` - `_coerceType()` error messages

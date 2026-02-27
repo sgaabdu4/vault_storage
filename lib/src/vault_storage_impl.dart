@@ -16,6 +16,7 @@ import 'package:vault_storage/src/security/security_exceptions.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
+import 'package:vault_storage/src/storage/stored_value_adapter.dart';
 
 /// Simple, secure storage implementation for Flutter apps.
 ///
@@ -87,6 +88,7 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       await Hive.initFlutter(_storageDirectory);
+      _registerAdapters();
       final key = await getOrCreateSecureKey();
       await openBoxes(key);
 
@@ -435,10 +437,9 @@ class VaultStorageImpl implements IVaultStorage {
         if (metadata != null) 'userMetadata': metadata,
       };
 
-      // Store the metadata with the user's key - serialize to JSON
-      final jsonString = await toStore.encodeJsonSafely();
-
-      await boxes[BoxType.secureFiles]!.put(key, jsonString);
+      // Store the metadata using _putInBoxBase so it benefits from binary
+      // TypeAdapter encoding (v4.x) rather than JSON string serialisation.
+      await _putInBoxBase(boxes[BoxType.secureFiles]!, key, toStore);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageWriteError('Failed to save secure file "$key"', e);
@@ -491,10 +492,9 @@ class VaultStorageImpl implements IVaultStorage {
         if (metadata != null) 'userMetadata': metadata,
       };
 
-      // Store the metadata with the user's key - serialize to JSON
-      final jsonString = await toStore.encodeJsonSafely();
-
-      await boxes[BoxType.normalFiles]!.put(key, jsonString);
+      // Store the metadata using _putInBoxBase so it benefits from binary
+      // TypeAdapter encoding (v4.x) rather than JSON string serialisation.
+      await _putInBoxBase(boxes[BoxType.normalFiles]!, key, toStore);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageWriteError('Failed to save normal file "$key"', e);
@@ -753,7 +753,13 @@ class VaultStorageImpl implements IVaultStorage {
       return stored.decodeJsonSafely<T>();
     }
 
-    // New format - check if it's wrapped
+    // v4.x format: TypeAdapter-deserialized StoredValue
+    if (stored is StoredValue) {
+      if (stored.strategy == StorageStrategy.native) return _coerceToType<T>(stored.value);
+      return (stored.value as String).decodeJsonSafely<T>();
+    }
+
+    // v3.x format - check if it's a Map-wrapped StoredValue
     if (stored is Map && StoredValue.isWrapped(stored)) {
       final wrapper = StoredValue.fromHiveMap(stored);
 
@@ -785,6 +791,14 @@ class VaultStorageImpl implements IVaultStorage {
     if (T == double && value is num) return value.toDouble() as T;
     if (T == String && value != null) return value.toString() as T;
 
+    // Hive deserializes Maps as Map<dynamic, dynamic>; coerce to Map<String, dynamic>
+    if (value is Map) {
+      final coerced = <String, dynamic>{
+        for (final entry in value.entries) entry.key.toString(): entry.value,
+      };
+      if (coerced is T) return coerced as T;
+    }
+
     // Type mismatch - throw clear error
     throw VaultStorageReadError(
       'Type mismatch: Cannot convert stored value to type $T. '
@@ -809,12 +823,22 @@ class VaultStorageImpl implements IVaultStorage {
     final strategy = StorageStrategyHelper.determineStrategy(value);
 
     final toStore = strategy == StorageStrategy.native
-        ? StoredValue(value, strategy).toHiveMap() // Wrap for native storage
-        : StoredValue(await value.encodeJsonSafely(), strategy)
-            .toHiveMap(); // JSON encode then wrap
+        ? StoredValue(value, strategy)
+        : StoredValue(await value.encodeJsonSafely(), strategy);
 
     // Put into box (both Box and LazyBox have async put)
     await box.put(key, toStore);
+  }
+
+  /// Registers Hive TypeAdapters for vault_storage types.
+  ///
+  /// Guards each registration with [isAdapterRegistered] so it is safe to call
+  /// multiple times (e.g., in tests that re-initialise storage).
+  void _registerAdapters() {
+    final adapter = StoredValueAdapter();
+    if (!Hive.isAdapterRegistered(adapter.typeId)) {
+      Hive.registerAdapter(adapter);
+    }
   }
 
   /// Get file metadata with optional storage type specification
@@ -825,15 +849,13 @@ class VaultStorageImpl implements IVaultStorage {
       final box = boxes[boxType];
       if (box == null || !box.containsKey(key)) return null;
 
-      // Get JSON string (sync for Box, async for LazyBox)
-      final jsonString = box is LazyBox<dynamic>
-          ? await box.get(key) as String?
-          : (box as Box<dynamic>).get(key) as String?;
-
-      if (jsonString == null) return null;
-
       try {
-        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+        // Route through _getFromBoxBase to handle all storage formats uniformly:
+        //   v2.x  → plain JSON string
+        //   v3.x  → Map-wrapped StoredValue
+        //   v4.x  → TypeAdapter StoredValue
+        final result = await _getFromBoxBase<Map<String, dynamic>>(box, key);
+        if (result == null) return null;
         return <String, dynamic>{...result, 'isSecure': isSecureFile};
       } on VaultStorageError {
         rethrow;

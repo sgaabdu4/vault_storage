@@ -696,8 +696,8 @@ void main() {
       final captured = verify(
         () => mockCustomBox.put('myfile', captureAny<dynamic>()),
       ).captured.single;
-      // Verify the StoredValue wrapper contains userMetadata
-      expect(captured, isA<Map<dynamic, dynamic>>());
+      // _putInBoxBase now stores StoredValue directly (v4.x TypeAdapter format)
+      expect(captured, isA<StoredValue>());
     });
 
     test('saveSecureFile to non-existent box should throw BoxNotFoundError', () {
@@ -726,7 +726,8 @@ void main() {
       final captured = verify(
         () => mockCustomBox.put('myfile', captureAny<dynamic>()),
       ).captured.single;
-      expect(captured, isA<Map<dynamic, dynamic>>());
+      // _putInBoxBase now stores StoredValue directly (v4.x TypeAdapter format)
+      expect(captured, isA<StoredValue>());
     });
 
     test('saveNormalFile to non-existent box should throw BoxNotFoundError', () {
@@ -1039,9 +1040,9 @@ void main() {
 
       final captured = verify(
         () => testContext.mockSecureFilesBox.put('with_meta', captureAny<dynamic>()),
-      ).captured.single as String;
-      expect(captured, contains('userMetadata'));
-      expect(captured, contains('author'));
+      ).captured.single as StoredValue;
+      expect(captured.value, isA<Map<dynamic, dynamic>>());
+      expect((captured.value as Map<dynamic, dynamic>)['userMetadata'], equals({'author': 'test'}));
     });
   });
 
@@ -1081,9 +1082,10 @@ void main() {
 
       final captured = verify(
         () => testContext.mockNormalFilesBox.put('doc', captureAny<dynamic>()),
-      ).captured.single as String;
-      expect(captured, contains('userMetadata'));
-      expect(captured, contains('category'));
+      ).captured.single as StoredValue;
+      expect(captured.value, isA<Map<dynamic, dynamic>>());
+      expect((captured.value as Map<dynamic, dynamic>)['userMetadata'],
+          equals({'category': 'reports'}));
     });
   });
 

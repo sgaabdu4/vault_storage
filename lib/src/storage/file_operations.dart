@@ -54,10 +54,11 @@ class FileOperations implements IFileOperations {
       // Platform-aware saving logic
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
-        // WEB: Store the encrypted bytes directly in Hive as a base64 string
-        final encryptedContentBase64 =
-            await secretBox.cipherText.encodeBase64Safely(context: 'encrypted file content');
-        await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(fileId, encryptedContentBase64);
+        // WEB: Store encrypted bytes directly as Uint8List — no base64 overhead.
+        await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
+          fileId,
+          Uint8List.fromList(secretBox.cipherText),
+        );
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -136,9 +137,12 @@ class FileOperations implements IFileOperations {
           final macB64 = await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
 
           if (isWeb ?? kIsWeb) {
-            final b64 = await secretBox.cipherText.encodeBase64Safely(context: 'encrypted chunk');
+            // WEB: Store chunk bytes directly as Uint8List — no base64 overhead.
             final key = '$fileId:c:$chunkIndex';
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(key, b64);
+            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
+              key,
+              Uint8List.fromList(secretBox.cipherText),
+            );
           } else {
             // Write framed chunk: [len(4 bytes)][nonceLen(1)][nonce][macLen(1)][mac][ciphertext]
             final bytes = secretBox.cipherText;
@@ -180,9 +184,12 @@ class FileOperations implements IFileOperations {
         final macB64 = await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
 
         if (isWeb ?? kIsWeb) {
-          final b64 = await secretBox.cipherText.encodeBase64Safely(context: 'encrypted chunk');
+          // WEB: Store final chunk bytes directly as Uint8List.
           final key = '$fileId:c:$chunkIndex';
-          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(key, b64);
+          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
+            key,
+            Uint8List.fromList(secretBox.cipherText),
+          );
         } else {
           final bytes = secretBox.cipherText;
           final header = BytesBuilder();
@@ -273,11 +280,14 @@ class FileOperations implements IFileOperations {
             final macB =
                 await entry.getRequiredString('mac').decodeBase64Safely(context: 'chunk mac');
             final key = '$fileId:c:$i';
-            final b64 = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(key) as String?;
-            if (b64 == null) {
+            final storedChunk = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(key);
+            if (storedChunk == null) {
               throw FileNotFoundError(fileId, 'Hive secure files chunk $i');
             }
-            final enc = await b64.decodeBase64Safely(context: 'encrypted chunk');
+            // Handle both Uint8List (v4.x) and base64 string (v3.x legacy).
+            final enc = storedChunk is Uint8List
+                ? storedChunk
+                : await (storedChunk as String).decodeBase64Safely(context: 'encrypted chunk');
             final dec = await compute(
               decryptInIsolate,
               DecryptRequest(
@@ -353,13 +363,14 @@ class FileOperations implements IFileOperations {
       // Non-streaming legacy path
       Uint8List encryptedFileBytes;
       if (isWeb ?? kIsWeb) {
-        final encryptedContentBase64 =
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(fileId) as String?;
-        if (encryptedContentBase64 == null) {
+        final storedFile = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(fileId);
+        if (storedFile == null) {
           throw FileNotFoundError(fileId, 'Hive secure files box');
         }
-        encryptedFileBytes =
-            await encryptedContentBase64.decodeBase64Safely(context: 'encrypted content');
+        // Handle both Uint8List (v4.x) and base64 string (v3.x legacy).
+        encryptedFileBytes = storedFile is Uint8List
+            ? storedFile
+            : await (storedFile as String).decodeBase64Safely(context: 'encrypted content');
       } else {
         final filePath = fileMetadata.getOptionalString('filePath');
         if (filePath == null) {
@@ -479,9 +490,8 @@ class FileOperations implements IFileOperations {
       // Platform-aware saving logic
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
-        // WEB: Store the bytes directly in Hive as a base64 string
-        final contentBase64 = await fileBytes.encodeBase64Safely(context: 'normal file content');
-        await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).put(fileId, contentBase64);
+        // WEB: Store bytes directly as Uint8List — no base64 overhead.
+        await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).put(fileId, fileBytes);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -519,16 +529,15 @@ class FileOperations implements IFileOperations {
 
       // Platform-aware retrieval logic
       if (isWeb ?? kIsWeb) {
-        // WEB: Retrieve from Hive and decode from base64
-        final contentBase64 =
-            await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).get(fileId) as String?;
-        if (contentBase64 == null) {
+        // WEB: Retrieve from Hive — handle Uint8List (v4.x) and base64 string (v3.x legacy).
+        final stored = await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).get(fileId);
+        if (stored == null) {
           throw FileNotFoundError(fileId, 'Hive normal files box');
         }
 
-        // Use our extension method for cleaner code
-        final result = await contentBase64.decodeBase64Safely(context: 'normal file content');
-        final fileBytes = result;
+        final fileBytes = stored is Uint8List
+            ? stored
+            : await (stored as String).decodeBase64Safely(context: 'normal file content');
 
         // Trigger download on web
         final extension = fileMetadata.getOptionalString('extension') ?? '';
