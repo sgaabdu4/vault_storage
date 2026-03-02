@@ -18,7 +18,7 @@ platforms:
   windows:
 
 dependencies:
-  cryptography_plus: ^2.7.1
+  cryptography_plus: ">=2.7.1 <4.0.0"
   flutter:
     sdk: flutter
   flutter_secure_storage: ^10.0.0
