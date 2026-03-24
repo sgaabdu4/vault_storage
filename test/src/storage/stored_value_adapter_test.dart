@@ -15,8 +15,8 @@ void main() {
       adapter = StoredValueAdapter();
     });
 
-    test('typeId should be 200', () {
-      expect(adapter.typeId, equals(200));
+    test('typeId should be 220', () {
+      expect(adapter.typeId, equals(220));
     });
 
     test('should round-trip a native string value', () {
@@ -123,10 +123,7 @@ void main() {
       writer.write('value');
       final bytes = writer.toBytes();
 
-      expect(
-        () => _deserializeAdapter(adapter, bytes),
-        throwsA(isA<RangeError>()),
-      );
+      expect(() => _deserializeAdapter(adapter, bytes), throwsA(isA<RangeError>()));
     });
   });
 }
