@@ -93,8 +93,8 @@ class VaultStorageImpl implements IVaultStorage {
       await openBoxes(key);
 
       // Open custom boxes if provided
-      if (_customBoxConfigs != null && _customBoxConfigs!.isNotEmpty) {
-        await _openCustomBoxes(_customBoxConfigs!, key);
+      if (_customBoxConfigs != null && _customBoxConfigs.isNotEmpty) {
+        await _openCustomBoxes(_customBoxConfigs, key);
       }
 
       isVaultStorageReady = true;
