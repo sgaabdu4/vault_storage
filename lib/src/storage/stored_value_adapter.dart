@@ -16,7 +16,7 @@ import 'package:vault_storage/src/storage/storage_strategy.dart';
 /// been written is **not supported**.
 class StoredValueAdapter extends TypeAdapter<StoredValue> {
   @override
-  final int typeId = 200;
+  final int typeId = 220;
 
   @override
   StoredValue read(BinaryReader reader) {
