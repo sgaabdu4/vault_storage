@@ -19,7 +19,7 @@ part 'box_config.freezed.dart';
 /// );
 /// ```
 @freezed
-class BoxConfig with _$BoxConfig {
+abstract class BoxConfig with _$BoxConfig {
   const factory BoxConfig({
     /// The unique name of the box.
     required String name,

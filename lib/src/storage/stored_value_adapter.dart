@@ -15,8 +15,10 @@ import 'package:vault_storage/src/storage/storage_strategy.dart';
 /// writes use this adapter. Downgrading from v4.x to v3.x after new data has
 /// been written is **not supported**.
 class StoredValueAdapter extends TypeAdapter<StoredValue> {
+  static const int storedValueTypeId = 220;
+
   @override
-  final int typeId = 220;
+  final int typeId = storedValueTypeId;
 
   @override
   StoredValue read(BinaryReader reader) {

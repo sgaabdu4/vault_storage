@@ -1,3 +1,9 @@
+## [4.0.2] - 2026-05-27
+### Maintenance
+- **Internal adapter registration** — `VaultStorage.create()` now registers vault_storage's Hive adapters synchronously, keeping Hive and adapter internals behind `package:vault_storage/vault_storage.dart`.
+- **Dependency updates** — Updated `flutter_secure_storage`, `freerasp`, `json_annotation`, `build_runner`, and `mocktail` to their latest compatible versions.
+- **Code generation refresh** — Regenerated Freezed output with the updated generator toolchain.
+
 ## [4.0.1] - 2026-03-24
 ### Bug Fixes
 - **Fixed `StoredValueAdapter` typeId conflict with `hive_ce_flutter`** — Changed `StoredValueAdapter.typeId` from `200` to `220`. `hive_ce_flutter` v2.3.4's `ColorAdapter` defaults to typeId `200`, which caused `Hive.initFlutter()` (called internally by vault_storage) to register `ColorAdapter` at typeId 200 first. The subsequent `_registerAdapters()` guard (`Hive.isAdapterRegistered(200)`) then found the slot taken and silently skipped registering `StoredValueAdapter`. Any write using the v4 TypeAdapter format would crash with `HiveError: Cannot write, unknown type: StoredValue`. Since v4.0.0 had this bug from day one, no existing data was ever written in v4 TypeAdapter format — the typeId change is safe for all upgrading users.

@@ -283,7 +283,7 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^4.0.0 # Replace with the latest version
+  vault_storage: ^4.0.2 # Replace with the latest version
 ```
 
 Then run:
@@ -365,7 +365,10 @@ final secureOnly = await storage.get<String>('api_key', isSecure: true);
 final normalOnly = await storage.get<String>('theme', isSecure: false);
 ```
 
-The factory returns `IVaultStorage`, hiding implementation details.
+The factory returns `IVaultStorage`, hiding implementation details. App code
+should not import `package:hive_ce/hive.dart` or any `package:vault_storage/src/...`
+files for vault_storage internals; `VaultStorage.create()` and `init()` own
+adapter registration and box setup.
 
 ### Custom Boxes (v2.3.0+)
 
