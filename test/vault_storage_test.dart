@@ -1,8 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce/hive_ce.dart';
+import 'package:vault_storage/src/storage/stored_value_adapter.dart';
 import 'package:vault_storage/vault_storage.dart';
 
 void main() {
   group('VaultStorage Factory', () {
+    test('should register internal Hive adapters when creating storage', () {
+      final storage = VaultStorage.create();
+
+      expect(storage, isA<IVaultStorage>());
+      expect(Hive.isAdapterRegistered(StoredValueAdapter.storedValueTypeId), isTrue);
+    });
+
     test('should create instance without security config', () {
       final storage = VaultStorage.create();
       expect(storage, isNotNull);

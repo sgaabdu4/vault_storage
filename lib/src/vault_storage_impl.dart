@@ -16,7 +16,7 @@ import 'package:vault_storage/src/security/security_exceptions.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
-import 'package:vault_storage/src/storage/stored_value_adapter.dart';
+import 'package:vault_storage/src/storage/vault_storage_adapter_registry.dart';
 
 /// Simple, secure storage implementation for Flutter apps.
 ///
@@ -57,7 +57,9 @@ class VaultStorageImpl implements IVaultStorage {
         _fileOperations = fileOperations ?? FileOperations(),
         _securityConfig = securityConfig,
         _customBoxConfigs = customBoxes,
-        _storageDirectory = storageDirectory;
+        _storageDirectory = storageDirectory {
+    _registerAdapters();
+  }
 
   @override
   Future<void> init() {
@@ -81,8 +83,9 @@ class VaultStorageImpl implements IVaultStorage {
           // Log that security features are not available on this platform
           if (_securityConfig?.enableLogging == true) {
             debugPrint(
-                'VaultStorage: FreeRASP security features are only available on Android and iOS. '
-                'Current platform: ${defaultTargetPlatform.name}');
+              'VaultStorage: FreeRASP security features are only available on Android and iOS. '
+              'Current platform: ${defaultTargetPlatform.name}',
+            );
           }
         }
       }
@@ -305,10 +308,7 @@ class VaultStorageImpl implements IVaultStorage {
 
     try {
       // 1) Clear key-value stores
-      await Future.wait<void>([
-        boxes[BoxType.normal]!.clear(),
-        boxes[BoxType.secure]!.clear(),
-      ]);
+      await Future.wait<void>([boxes[BoxType.normal]!.clear(), boxes[BoxType.secure]!.clear()]);
 
       // 2) Always clear custom boxes (they hold key-value data)
       for (final box in customBoxes.values) {
@@ -540,10 +540,7 @@ class VaultStorageImpl implements IVaultStorage {
           );
         } else {
           return await _fileOperations.getNormalFile(
-            fileMetadata: metadata,
-            isWeb: kIsWeb,
-            getBox: getInternalBox,
-          );
+              fileMetadata: metadata, isWeb: kIsWeb, getBox: getInternalBox);
         }
       }
 
@@ -641,10 +638,7 @@ class VaultStorageImpl implements IVaultStorage {
       // Delete underlying file data first (avoid orphaned content/keys)
       if (normalMetadata != null) {
         await _fileOperations.deleteNormalFile(
-          fileMetadata: normalMetadata,
-          isWeb: kIsWeb,
-          getBox: getInternalBox,
-        );
+            fileMetadata: normalMetadata, isWeb: kIsWeb, getBox: getInternalBox);
       }
 
       if (secureMetadata != null) {
@@ -794,7 +788,7 @@ class VaultStorageImpl implements IVaultStorage {
     // Hive deserializes Maps as Map<dynamic, dynamic>; coerce to Map<String, dynamic>
     if (value is Map) {
       final coerced = <String, dynamic>{
-        for (final entry in value.entries) entry.key.toString(): entry.value,
+        for (final entry in value.entries) entry.key.toString(): entry.value
       };
       if (coerced is T) return coerced as T;
     }
@@ -835,10 +829,7 @@ class VaultStorageImpl implements IVaultStorage {
   /// Guards each registration with [isAdapterRegistered] so it is safe to call
   /// multiple times (e.g., in tests that re-initialise storage).
   void _registerAdapters() {
-    final adapter = StoredValueAdapter();
-    if (!Hive.isAdapterRegistered(adapter.typeId)) {
-      Hive.registerAdapter(adapter);
-    }
+    VaultStorageAdapterRegistry.ensureRegistered();
   }
 
   /// Get file metadata with optional storage type specification
@@ -904,10 +895,7 @@ class VaultStorageImpl implements IVaultStorage {
           );
         } else {
           await _fileOperations.deleteNormalFile(
-            fileMetadata: metadata,
-            isWeb: kIsWeb,
-            getBox: getInternalBox,
-          );
+              fileMetadata: metadata, isWeb: kIsWeb, getBox: getInternalBox);
         }
       } catch (_) {
         // Ignore per-file errors; final clear() will drop metadata
@@ -943,10 +931,7 @@ class VaultStorageImpl implements IVaultStorage {
         signingCertHashes: signingCertHashes ?? [],
         supportedStores: ['com.android.vending'], // Google Play Store
       ),
-      iosConfig: IOSConfig(
-        bundleIds: bundleId != null ? [bundleId] : [],
-        teamId: teamId ?? '',
-      ),
+      iosConfig: IOSConfig(bundleIds: bundleId != null ? [bundleId] : [], teamId: teamId ?? ''),
       watcherMail: config.watcherMail ?? '',
       isProd: config.isProd,
     );
@@ -1001,9 +986,7 @@ class VaultStorageImpl implements IVaultStorage {
           config.blockOnEmulator ||
           config.blockOnUnofficialStore) {
         throw const SecurityThreatException(
-          'Environment',
-          'Vault operations blocked due to detected security threats',
-        );
+            'Environment', 'Vault operations blocked due to detected security threats');
       }
     }
   }
@@ -1296,8 +1279,7 @@ class VaultStorageImpl implements IVaultStorage {
     for (final config in configs) {
       if (reservedNames.contains(config.name)) {
         throw VaultStorageInitializationError(
-          'Custom box name "${config.name}" conflicts with a reserved box name',
-        );
+            'Custom box name "${config.name}" conflicts with a reserved box name');
       }
     }
 

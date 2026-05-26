@@ -48,3 +48,6 @@ example/analysis_options.yaml
 example/pubspec.lock
 example/README.md
 
+.codebase-memory/*
+docs/*
+.github/*
