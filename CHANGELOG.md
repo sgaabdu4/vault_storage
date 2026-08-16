@@ -1,3 +1,8 @@
+## [4.0.3] - 2026-08-16
+### Maintenance
+- Updated `freerasp` to 8.2.1.
+- Awaited asynchronous base64 decoding in storage paths so the current Flutter analyzer remains clean.
+
 ## [4.0.2] - 2026-05-27
 ### Maintenance
 - **Internal adapter registration** — `VaultStorage.create()` now registers vault_storage's Hive adapters synchronously, keeping Hive and adapter internals behind `package:vault_storage/vault_storage.dart`.

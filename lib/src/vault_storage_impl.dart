@@ -520,7 +520,7 @@ class VaultStorageImpl implements IVaultStorage {
         // Custom boxes store data as base64
         if (metadata['isCustomBox'] == true) {
           final base64Data = metadata['base64Data'] as String;
-          return base64Data.decodeBase64Safely(context: 'custom box file');
+          return await base64Data.decodeBase64Safely(context: 'custom box file');
         }
         throw VaultStorageReadError('Invalid custom box file metadata for "$key"');
       }
@@ -587,7 +587,7 @@ class VaultStorageImpl implements IVaultStorage {
 
       // Now fetch content for the single match
       if (matchedCustomBase64 != null) {
-        return matchedCustomBase64.decodeBase64Safely(context: 'custom box file');
+        return await matchedCustomBase64.decodeBase64Safely(context: 'custom box file');
       }
       if (matchedMetadata != null) {
         if (matchedBoxType == 'secure') {
@@ -1221,7 +1221,7 @@ class VaultStorageImpl implements IVaultStorage {
         return key;
       }
 
-      return encodedKey.decodeBase64Safely(context: 'secure storage key');
+      return await encodedKey.decodeBase64Safely(context: 'secure storage key');
     } catch (e) {
       throw VaultStorageInitializationError('Failed to get/create secure key', e);
     }
