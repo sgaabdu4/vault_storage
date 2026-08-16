@@ -1,3 +1,8 @@
+## [4.0.4] - 2026-08-16
+### Maintenance
+- Updated `flutter_secure_storage` to 11.0.0.
+- Updated the example app's `file_picker` constraint for compatibility with the new Windows storage plugin.
+
 ## [4.0.3] - 2026-08-16
 ### Maintenance
 - Updated `freerasp` to 8.2.1.
