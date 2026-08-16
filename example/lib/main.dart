@@ -566,14 +566,14 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     try {
       setState(() => _operationResult = 'Opening file picker...');
 
-      final FilePickerResult? result = await FilePicker.platform.pickFiles();
+      final List<PlatformFile> result = await FilePicker.pickFiles();
 
-      if (result == null) {
+      if (result.isEmpty) {
         setState(() => _operationResult = 'No file selected');
         return;
       }
 
-      final file = result.files.first;
+      final file = result.first;
       final fileName = file.name;
 
       final fileKey = await _getInput('Enter File Key', 'File Key');
@@ -583,14 +583,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() => _operationResult = 'Reading file...');
-      final Uint8List bytes;
-      if (file.bytes != null) {
-        bytes = file.bytes!;
-      } else if (file.path != null) {
-        bytes = Uint8List.fromList(await File(file.path!).readAsBytes());
-      } else {
-        throw Exception('Cannot read file');
-      }
+      final Uint8List bytes = await file.readAsBytes();
 
       setState(() => _operationResult = 'Saving file...');
 
