@@ -183,9 +183,12 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || github.token }}
 
       - name: Create tag if version changed
         id: tag
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | tr -d '\r')
           TAG="v$VERSION"
@@ -193,6 +196,10 @@ jobs:
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "ℹ️ Tag $TAG already exists — skipping"
             echo "tag_created=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$RELEASE_PAT" ]; then
+            echo "❌ RELEASE_PAT is required to create a trusted release tag"
+            echo "Add a fine-grained repository token with Contents write access"
+            exit 1
           else
             echo "🏷️ Creating tag $TAG"
             git config user.name "github-actions[bot]"
@@ -212,13 +219,5 @@ jobs:
           awk '/^## \['"${{ steps.tag.outputs.version }}"'\]/{found=1; next} /^## \[/{if(found) exit} found' CHANGELOG.md > /tmp/release_notes.md
           gh release create "$TAG" --title "$TAG" --notes-file /tmp/release_notes.md
 
-  # Publishing is handled by publish.yml, triggered by tag push.
-  # Tags pushed by GITHUB_TOKEN don't trigger other workflows, so
-  # after CI creates the tag, manually re-push it from your terminal:
-  #
-  #   git fetch --tags
-  #   git push origin :refs/tags/v<VERSION>   # delete remote tag
-  #   git push origin v<VERSION>              # re-push (triggers publish.yml)
-  #
-  # Or use a PAT in the tag job above to push the tag (see Dart docs:
-  # https://dart.dev/tools/pub/automated-publishing).
+  # Publishing is handled by publish.yml after RELEASE_PAT pushes the tag.
+  # Pub.dev only trusts workflows triggered by real tag-push events.

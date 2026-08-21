@@ -30,6 +30,7 @@ Store and retrieve app data locally with clear secure and normal operations, con
 - SDK and dependency limits = `pubspec.yaml`
 - Platform setup and usage = `README.md`
 - Released changes = `CHANGELOG.md`
+- Release automation = `.github/workflows/flutter.yml` + `.github/workflows/publish.yml`
 - Behavior checks = `test/`
 
 ## Unknowns
