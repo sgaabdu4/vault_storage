@@ -82,8 +82,9 @@ void main() {
         );
 
         final base64Key = base64Encode(Uint8List(32));
-        when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-            .thenAnswer((_) async => base64Key);
+        when(
+          () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),
+        ).thenAnswer((_) async => base64Key);
 
         await storage.init();
 
@@ -104,8 +105,9 @@ void main() {
         );
 
         final base64Key = base64Encode(Uint8List(32));
-        when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-            .thenAnswer((_) async => base64Key);
+        when(
+          () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),
+        ).thenAnswer((_) async => base64Key);
 
         await storage.init();
 
@@ -116,8 +118,9 @@ void main() {
 
     group('Error Handling - Get Operations', () {
       test('should throw BoxNotFoundError when getting from non-existent box', () async {
-        when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-            .thenAnswer((_) async => base64Encode(Uint8List(32)));
+        when(
+          () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),
+        ).thenAnswer((_) async => base64Encode(Uint8List(32)));
 
         await testContext.vaultStorage.init();
 
@@ -160,11 +163,7 @@ void main() {
         await testContext.vaultStorage.init();
 
         expect(
-          () => testContext.vaultStorage.saveNormal(
-            key: 'key',
-            value: 'value',
-            box: 'nonexistent',
-          ),
+          () => testContext.vaultStorage.saveNormal(key: 'key', value: 'value', box: 'nonexistent'),
           throwsA(isA<BoxNotFoundError>()),
         );
       });
@@ -173,11 +172,7 @@ void main() {
         await testContext.vaultStorage.init();
 
         expect(
-          () => testContext.vaultStorage.saveSecure(
-            key: 'key',
-            value: 'value',
-            box: 'nonexistent',
-          ),
+          () => testContext.vaultStorage.saveSecure(key: 'key', value: 'value', box: 'nonexistent'),
           throwsA(isA<BoxNotFoundError>()),
         );
       });
@@ -278,45 +273,54 @@ void main() {
 
     group('Encryption Key Management', () {
       test('should generate new key when none exists', () async {
-        when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-            .thenAnswer((_) async => null);
-        when(() => testContext.mockSecureStorage.write(
-              key: any(named: 'key'),
-              value: any(named: 'value'),
-            )).thenAnswer((_) async {});
+        when(
+          () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),
+        ).thenAnswer((_) async => null);
+        when(
+          () => testContext.mockSecureStorage.write(
+            key: any(named: 'key'),
+            value: any(named: 'value'),
+          ),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockUuid.v4()).thenReturn('test-uuid');
 
         final key = await testContext.vaultStorage.getOrCreateSecureKey();
 
         expect(key, isNotNull);
         expect(key.length, equals(32)); // AES-256 requires 32 bytes
-        verify(() => testContext.mockSecureStorage.write(
-              key: StorageKeys.secureKey,
-              value: any(named: 'value'),
-            )).called(1);
+        verify(
+          () => testContext.mockSecureStorage.write(
+            key: StorageKeys.secureKey,
+            value: any(named: 'value'),
+          ),
+        ).called(1);
       });
 
       test('should retrieve existing key', () async {
         final existingKey = base64Encode(Uint8List(32));
-        when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-            .thenAnswer((_) async => existingKey);
+        when(
+          () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),
+        ).thenAnswer((_) async => existingKey);
 
         final key = await testContext.vaultStorage.getOrCreateSecureKey();
 
         expect(key, isNotNull);
         expect(key.length, equals(32));
-        verifyNever(() => testContext.mockSecureStorage.write(
-              key: any(named: 'key'),
-              value: any(named: 'value'),
-            ));
+        verifyNever(
+          () => testContext.mockSecureStorage.write(
+            key: any(named: 'key'),
+            value: any(named: 'value'),
+          ),
+        );
       });
     });
 
     group('Edge Cases - Data Types', () {
       test('should handle very large integers', () async {
         const largeInt = 9007199254740991; // Max safe integer
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('large')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('large')).thenReturn('$largeInt');
         when(() => testContext.mockSecureBox.containsKey('large')).thenReturn(false);
@@ -329,8 +333,9 @@ void main() {
 
       test('should handle very long strings', () async {
         final longString = 'x' * 10000;
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('long')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('long')).thenReturn('"$longString"');
         when(() => testContext.mockSecureBox.containsKey('long')).thenReturn(false);
@@ -346,15 +351,16 @@ void main() {
           'level1': {
             'level2': {
               'level3': {
-                'level4': {'value': 'deep'}
-              }
-            }
-          }
+                'level4': {'value': 'deep'},
+              },
+            },
+          },
         };
 
         // Accept dynamic since we now store Maps natively wrapped
-        when(() => testContext.mockNormalBox.put(any<String>(), any<dynamic>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<dynamic>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('deep')).thenReturn(true);
         // Return the wrapped format for native storage
         when(() => testContext.mockNormalBox.get('deep')).thenReturn({
@@ -372,8 +378,9 @@ void main() {
       test('should handle lists with mixed types', () async {
         final mixedList = [1, 'two', 3.0, true, null];
         // Accept dynamic since we now store Lists natively wrapped
-        when(() => testContext.mockNormalBox.put(any<String>(), any<dynamic>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<dynamic>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('mixed')).thenReturn(true);
         // Return the wrapped format for native storage
         when(() => testContext.mockNormalBox.get('mixed')).thenReturn({
@@ -389,8 +396,9 @@ void main() {
       });
 
       test('should handle empty string', () async {
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('empty')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('empty')).thenReturn('""');
         when(() => testContext.mockSecureBox.containsKey('empty')).thenReturn(false);
@@ -402,8 +410,9 @@ void main() {
       });
 
       test('should handle zero', () async {
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('zero')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('zero')).thenReturn('0');
         when(() => testContext.mockSecureBox.containsKey('zero')).thenReturn(false);
@@ -415,8 +424,9 @@ void main() {
       });
 
       test('should handle negative numbers', () async {
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('negative')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('negative')).thenReturn('-12345');
         when(() => testContext.mockSecureBox.containsKey('negative')).thenReturn(false);
@@ -428,8 +438,9 @@ void main() {
       });
 
       test('should handle boolean values', () async {
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('bool_true')).thenReturn(true);
         when(() => testContext.mockNormalBox.containsKey('bool_false')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('bool_true')).thenReturn('true');
@@ -448,8 +459,9 @@ void main() {
       });
 
       test('should handle floating point numbers', () async {
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('float')).thenReturn(true);
         when(() => testContext.mockNormalBox.get('float')).thenReturn('3.14159');
         when(() => testContext.mockSecureBox.containsKey('float')).thenReturn(false);
@@ -540,11 +552,7 @@ void main() {
 
       test('should get file from custom box successfully', () async {
         final base64Data = base64Encode(Uint8List.fromList([1, 2, 3, 4, 5]));
-        final metadata = {
-          'base64Data': base64Data,
-          'extension': 'txt',
-          'isCustomBox': true,
-        };
+        final metadata = {'base64Data': base64Data, 'extension': 'txt', 'isCustomBox': true};
 
         when(() => mockCustomBox.containsKey('file_key')).thenReturn(true);
         when(() => mockCustomBox.get('file_key')).thenReturn(jsonEncode(metadata));
@@ -760,8 +768,9 @@ void main() {
       test('should allow saveNormal even in insecure environment', () async {
         testContext.vaultStorage.isSecureEnvironment = false;
 
-        when(() => testContext.mockNormalBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
 
         // Should not throw
         await testContext.vaultStorage.saveNormal(key: 'test', value: 'value');

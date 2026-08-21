@@ -48,15 +48,10 @@ void main() {
       test('should throw SecurityThreatException when blockOnJailbreak is true', () {
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
-        final storage = createStorageWithSecurity(
-          const VaultSecurityConfig(),
-        );
+        final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
-        expect(
-          () => storage.clearSecure(),
-          throwsA(isA<SecurityThreatException>()),
-        );
+        expect(() => storage.clearSecure(), throwsA(isA<SecurityThreatException>()));
       });
 
       test('should throw SecurityThreatException when blockOnDebug is true', () {
@@ -72,10 +67,7 @@ void main() {
         );
         storage.isSecureEnvironment = false;
 
-        expect(
-          () => storage.clearSecure(),
-          throwsA(isA<SecurityThreatException>()),
-        );
+        expect(() => storage.clearSecure(), throwsA(isA<SecurityThreatException>()));
       });
 
       test('should throw SecurityThreatException when blockOnEmulator is true', () {
@@ -91,10 +83,7 @@ void main() {
         );
         storage.isSecureEnvironment = false;
 
-        expect(
-          () => storage.clearSecure(),
-          throwsA(isA<SecurityThreatException>()),
-        );
+        expect(() => storage.clearSecure(), throwsA(isA<SecurityThreatException>()));
       });
 
       test('should proceed when no blocking flags are set', () async {
@@ -122,32 +111,21 @@ void main() {
       test('should throw SecurityThreatException when blockOnTampering is true', () {
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
-        final storage = createStorageWithSecurity(
-          const VaultSecurityConfig(),
-        );
+        final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
-        expect(
-          () => storage.clearAll(),
-          throwsA(isA<SecurityThreatException>()),
-        );
+        expect(() => storage.clearAll(), throwsA(isA<SecurityThreatException>()));
       });
 
       test('should throw SecurityThreatException when blockOnHooks is true', () {
         debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
         final storage = createStorageWithSecurity(
-          const VaultSecurityConfig(
-            blockOnJailbreak: false,
-            blockOnTampering: false,
-          ),
+          const VaultSecurityConfig(blockOnJailbreak: false, blockOnTampering: false),
         );
         storage.isSecureEnvironment = false;
 
-        expect(
-          () => storage.clearAll(),
-          throwsA(isA<SecurityThreatException>()),
-        );
+        expect(() => storage.clearAll(), throwsA(isA<SecurityThreatException>()));
       });
     });
 
@@ -176,16 +154,11 @@ void main() {
       test('should throw SecurityThreatException when environment insecure', () {
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
-        final storage = createStorageWithSecurity(
-          const VaultSecurityConfig(),
-        );
+        final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         expect(
-          () => storage.saveSecureFile(
-            key: 'file',
-            fileBytes: Uint8List.fromList([1, 2, 3]),
-          ),
+          () => storage.saveSecureFile(key: 'file', fileBytes: Uint8List.fromList([1, 2, 3])),
           throwsA(isA<SecurityThreatException>()),
         );
       });
@@ -208,9 +181,7 @@ void main() {
         // Tests run on macOS by default, so _isSecuritySupportedOnCurrentPlatform = false
         debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
 
-        final storage = createStorageWithSecurity(
-          const VaultSecurityConfig(),
-        );
+        final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
@@ -224,9 +195,7 @@ void main() {
       test('should skip validation when environment is secure', () async {
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
-        final storage = createStorageWithSecurity(
-          const VaultSecurityConfig(),
-        );
+        final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = true; // Secure environment
 
         when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
@@ -263,8 +232,9 @@ void main() {
       );
 
       // Make getOrCreateSecureKey throw StorageInitializationError
-      when(() => testContext.mockSecureStorage.read(key: any(named: 'key')))
-          .thenThrow(const StorageInitializationError('Key storage failure'));
+      when(
+        () => testContext.mockSecureStorage.read(key: any(named: 'key')),
+      ).thenThrow(const StorageInitializationError('Key storage failure'));
 
       try {
         await storage.init();
@@ -285,8 +255,9 @@ void main() {
       );
 
       // Make getOrCreateSecureKey throw a generic exception
-      when(() => testContext.mockSecureStorage.read(key: any(named: 'key')))
-          .thenThrow(Exception('Generic failure'));
+      when(
+        () => testContext.mockSecureStorage.read(key: any(named: 'key')),
+      ).thenThrow(Exception('Generic failure'));
 
       try {
         await storage.init();
@@ -318,9 +289,7 @@ void main() {
 
     test('should throw StorageInitializationError for reserved box names', () {
       expect(
-        () => VaultStorageImpl.validateCustomBoxConfigs(const [
-          BoxConfig(name: 'secure_box'),
-        ]),
+        () => VaultStorageImpl.validateCustomBoxConfigs(const [BoxConfig(name: 'secure_box')]),
         throwsA(
           isA<StorageInitializationError>().having(
             (e) => e.message,
@@ -397,8 +366,9 @@ void main() {
       when(() => testContext.mockSecureFilesBox.keys).thenReturn([]);
       when(() => testContext.mockSecureFilesBox.clear()).thenAnswer((_) async => 0);
       when(() => mockCustomBox.clear()).thenAnswer((_) async => 0);
-      when(() => testContext.mockSecureStorage.delete(key: any(named: 'key')))
-          .thenAnswer((_) async {});
+      when(
+        () => testContext.mockSecureStorage.delete(key: any(named: 'key')),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.clearAll();
 
@@ -419,8 +389,9 @@ void main() {
       when(() => testContext.mockSecureFilesBox.clear()).thenAnswer((_) async => 0);
       when(() => mockBox1.clear()).thenAnswer((_) async => 0);
       when(() => mockBox2.clear()).thenAnswer((_) async => 0);
-      when(() => testContext.mockSecureStorage.delete(key: any(named: 'key')))
-          .thenAnswer((_) async {});
+      when(
+        () => testContext.mockSecureStorage.delete(key: any(named: 'key')),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.clearAll();
 
@@ -578,30 +549,28 @@ void main() {
     });
 
     test('clearNormal should rethrow StorageError without wrapping', () async {
-      when(() => testContext.mockNormalBox.clear())
-          .thenThrow(const StorageDeleteError('inner error'));
+      when(
+        () => testContext.mockNormalBox.clear(),
+      ).thenThrow(const StorageDeleteError('inner error'));
 
       expect(
         () => testContext.vaultStorage.clearNormal(),
-        throwsA(isA<StorageDeleteError>().having(
-          (e) => e.message,
-          'message',
-          equals('inner error'),
-        )),
+        throwsA(
+          isA<StorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
+        ),
       );
     });
 
     test('clearSecure should rethrow StorageError without wrapping', () async {
-      when(() => testContext.mockSecureBox.clear())
-          .thenThrow(const StorageDeleteError('inner error'));
+      when(
+        () => testContext.mockSecureBox.clear(),
+      ).thenThrow(const StorageDeleteError('inner error'));
 
       expect(
         () => testContext.vaultStorage.clearSecure(),
-        throwsA(isA<StorageDeleteError>().having(
-          (e) => e.message,
-          'message',
-          equals('inner error'),
-        )),
+        throwsA(
+          isA<StorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
+        ),
       );
     });
 
@@ -610,11 +579,13 @@ void main() {
 
       expect(
         () => testContext.vaultStorage.clearNormal(),
-        throwsA(isA<StorageDeleteError>().having(
-          (e) => e.message,
-          'message',
-          equals('Failed to clear normal storage'),
-        )),
+        throwsA(
+          isA<StorageDeleteError>().having(
+            (e) => e.message,
+            'message',
+            equals('Failed to clear normal storage'),
+          ),
+        ),
       );
     });
   });
@@ -745,8 +716,9 @@ void main() {
       when(() => mockCustomBox.containsKey('myfile')).thenReturn(true);
       // For Box<dynamic>, _getFromBoxBase calls box.get(key) synchronously.
       // Return a plain JSON string (legacy format) with the custom box structure
-      when(() => mockCustomBox.get('myfile'))
-          .thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');
+      when(
+        () => mockCustomBox.get('myfile'),
+      ).thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');
 
       final result = await testContext.vaultStorage.getFile('myfile', box: 'tenant');
 
@@ -776,11 +748,13 @@ void main() {
 
       expect(
         () => testContext.vaultStorage.getFile('bad', box: 'tenant'),
-        throwsA(isA<StorageReadError>().having(
-          (e) => e.message,
-          'message',
-          contains('Invalid custom box file metadata'),
-        )),
+        throwsA(
+          isA<StorageReadError>().having(
+            (e) => e.message,
+            'message',
+            contains('Invalid custom box file metadata'),
+          ),
+        ),
       );
     });
   });
@@ -813,13 +787,15 @@ void main() {
     test('should throw AmbiguousKeyError when file in multiple default boxes', () async {
       // Normal files box has the key
       when(() => testContext.mockNormalFilesBox.containsKey('ambiguous')).thenReturn(true);
-      when(() => testContext.mockNormalFilesBox.get('ambiguous'))
-          .thenAnswer((_) async => '{"fileId":"1","filePath":"/f","isSecure":false}');
+      when(
+        () => testContext.mockNormalFilesBox.get('ambiguous'),
+      ).thenAnswer((_) async => '{"fileId":"1","filePath":"/f","isSecure":false}');
 
       // Secure files box also has the key
       when(() => testContext.mockSecureFilesBox.containsKey('ambiguous')).thenReturn(true);
-      when(() => testContext.mockSecureFilesBox.get('ambiguous'))
-          .thenAnswer((_) async => '{"fileId":"2","filePath":"/g","isSecure":true}');
+      when(
+        () => testContext.mockSecureFilesBox.get('ambiguous'),
+      ).thenAnswer((_) async => '{"fileId":"2","filePath":"/g","isSecure":true}');
 
       expect(
         () => testContext.vaultStorage.getFile('ambiguous'),
@@ -851,11 +827,9 @@ void main() {
 
       expect(
         () => testContext.vaultStorage.get<List<int>>('typed', isSecure: false),
-        throwsA(isA<StorageReadError>().having(
-          (e) => e.message,
-          'message',
-          contains('Type mismatch'),
-        )),
+        throwsA(
+          isA<StorageReadError>().having((e) => e.message, 'message', contains('Type mismatch')),
+        ),
       );
     });
 
@@ -882,11 +856,7 @@ void main() {
     test('should store key and foundInBoxes', () {
       // Use non-const to ensure runtime constructor execution for coverage
       // ignore: prefer_const_constructors
-      final error = AmbiguousKeyError(
-        'test_key',
-        ['box1', 'box2'],
-        'Key found in multiple boxes',
-      );
+      final error = AmbiguousKeyError('test_key', ['box1', 'box2'], 'Key found in multiple boxes');
 
       expect(error.key, equals('test_key'));
       expect(error.foundInBoxes, equals(['box1', 'box2']));
@@ -896,16 +866,9 @@ void main() {
 
     test('should format toString correctly', () {
       // ignore: prefer_const_constructors
-      final error = AmbiguousKeyError(
-        'key',
-        ['normal', 'secure'],
-        'Ambiguous key',
-      );
+      final error = AmbiguousKeyError('key', ['normal', 'secure'], 'Ambiguous key');
 
-      expect(
-        error.toString(),
-        equals('AmbiguousKeyError: Ambiguous key'),
-      );
+      expect(error.toString(), equals('AmbiguousKeyError: Ambiguous key'));
     });
   });
 
@@ -936,11 +899,13 @@ void main() {
 
       expect(
         () => testContext.vaultStorage.get<String>('shared'),
-        throwsA(isA<AmbiguousKeyError>().having(
-          (e) => e.foundInBoxes,
-          'foundInBoxes',
-          containsAll(['normal', 'secure']),
-        )),
+        throwsA(
+          isA<AmbiguousKeyError>().having(
+            (e) => e.foundInBoxes,
+            'foundInBoxes',
+            containsAll(['normal', 'secure']),
+          ),
+        ),
       );
     });
 
@@ -958,11 +923,13 @@ void main() {
 
       expect(
         () => testContext.vaultStorage.get<String>('shared'),
-        throwsA(isA<AmbiguousKeyError>().having(
-          (e) => e.foundInBoxes,
-          'foundInBoxes',
-          containsAll(['normal', 'tenant']),
-        )),
+        throwsA(
+          isA<AmbiguousKeyError>().having(
+            (e) => e.foundInBoxes,
+            'foundInBoxes',
+            containsAll(['normal', 'tenant']),
+          ),
+        ),
       );
     });
   });
@@ -991,46 +958,54 @@ void main() {
       VaultStorageConfig.secureFileStreamingThresholdBytes = 1;
 
       final streamMetadata = {'fileId': 'stream-id', 'extension': 'bin'};
-      when(() => testContext.mockFileOperations.saveSecureFileStream(
-            stream: any(named: 'stream'),
-            fileExtension: any(named: 'fileExtension'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            uuid: any(named: 'uuid'),
-            getBox: any(named: 'getBox'),
-            chunkSize: any(named: 'chunkSize'),
-          )).thenAnswer((_) async => streamMetadata);
-      when(() => testContext.mockSecureFilesBox.put(any<dynamic>(), any<dynamic>()))
-          .thenAnswer((_) async {});
+      when(
+        () => testContext.mockFileOperations.saveSecureFileStream(
+          stream: any(named: 'stream'),
+          fileExtension: any(named: 'fileExtension'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          uuid: any(named: 'uuid'),
+          getBox: any(named: 'getBox'),
+          chunkSize: any(named: 'chunkSize'),
+        ),
+      ).thenAnswer((_) async => streamMetadata);
+      when(
+        () => testContext.mockSecureFilesBox.put(any<dynamic>(), any<dynamic>()),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveSecureFile(
         key: 'big_file',
         fileBytes: Uint8List.fromList([1, 2, 3]),
       );
 
-      verify(() => testContext.mockFileOperations.saveSecureFileStream(
-            stream: any(named: 'stream'),
-            fileExtension: any(named: 'fileExtension'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            uuid: any(named: 'uuid'),
-            getBox: any(named: 'getBox'),
-            chunkSize: any(named: 'chunkSize'),
-          )).called(1);
+      verify(
+        () => testContext.mockFileOperations.saveSecureFileStream(
+          stream: any(named: 'stream'),
+          fileExtension: any(named: 'fileExtension'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          uuid: any(named: 'uuid'),
+          getBox: any(named: 'getBox'),
+          chunkSize: any(named: 'chunkSize'),
+        ),
+      ).called(1);
     });
 
     test('should include user metadata in secure file storage', () async {
       final mockMetadata = {'fileId': 'test-id', 'extension': 'txt'};
-      when(() => testContext.mockFileOperations.saveSecureFile(
-            fileBytes: any(named: 'fileBytes'),
-            fileExtension: any(named: 'fileExtension'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            uuid: any(named: 'uuid'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async => mockMetadata);
-      when(() => testContext.mockSecureFilesBox.put(any<dynamic>(), any<dynamic>()))
-          .thenAnswer((_) async {});
+      when(
+        () => testContext.mockFileOperations.saveSecureFile(
+          fileBytes: any(named: 'fileBytes'),
+          fileExtension: any(named: 'fileExtension'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          uuid: any(named: 'uuid'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async => mockMetadata);
+      when(
+        () => testContext.mockSecureFilesBox.put(any<dynamic>(), any<dynamic>()),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveSecureFile(
         key: 'with_meta',
@@ -1038,9 +1013,11 @@ void main() {
         metadata: {'author': 'test'},
       );
 
-      final captured = verify(
-        () => testContext.mockSecureFilesBox.put('with_meta', captureAny<dynamic>()),
-      ).captured.single as StoredValue;
+      final captured =
+          verify(
+                () => testContext.mockSecureFilesBox.put('with_meta', captureAny<dynamic>()),
+              ).captured.single
+              as StoredValue;
       expect(captured.value, isA<Map<dynamic, dynamic>>());
       expect((captured.value as Map<dynamic, dynamic>)['userMetadata'], equals({'author': 'test'}));
     });
@@ -1064,15 +1041,18 @@ void main() {
 
     test('should include user metadata in normal file storage', () async {
       final mockMetadata = {'fileId': 'normal-id', 'extension': 'pdf'};
-      when(() => testContext.mockFileOperations.saveNormalFile(
-            fileBytes: any(named: 'fileBytes'),
-            fileExtension: any(named: 'fileExtension'),
-            isWeb: any(named: 'isWeb'),
-            uuid: any(named: 'uuid'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async => mockMetadata);
-      when(() => testContext.mockNormalFilesBox.put(any<dynamic>(), any<dynamic>()))
-          .thenAnswer((_) async {});
+      when(
+        () => testContext.mockFileOperations.saveNormalFile(
+          fileBytes: any(named: 'fileBytes'),
+          fileExtension: any(named: 'fileExtension'),
+          isWeb: any(named: 'isWeb'),
+          uuid: any(named: 'uuid'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async => mockMetadata);
+      when(
+        () => testContext.mockNormalFilesBox.put(any<dynamic>(), any<dynamic>()),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveNormalFile(
         key: 'doc',
@@ -1080,12 +1060,16 @@ void main() {
         metadata: {'category': 'reports'},
       );
 
-      final captured = verify(
-        () => testContext.mockNormalFilesBox.put('doc', captureAny<dynamic>()),
-      ).captured.single as StoredValue;
+      final captured =
+          verify(
+                () => testContext.mockNormalFilesBox.put('doc', captureAny<dynamic>()),
+              ).captured.single
+              as StoredValue;
       expect(captured.value, isA<Map<dynamic, dynamic>>());
-      expect((captured.value as Map<dynamic, dynamic>)['userMetadata'],
-          equals({'category': 'reports'}));
+      expect(
+        (captured.value as Map<dynamic, dynamic>)['userMetadata'],
+        equals({'category': 'reports'}),
+      );
     });
   });
 
@@ -1110,22 +1094,27 @@ void main() {
       const jsonMetadata = '{"fileId":"n-id","isSecure":false}';
 
       when(() => testContext.mockNormalFilesBox.containsKey('myfile')).thenReturn(true);
-      when(() => testContext.mockNormalFilesBox.get('myfile'))
-          .thenAnswer((_) async => jsonMetadata);
-      when(() => testContext.mockFileOperations.getNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async => expectedBytes);
+      when(
+        () => testContext.mockNormalFilesBox.get('myfile'),
+      ).thenAnswer((_) async => jsonMetadata);
+      when(
+        () => testContext.mockFileOperations.getNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async => expectedBytes);
 
       final result = await testContext.vaultStorage.getFile('myfile', isSecure: false);
 
       expect(result, equals(expectedBytes));
-      verify(() => testContext.mockFileOperations.getNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).called(1);
+      verify(
+        () => testContext.mockFileOperations.getNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).called(1);
     });
 
     test('getFile auto-search finds file in normal box and returns content', () async {
@@ -1134,24 +1123,29 @@ void main() {
 
       // File only in normal files box
       when(() => testContext.mockNormalFilesBox.containsKey('autofile')).thenReturn(true);
-      when(() => testContext.mockNormalFilesBox.get('autofile'))
-          .thenAnswer((_) async => jsonMetadata);
+      when(
+        () => testContext.mockNormalFilesBox.get('autofile'),
+      ).thenAnswer((_) async => jsonMetadata);
       when(() => testContext.mockSecureFilesBox.containsKey('autofile')).thenReturn(false);
 
-      when(() => testContext.mockFileOperations.getNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async => expectedBytes);
+      when(
+        () => testContext.mockFileOperations.getNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async => expectedBytes);
 
       final result = await testContext.vaultStorage.getFile('autofile');
 
       expect(result, equals(expectedBytes));
-      verify(() => testContext.mockFileOperations.getNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).called(1);
+      verify(
+        () => testContext.mockFileOperations.getNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).called(1);
     });
 
     test('getFile auto-search finds file in secure box and returns content', () async {
@@ -1161,25 +1155,30 @@ void main() {
       // File only in secure files box
       when(() => testContext.mockNormalFilesBox.containsKey('secfile')).thenReturn(false);
       when(() => testContext.mockSecureFilesBox.containsKey('secfile')).thenReturn(true);
-      when(() => testContext.mockSecureFilesBox.get('secfile'))
-          .thenAnswer((_) async => jsonMetadata);
+      when(
+        () => testContext.mockSecureFilesBox.get('secfile'),
+      ).thenAnswer((_) async => jsonMetadata);
 
-      when(() => testContext.mockFileOperations.getSecureFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async => expectedBytes);
+      when(
+        () => testContext.mockFileOperations.getSecureFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async => expectedBytes);
 
       final result = await testContext.vaultStorage.getFile('secfile');
 
       expect(result, equals(expectedBytes));
-      verify(() => testContext.mockFileOperations.getSecureFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            getBox: any(named: 'getBox'),
-          )).called(1);
+      verify(
+        () => testContext.mockFileOperations.getSecureFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).called(1);
     });
 
     test('getFile auto-search finds file in custom box and returns decoded bytes', () async {
@@ -1192,8 +1191,9 @@ void main() {
 
       // File in custom box (stored as legacy JSON string with isCustomBox flag)
       when(() => mockCustomBox.containsKey('cbfile')).thenReturn(true);
-      when(() => mockCustomBox.get('cbfile'))
-          .thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');
+      when(
+        () => mockCustomBox.get('cbfile'),
+      ).thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');
 
       final result = await testContext.vaultStorage.getFile('cbfile');
 
@@ -1225,19 +1225,23 @@ void main() {
       when(() => testContext.mockNormalFilesBox.get('file1')).thenAnswer((_) async => jsonMetadata);
       when(() => testContext.mockNormalFilesBox.clear()).thenAnswer((_) async => 0);
 
-      when(() => testContext.mockFileOperations.deleteNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async {});
+      when(
+        () => testContext.mockFileOperations.deleteNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
 
-      verify(() => testContext.mockFileOperations.deleteNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).called(1);
+      verify(
+        () => testContext.mockFileOperations.deleteNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).called(1);
       verify(() => testContext.mockNormalFilesBox.clear()).called(1);
     });
 
@@ -1246,25 +1250,30 @@ void main() {
 
       when(() => testContext.mockSecureFilesBox.keys).thenReturn(['sfile1']);
       when(() => testContext.mockSecureFilesBox.containsKey('sfile1')).thenReturn(true);
-      when(() => testContext.mockSecureFilesBox.get('sfile1'))
-          .thenAnswer((_) async => jsonMetadata);
+      when(
+        () => testContext.mockSecureFilesBox.get('sfile1'),
+      ).thenAnswer((_) async => jsonMetadata);
       when(() => testContext.mockSecureFilesBox.clear()).thenAnswer((_) async => 0);
 
-      when(() => testContext.mockFileOperations.deleteSecureFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async {});
+      when(
+        () => testContext.mockFileOperations.deleteSecureFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
 
-      verify(() => testContext.mockFileOperations.deleteSecureFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            secureStorage: any(named: 'secureStorage'),
-            getBox: any(named: 'getBox'),
-          )).called(1);
+      verify(
+        () => testContext.mockFileOperations.deleteSecureFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          secureStorage: any(named: 'secureStorage'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).called(1);
       verify(() => testContext.mockSecureFilesBox.clear()).called(1);
     });
 
@@ -1273,17 +1282,20 @@ void main() {
 
       when(() => testContext.mockNormalFilesBox.keys).thenReturn(['file1', 'file2']);
       when(() => testContext.mockNormalFilesBox.containsKey(any<dynamic>())).thenReturn(true);
-      when(() => testContext.mockNormalFilesBox.get(any<dynamic>()))
-          .thenAnswer((_) async => jsonMetadata);
+      when(
+        () => testContext.mockNormalFilesBox.get(any<dynamic>()),
+      ).thenAnswer((_) async => jsonMetadata);
       when(() => testContext.mockNormalFilesBox.clear()).thenAnswer((_) async => 0);
 
       // First file delete throws, second succeeds
       var callCount = 0;
-      when(() => testContext.mockFileOperations.deleteNormalFile(
-            fileMetadata: any(named: 'fileMetadata'),
-            isWeb: any(named: 'isWeb'),
-            getBox: any(named: 'getBox'),
-          )).thenAnswer((_) async {
+      when(
+        () => testContext.mockFileOperations.deleteNormalFile(
+          fileMetadata: any(named: 'fileMetadata'),
+          isWeb: any(named: 'isWeb'),
+          getBox: any(named: 'getBox'),
+        ),
+      ).thenAnswer((_) async {
         callCount++;
         if (callCount == 1) throw Exception('IO error');
       });
@@ -1316,11 +1328,13 @@ void main() {
 
       expect(
         () => testContext.vaultStorage.keys(),
-        throwsA(isA<StorageReadError>().having(
-          (e) => e.message,
-          'message',
-          equals('Failed to list keys'),
-        )),
+        throwsA(
+          isA<StorageReadError>().having(
+            (e) => e.message,
+            'message',
+            equals('Failed to list keys'),
+          ),
+        ),
       );
     });
   });
@@ -1377,14 +1391,18 @@ void main() {
 
     test('should decode JSON-strategy wrapped values', () async {
       // Create a StoredValue map with JSON strategy containing a JSON-encoded map
-      final wrappedValue =
-          const StoredValue('{"name":"test","count":42}', StorageStrategy.json).toHiveMap();
+      final wrappedValue = const StoredValue(
+        '{"name":"test","count":42}',
+        StorageStrategy.json,
+      ).toHiveMap();
 
       when(() => testContext.mockNormalBox.containsKey('json_val')).thenReturn(true);
       when(() => testContext.mockNormalBox.get('json_val')).thenReturn(wrappedValue);
 
-      final result =
-          await testContext.vaultStorage.get<Map<String, dynamic>>('json_val', isSecure: false);
+      final result = await testContext.vaultStorage.get<Map<String, dynamic>>(
+        'json_val',
+        isSecure: false,
+      );
 
       expect(result, isNotNull);
       expect(result!['name'], equals('test'));
@@ -1409,8 +1427,9 @@ void main() {
     });
 
     test('should not attempt normal box removal when key not in normal box', () async {
-      when(() => testContext.mockSecureBox.put(any<dynamic>(), any<dynamic>()))
-          .thenAnswer((_) async {});
+      when(
+        () => testContext.mockSecureBox.put(any<dynamic>(), any<dynamic>()),
+      ).thenAnswer((_) async {});
       when(() => testContext.mockNormalBox.containsKey('only_secure')).thenReturn(false);
 
       await testContext.vaultStorage.saveSecure(key: 'only_secure', value: 'data');

@@ -9,7 +9,7 @@ class Base64DecodeError extends VaultStorageReadError {
   ///
   /// The [context] parameter specifies what was being decoded (e.g., "file content", "encryption key").
   Base64DecodeError(String context, Object? originalException)
-      : super('Failed to decode base64 for $context', originalException);
+    : super('Failed to decode base64 for $context', originalException);
 }
 
 /// An error that occurs during base64 encoding operations for file data.
@@ -21,7 +21,7 @@ class Base64EncodeError extends VaultStorageWriteError {
   ///
   /// The [context] parameter specifies what was being encoded (e.g., "file content", "binary data").
   Base64EncodeError(String context, Object? originalException)
-      : super('Failed to encode base64 for $context', originalException);
+    : super('Failed to encode base64 for $context', originalException);
 }
 
 /// An error that occurs when a file is not found.
@@ -34,7 +34,7 @@ class FileNotFoundError extends VaultStorageReadError {
   /// The [fileId] is the identifier used to locate the file.
   /// The [location] describes where the file was being searched (e.g., "Hive", "file system").
   FileNotFoundError(String fileId, String location)
-      : super('File not found: ID $fileId in $location');
+    : super('File not found: ID $fileId in $location');
 }
 
 /// An error that occurs when file metadata is invalid or incomplete.

@@ -28,8 +28,11 @@ class SecurityThreatException implements Exception {
 /// privileged access. Never thrown on other platforms.
 class JailbreakDetectedException extends SecurityThreatException {
   const JailbreakDetectedException([Object? cause])
-      : super('Jailbreak',
-            'Device is jailbroken or rooted. Vault operations are blocked for security.', cause);
+    : super(
+        'Jailbreak',
+        'Device is jailbroken or rooted. Vault operations are blocked for security.',
+        cause,
+      );
 }
 
 /// Exception thrown when app tampering is detected
@@ -38,8 +41,11 @@ class JailbreakDetectedException extends SecurityThreatException {
 /// app modifications. Never thrown on other platforms.
 class TamperingDetectedException extends SecurityThreatException {
   const TamperingDetectedException([Object? cause])
-      : super('Tampering', 'App tampering detected. Vault operations are blocked for security.',
-            cause);
+    : super(
+        'Tampering',
+        'App tampering detected. Vault operations are blocked for security.',
+        cause,
+      );
 }
 
 /// Exception thrown when debugging is detected
@@ -48,8 +54,7 @@ class TamperingDetectedException extends SecurityThreatException {
 /// debugger attachment. Never thrown on other platforms.
 class DebugDetectedException extends SecurityThreatException {
   const DebugDetectedException([Object? cause])
-      : super(
-            'Debug', 'Debugger detected. Vault operations are blocked in production mode.', cause);
+    : super('Debug', 'Debugger detected. Vault operations are blocked in production mode.', cause);
 }
 
 /// Exception thrown when hooking frameworks are detected
@@ -58,8 +63,11 @@ class DebugDetectedException extends SecurityThreatException {
 /// runtime manipulation frameworks. Never thrown on other platforms.
 class HookingDetectedException extends SecurityThreatException {
   const HookingDetectedException([Object? cause])
-      : super('Hooks', 'Hooking framework detected. Vault operations are blocked for security.',
-            cause);
+    : super(
+        'Hooks',
+        'Hooking framework detected. Vault operations are blocked for security.',
+        cause,
+      );
 }
 
 /// Exception thrown when emulator is detected
@@ -68,8 +76,11 @@ class HookingDetectedException extends SecurityThreatException {
 /// virtual device environments. Never thrown on other platforms.
 class EmulatorDetectedException extends SecurityThreatException {
   const EmulatorDetectedException([Object? cause])
-      : super('Emulator', 'Emulator detected. Vault operations are blocked in production mode.',
-            cause);
+    : super(
+        'Emulator',
+        'Emulator detected. Vault operations are blocked in production mode.',
+        cause,
+      );
 }
 
 /// Exception thrown when unofficial store installation is detected
@@ -78,8 +89,9 @@ class EmulatorDetectedException extends SecurityThreatException {
 /// non-official app store installations. Never thrown on other platforms.
 class UnofficialStoreDetectedException extends SecurityThreatException {
   const UnofficialStoreDetectedException([Object? cause])
-      : super(
-            'Unofficial Store',
-            'App installed from unofficial store. Vault operations are blocked for security.',
-            cause);
+    : super(
+        'Unofficial Store',
+        'App installed from unofficial store. Vault operations are blocked for security.',
+        cause,
+      );
 }

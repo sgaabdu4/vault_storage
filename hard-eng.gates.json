@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "families": {
+    "format": ["dart", "format", "--line-length=100", "--set-exit-if-changed", "."],
+    "dart-analyze": ["dart", "analyze", "--fatal-infos"],
+    "dart-test": ["flutter", "test", "--coverage"],
+    "dart-decimate": ["npx", "--yes", "dart-decimate@latest", "json", "."],
+    "secrets": ["gitleaks", "git", "--redact", "--no-banner", "--no-color", "."]
+  }
+}

@@ -1,0 +1,54 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Local editor configuration
+.vscode/
+
+# Flutter/Dart/Pub related
+/pubspec.lock
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Test coverage
+coverage/
+
+# Generated local data
+*_box.hive
+*_box.lock
+test-file-id*
+
+# Example platform projects and local files
+example/macos/
+example/ios/
+example/android/
+example/linux/
+example/windows/
+example/web/
+example/analysis_options.yaml
+example/pubspec.lock
+example/README.md
+
+# Repository-only files
+.codebase-memory/
+docs/
+.github/
+hard-eng.gates.json
+PRODUCT.md

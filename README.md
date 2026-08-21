@@ -2,6 +2,8 @@
 
 Secure, fast key-value and file storage for Flutter. Built on Hive and flutter_secure_storage with AES-GCM encryption, full web support, and background isolates for heavy crypto work.
 
+**v5.0.0**: Requires Dart 3.10 or later and Flutter 3.38 or later. Dependencies are updated to their latest stable compatible versions, and streamed secure-file reads now handle chunk metadata without requiring single-file nonce and MAC fields.
+
 **v4.0.0**: Binary TypeAdapter storage — each entry drops from ~36 bytes of wrapper overhead to 2 bytes, yielding ~30-50% faster key-value reads/writes. Web files stored as `Uint8List` (no base64 round-trip). Fully automatic — no code changes needed. Downgrade from v4.x to v3.x is not supported.
 
 **v3.0.0**: 20-50x faster List and Map operations via native storage. Automatic migration from v2.x, no breaking changes.

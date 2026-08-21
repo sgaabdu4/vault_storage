@@ -288,13 +288,20 @@ class JsonSafe {
   /// v2.x stored primitives as JSON-encoded strings without type markers.
   /// Simple type coercion only - complex migrations should be handled by users.
   static T _coerceType<T>(dynamic value) {
-    // If value is already the correct type, return it
     if (value is T) return value;
 
-    // Simple primitive conversions for v2.x compatibility
-    if (T == int && value is String) {
+    if (T == int) return _coerceInt(value) as T;
+    if (T == double) return _coerceDouble(value) as T;
+    if (T == bool && value is String) return (value.toLowerCase() == 'true') as T;
+    if (T == String && value != null) return value.toString() as T;
+    throw _typeMismatch<T>(value);
+  }
+
+  static int _coerceInt(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) {
       try {
-        return int.parse(value) as T;
+        return int.parse(value);
       } catch (e) {
         throw VaultStorageSerializationError(
           'Type mismatch: Cannot parse "$value" as int. '
@@ -303,11 +310,14 @@ class JsonSafe {
         );
       }
     }
-    if (T == int && value is num) return value.toInt() as T;
+    throw _typeMismatch<int>(value);
+  }
 
-    if (T == double && value is String) {
+  static double _coerceDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
       try {
-        return double.parse(value) as T;
+        return double.parse(value);
       } catch (e) {
         throw VaultStorageSerializationError(
           'Type mismatch: Cannot parse "$value" as double. '
@@ -316,17 +326,14 @@ class JsonSafe {
         );
       }
     }
-    if (T == double && value is num) return value.toDouble() as T;
-
-    if (T == bool && value is String) return (value.toLowerCase() == 'true') as T;
-    if (T == String && value != null) return value.toString() as T;
-
-    // Type mismatch - throw clear error
-    throw VaultStorageSerializationError(
-      'Type mismatch: Cannot convert "$value" (${value.runtimeType}) to type $T. '
-      'Consider clearing corrupted data.',
-    );
+    throw _typeMismatch<double>(value);
   }
+
+  static VaultStorageSerializationError _typeMismatch<T>(dynamic value) =>
+      VaultStorageSerializationError(
+        'Type mismatch: Cannot convert "$value" (${value.runtimeType}) to type $T. '
+        'Consider clearing corrupted data.',
+      );
 
   /// Encodes complex objects (non-primitives) with isolate optimization
   static Future<String> _encodeComplex(Object? value) async {

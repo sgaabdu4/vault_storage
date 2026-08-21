@@ -6,17 +6,12 @@ import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
 /// Downloads a file in the browser by creating a blob and triggering download
-void downloadFileOnWeb({
-  required Uint8List fileBytes,
-  required String fileName,
-  String? mimeType,
-}) {
+void downloadFileOnWeb({required Uint8List fileBytes, required String fileName, String? mimeType}) {
   // Create a blob from the file bytes
   final blob = web.Blob(
-      [fileBytes.toJS].toJS,
-      web.BlobPropertyBag(
-        type: mimeType ?? 'application/octet-stream',
-      ));
+    [fileBytes.toJS].toJS,
+    web.BlobPropertyBag(type: mimeType ?? 'application/octet-stream'),
+  );
 
   // Create a URL for the blob
   final url = web.URL.createObjectURL(blob);

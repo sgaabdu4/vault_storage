@@ -37,22 +37,10 @@ void main() {
     });
 
     test('should use native storage for primitive types', () {
-      expect(
-        StorageStrategyHelper.determineStrategy('string'),
-        StorageStrategy.native,
-      );
-      expect(
-        StorageStrategyHelper.determineStrategy(42),
-        StorageStrategy.native,
-      );
-      expect(
-        StorageStrategyHelper.determineStrategy(3.14),
-        StorageStrategy.native,
-      );
-      expect(
-        StorageStrategyHelper.determineStrategy(true),
-        StorageStrategy.native,
-      );
+      expect(StorageStrategyHelper.determineStrategy('string'), StorageStrategy.native);
+      expect(StorageStrategyHelper.determineStrategy(42), StorageStrategy.native);
+      expect(StorageStrategyHelper.determineStrategy(3.14), StorageStrategy.native);
+      expect(StorageStrategyHelper.determineStrategy(true), StorageStrategy.native);
     });
 
     test('should verify StoredValue wrapper is used correctly', () {

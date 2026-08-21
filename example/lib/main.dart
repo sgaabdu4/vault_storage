@@ -6,190 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vault_storage/vault_storage.dart';
 
-/*
- * Vault Storage Demo - Platform Setup Requirements
- * 
- * This example demonstrates secure storage capabilities using vault_storage package.
- * Below are the platform-specific configurations required for each platform:
- * 
- * ============================================================================
- * 🍎 macOS Setup
- * ============================================================================
- * 
- * 1. ENTITLEMENTS (Required for Keychain & File Access):
- *    Add to macos/Runner/DebugProfile.entitlements:
- *    ```xml
- *    <key>com.apple.security.app-sandbox</key>
- *    <true/>
- *    <key>com.apple.security.cs.allow-jit</key>
- *    <true/>
- *    <key>com.apple.security.network.server</key>
- *    <true/>
- *    <key>com.apple.security.files.user-selected.read-write</key>
- *    <true/>
- *    <key>com.apple.security.files.downloads.read-write</key>
- *    <true/>
- *    <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
- *    <array>
- *      <string>/</string>
- *    </array>
- *    <key>keychain-access-groups</key>
- *    <array>
- *      <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
- *    </array>
- *    ```
- * 
- *    Add to macos/Runner/Release.entitlements:
- *    ```xml
- *    <key>com.apple.security.app-sandbox</key>
- *    <true/>
- *    <key>com.apple.security.files.user-selected.read-write</key>
- *    <true/>
- *    <key>com.apple.security.files.downloads.read-write</key>
- *    <true/>
- *    <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
- *    <array>
- *      <string>/</string>
- *    </array>
- *    <key>keychain-access-groups</key>
- *    <array>
- *      <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
- *    </array>
- *    ```
- * 
- * ============================================================================
- * 📱 iOS Setup
- * ============================================================================
- * 
- * 1. KEYCHAIN ACCESS:
- *    Add to ios/Runner/Runner.entitlements:
- *    ```xml
- *    <key>keychain-access-groups</key>
- *    <array>
- *      <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
- *    </array>
- *    ```
- * 
- * 2. FILE ACCESS (if using file operations):
- *    Add to ios/Runner/Info.plist:
- *    ```xml
- *    <key>NSDocumentsFolderUsageDescription</key>
- *    <string>This app needs access to documents folder to save files securely.</string>
- *    <key>NSDownloadsFolderUsageDescription</key>
- *    <string>This app needs access to downloads folder to save files.</string>
- *    ```
- * 
- * ============================================================================
- * 🤖 Android Setup
- * ============================================================================
- * 
- * 1. PERMISSIONS:
- *    Add to android/app/src/main/AndroidManifest.xml:
- *    ```xml
- *    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
- *    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
- *    <uses-permission android:name="android.permission.INTERNET" />
- *    ```
- * 
- * 2. MINIMUM SDK:
- *    In android/app/build.gradle, ensure:
- *    ```gradle
- *    minSdkVersion 21  // Required for secure storage APIs
- *    ```
- * 
- * 3. PROGUARD (if using):
- *    Add to android/app/proguard-rules.pro:
- *    ```
- *    -keep class io.flutter.plugins.** { *; }
- *    -keep class androidx.biometric.** { *; }
- *    ```
- * 
- * ============================================================================
- * 🪟 Windows Setup
- * ============================================================================
- * 
- * 1. MINIMUM VERSION:
- *    In windows/runner/CMakeLists.txt, ensure:
- *    ```cmake
- *    set(CMAKE_CXX_STANDARD 17)
- *    ```
- * 
- * 2. SECURE STORAGE:
- *    Windows uses DPAPI (Data Protection API) to encrypt the master encryption key.
- *    The encrypted key is stored in a file: %APPDATA%\<app_name>\flutter_secure_storage.dat
- *    Your actual data is encrypted with AES-256-GCM and stored in Hive boxes.
- *    The DPAPI encryption is tied to your Windows user account for security.
- *    This provides better performance and scalability than Windows Credential Manager.
- * 
- * 3. FILE PERMISSIONS:
- *    For file operations, ensure app has write permissions to selected directories.
- *    This is handled automatically by the file_picker package.
- * 
- * ============================================================================
- * 🌐 Web Setup
- * ============================================================================
- * 
- * 1. LIMITATIONS:
- *    - Web platform uses browser's localStorage for storage
- *    - Security level is lower than native platforms
- *    - Large files may cause memory issues
- * 
- * 2. CORS (if accessing external resources):
- *    Add to web/index.html if needed:
- *    ```html
- *    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
- *    ```
- * 
- * 3. HTTPS REQUIREMENT:
- *    - Secure storage APIs require HTTPS in production
- *    - Use `flutter run -d web-server --web-hostname localhost --web-port 8080` for local testing
- * 
- * ============================================================================
- * 📦 Package Dependencies
- * ============================================================================
- * 
- * Add to pubspec.yaml:
- * ```yaml
- * dependencies:
- *   vault_storage: ^x.x.x  # Check latest version
- *   file_picker: ^8.0.0+1  # For file upload/download functionality
- * ```
- * 
- * ============================================================================
- * 🔧 Common Issues & Solutions
- * ============================================================================
- * 
- * 1. "Failed to initialize storage: Failed to create/decode secure key"
- *    - Missing keychain entitlements (macOS/iOS)
- *    - Run: flutter clean && flutter pub get && flutter run
- * 
- * 2. File picker not working:
- *    - Missing file access permissions
- *    - Check platform-specific file access setup above
- * 
- * 3. Build failures:
- *    - Ensure minimum SDK versions are met
- *    - Clean build: flutter clean && flutter pub get
- * 
- * 4. Web storage issues:
- *    - Check browser console for errors
- *    - Ensure HTTPS in production
- *    - Clear browser storage/cache
- * 
- * ============================================================================
- * 🚀 Quick Start Commands
- * ============================================================================
- * 
- * 1. Get dependencies: flutter pub get
- * 2. Run on macOS: flutter run -d macos
- * 3. Run on iOS: flutter run -d ios
- * 4. Run on Android: flutter run -d android
- * 5. Run on Windows: flutter run -d windows
- * 6. Run on Web: flutter run -d web
- * 
- * For any platform-specific issues, refer to the setup sections above.
- * 
- */
 void main() {
   runApp(const MyApp());
 }
@@ -201,10 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Vault Storage Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const VaultStorageDemo(),
     );
   }
@@ -340,24 +153,20 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Security issues detected:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text('Security issues detected:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            ..._securityThreats.map((threat) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text('• $threat'),
-                )),
+            ..._securityThreats.map(
+              (threat) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text('• $threat'),
+              ),
+            ),
             const SizedBox(height: 8),
             const Text('App functionality may be limited.'),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
         ],
       ),
     );
@@ -384,6 +193,11 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     });
   }
 
+  List<Widget> _dialogActions<T>(BuildContext dialogContext, T Function() value) => [
+    TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+    TextButton(onPressed: () => Navigator.pop(dialogContext, value()), child: const Text('OK')),
+  ];
+
   Future<String?> _getInput(String title, String label) async {
     final controller = TextEditingController();
     return showDialog<String>(
@@ -394,16 +208,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
           controller: controller,
           decoration: InputDecoration(labelText: label),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('OK'),
-          ),
-        ],
+        actions: _dialogActions(context, () => controller.text),
       ),
     );
   }
@@ -429,19 +234,10 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, {
-              'key': keyController.text,
-              'value': valueController.text,
-            }),
-            child: const Text('OK'),
-          ),
-        ],
+        actions: _dialogActions(
+          context,
+          () => {'key': keyController.text, 'value': valueController.text},
+        ),
       ),
     );
   }
@@ -467,16 +263,9 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 initialValue: selectedKey,
                 items: _availableKeys.isNotEmpty
                     ? _availableKeys
-                        .map((key) => DropdownMenuItem(
-                              value: key,
-                              child: Text(key),
-                            ))
-                        .toList()
-                    : [
-                        const DropdownMenuItem(
-                          child: Text('No keys stored yet'),
-                        ),
-                      ],
+                          .map((key) => DropdownMenuItem(value: key, child: Text(key)))
+                          .toList()
+                    : [const DropdownMenuItem(child: Text('No keys stored yet'))],
                 onChanged: _availableKeys.isNotEmpty
                     ? (value) {
                         setState(() {
@@ -500,16 +289,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text('OK'),
-            ),
-          ],
+          actions: _dialogActions(context, () => controller.text),
         ),
       ),
     );
@@ -589,10 +369,16 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
 
       if (isSecure) {
         await vaultStorage.saveSecureFile(
-            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+          key: fileKey!,
+          fileBytes: bytes,
+          originalFileName: fileName,
+        );
       } else {
         await vaultStorage.saveNormalFile(
-            key: fileKey!, fileBytes: bytes, originalFileName: fileName);
+          key: fileKey!,
+          fileBytes: bytes,
+          originalFileName: fileName,
+        );
       }
 
       setState(() {
@@ -657,7 +443,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
           '${appSupportDir.path}${Platform.pathSeparator}flutter_secure_storage.dat';
       final fileExists = File(encryptedFilePath).existsSync();
 
-      final message = '''
+      final message =
+          '''
 Storage Location Information:
 
 📁 Application Support Directory:
@@ -687,25 +474,20 @@ Try saving a secure value first.
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Storage Location'),
-            content: SingleChildScrollView(
-              child: SelectableText(message),
-            ),
+            content: SingleChildScrollView(child: SelectableText(message)),
             actions: [
               TextButton(
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: appSupportDir.path));
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Path copied to clipboard!')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('Path copied to clipboard!')));
                   }
                 },
                 child: const Text('Copy Path'),
               ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
             ],
           ),
         );
@@ -756,19 +538,14 @@ Try saving a secure value first.
   Widget _buildButton(String text, VoidCallback? onPressed) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: ElevatedButton(
-        onPressed: _isInitialized ? onPressed : null,
-        child: Text(text),
-      ),
+      child: ElevatedButton(onPressed: _isInitialized ? onPressed : null, child: Text(text)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Vault Storage Demo'),
-      ),
+      appBar: AppBar(title: const Text('Vault Storage Demo')),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -777,11 +554,7 @@ Try saving a secure value first.
               padding: EdgeInsets.all(12.0),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                   SizedBox(width: 8),
                   Text('Initializing storage...'),
                 ],
@@ -792,9 +565,7 @@ Try saving a secure value first.
               padding: const EdgeInsets.all(12.0),
               child: Text(
                 _errorMessage ?? _operationResult!,
-                style: TextStyle(
-                  color: _errorMessage != null ? Colors.red : Colors.green,
-                ),
+                style: TextStyle(color: _errorMessage != null ? Colors.red : Colors.green),
               ),
             ),
           Expanded(

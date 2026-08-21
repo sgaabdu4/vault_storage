@@ -1,3 +1,25 @@
+## [5.0.0] - 2026-08-21
+### Breaking changes
+- Raised the minimum Dart SDK to 3.10 and Flutter to 3.38 so the package can use the latest stable dependencies.
+
+### Dependencies
+- Updated `hive_ce` to 2.19.3, `hive_ce_flutter` to 2.3.4, `path_provider` to 2.1.6, `uuid` to 4.6.0, and `build_runner` to the latest version compatible with stable `freezed`.
+- Confirmed all other direct and development dependencies are already at their latest stable versions.
+- Regenerated the Freezed model output with the updated build toolchain.
+
+### Bug fixes
+- Fixed streamed secure-file reads so chunk metadata no longer requires single-file nonce and MAC fields.
+- Fixed partial stream chunk slicing so unused buffer capacity cannot cause an infinite chunking loop.
+
+### CI and maintenance
+- Updated `actions/checkout` to v7 and `actions/cache` to v6.
+- Added current Flutter platform exclusions to `analysis_options.yaml` so analysis is read-only and repeatable.
+- Applied the Dart 3.13 formatter to source, example, and test files so the current CI format check passes.
+- Added the repository's deterministic Dart analysis, test, and dead-code check definitions.
+- Kept GitHub workflows and other repository-only files out of the published package archive.
+- Split storage and security helpers out of the main implementation file without changing the public API.
+- Removed obsolete performance plans, completion notes, Codex memory files, Copilot instructions, and an unused empty npm lockfile.
+
 ## [4.0.4] - 2026-08-16
 ### Maintenance
 - Updated `flutter_secure_storage` to 11.0.0.

@@ -19,9 +19,7 @@ void main() {
     });
 
     test('should create instance with security config', () {
-      final securityConfig = VaultSecurityConfig.production(
-        watcherMail: 'test@example.com',
-      );
+      final securityConfig = VaultSecurityConfig.production(watcherMail: 'test@example.com');
       final storage = VaultStorage.create(securityConfig: securityConfig);
       expect(storage, isNotNull);
       expect(storage, isA<IVaultStorage>());
@@ -39,22 +37,16 @@ void main() {
     });
 
     test('should create instance with storage directory', () {
-      final storage = VaultStorage.create(
-        storageDirectory: 'custom_dir',
-      );
+      final storage = VaultStorage.create(storageDirectory: 'custom_dir');
       expect(storage, isNotNull);
       expect(storage, isA<IVaultStorage>());
     });
 
     test('should create instance with all parameters', () {
-      final securityConfig = VaultSecurityConfig.production(
-        watcherMail: 'test@example.com',
-      );
+      final securityConfig = VaultSecurityConfig.production(watcherMail: 'test@example.com');
       final storage = VaultStorage.create(
         securityConfig: securityConfig,
-        customBoxes: [
-          const BoxConfig(name: 'test_box', encrypted: true),
-        ],
+        customBoxes: [const BoxConfig(name: 'test_box', encrypted: true)],
         storageDirectory: 'custom_dir',
       );
       expect(storage, isNotNull);

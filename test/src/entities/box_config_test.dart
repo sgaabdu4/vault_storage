@@ -4,11 +4,7 @@ import 'package:vault_storage/src/entities/box_config.dart';
 void main() {
   group('BoxConfig', () {
     test('should create box config with all properties', () {
-      const config = BoxConfig(
-        name: 'test_box',
-        encrypted: true,
-        lazy: true,
-      );
+      const config = BoxConfig(name: 'test_box', encrypted: true, lazy: true);
 
       expect(config.name, equals('test_box'));
       expect(config.encrypted, isTrue);
@@ -24,14 +20,9 @@ void main() {
     });
 
     test('should support copyWith', () {
-      const original = BoxConfig(
-        name: 'original',
-      );
+      const original = BoxConfig(name: 'original');
 
-      final updated = original.copyWith(
-        encrypted: true,
-        lazy: true,
-      );
+      final updated = original.copyWith(encrypted: true, lazy: true);
 
       expect(updated.name, equals('original'));
       expect(updated.encrypted, isTrue);
@@ -51,21 +42,9 @@ void main() {
     });
 
     test('should support equality', () {
-      const config1 = BoxConfig(
-        name: 'test',
-        encrypted: true,
-        lazy: true,
-      );
-      const config2 = BoxConfig(
-        name: 'test',
-        encrypted: true,
-        lazy: true,
-      );
-      const config3 = BoxConfig(
-        name: 'different',
-        encrypted: true,
-        lazy: true,
-      );
+      const config1 = BoxConfig(name: 'test', encrypted: true, lazy: true);
+      const config2 = BoxConfig(name: 'test', encrypted: true, lazy: true);
+      const config3 = BoxConfig(name: 'different', encrypted: true, lazy: true);
 
       expect(config1, equals(config2));
       expect(config1, isNot(equals(config3)));
@@ -81,10 +60,7 @@ void main() {
     });
 
     test('should support toString', () {
-      const config = BoxConfig(
-        name: 'test_box',
-        encrypted: true,
-      );
+      const config = BoxConfig(name: 'test_box', encrypted: true);
 
       final str = config.toString();
       expect(str, contains('test_box'));
@@ -93,11 +69,7 @@ void main() {
     });
 
     test('should create encrypted lazy box config', () {
-      const config = BoxConfig(
-        name: 'secure_files',
-        encrypted: true,
-        lazy: true,
-      );
+      const config = BoxConfig(name: 'secure_files', encrypted: true, lazy: true);
 
       expect(config.name, equals('secure_files'));
       expect(config.encrypted, isTrue);
@@ -105,9 +77,7 @@ void main() {
     });
 
     test('should create non-encrypted regular box config', () {
-      const config = BoxConfig(
-        name: 'cache',
-      );
+      const config = BoxConfig(name: 'cache');
 
       expect(config.name, equals('cache'));
       expect(config.encrypted, isFalse);

@@ -110,10 +110,9 @@ class VaultStorage {
     VaultSecurityConfig? securityConfig,
     List<BoxConfig>? customBoxes,
     String? storageDirectory,
-  }) =>
-      VaultStorageImpl(
-        securityConfig: securityConfig,
-        customBoxes: customBoxes,
-        storageDirectory: storageDirectory,
-      );
+  }) => VaultStorageImpl(
+    securityConfig: securityConfig,
+    customBoxes: customBoxes,
+    storageDirectory: storageDirectory,
+  );
 }

@@ -46,10 +46,7 @@ class AndroidConfig {
 /// Mock iOS configuration
 class IOSConfig {
   /// Creates a mock IOSConfig
-  const IOSConfig({
-    required this.bundleIds,
-    required this.teamId,
-  });
+  const IOSConfig({required this.bundleIds, required this.teamId});
 
   /// Bundle IDs
   final List<String> bundleIds;

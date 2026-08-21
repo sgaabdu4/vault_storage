@@ -27,6 +27,7 @@ abstract class IFileOperations {
   ///
   /// Useful for large files to reduce peak memory usage. Returns metadata
   /// needed to retrieve the file later. Throws [VaultStorageError] on failure.
+  // dart-decimate-ignore-next-line code-duplication
   Future<Map<String, dynamic>> saveSecureFileStream({
     required Stream<List<int>> stream,
     required String fileExtension,

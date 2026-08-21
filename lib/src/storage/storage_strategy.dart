@@ -40,10 +40,7 @@ class StoredValue {
   const StoredValue(this.value, this.strategy);
 
   /// Converts to a map suitable for Hive storage
-  Map<String, dynamic> toHiveMap() => {
-        _strategyKey: strategy.index,
-        _valueKey: value,
-      };
+  Map<String, dynamic> toHiveMap() => {_strategyKey: strategy.index, _valueKey: value};
 
   /// Reconstructs a StoredValue from a Hive map
   static StoredValue fromHiveMap(Map<dynamic, dynamic> map) {
@@ -75,48 +72,23 @@ class StorageStrategyHelper {
 
     while (stack.isNotEmpty) {
       final current = stack.removeLast();
-
-      // Handle null
-      if (current == null) continue;
-
-      // Primitives
-      if (current is String || current is num || current is bool) continue;
-
-      // Binary data
-      if (current is Uint8List) continue;
-
-      // Lists - check if all elements are natively storable
+      if (_isHivePrimitive(current)) continue;
       if (current is List) {
-        for (final item in current) {
-          if (item == null || item is String || item is num || item is bool || item is Uint8List) {
-            continue;
-          }
-          stack.add(item);
-        }
+        stack.addAll(current);
         continue;
       }
-
-      // Maps - check if all keys and values are natively storable
       if (current is Map) {
-        for (final key in current.keys) {
-          if (key == null || key is String || key is num || key is bool || key is Uint8List) {
-            continue;
-          }
-          stack.add(key);
-        }
-        for (final val in current.values) {
-          if (val == null || val is String || val is num || val is bool || val is Uint8List) {
-            continue;
-          }
-          stack.add(val);
-        }
+        stack
+          ..addAll(current.keys)
+          ..addAll(current.values);
         continue;
       }
-
-      // Everything else needs JSON encoding
       return false;
     }
 
     return true;
   }
+
+  static bool _isHivePrimitive(dynamic value) =>
+      value == null || value is String || value is num || value is bool || value is Uint8List;
 }

@@ -37,9 +37,7 @@ void main() {
       });
 
       test('should create development config', () {
-        final config = VaultSecurityConfig.development(
-          watcherMail: 'dev@test.com',
-        );
+        final config = VaultSecurityConfig.development(watcherMail: 'dev@test.com');
 
         expect(config.enableRaspProtection, isTrue);
         expect(config.isProd, isFalse);
@@ -51,9 +49,7 @@ void main() {
       });
 
       test('should create production config', () {
-        final config = VaultSecurityConfig.production(
-          watcherMail: 'security@prod.com',
-        );
+        final config = VaultSecurityConfig.production(watcherMail: 'security@prod.com');
 
         expect(config.enableRaspProtection, isTrue);
         expect(config.isProd, isTrue);
@@ -152,12 +148,15 @@ void main() {
         storage.isVaultStorageReady = false;
 
         // Mock the secure storage for initialization
-        when(() => testContext.mockSecureStorage.read(key: any(named: 'key')))
-            .thenAnswer((_) async => null);
-        when(() => testContext.mockSecureStorage.write(
-              key: any(named: 'key'),
-              value: any(named: 'value'),
-            )).thenAnswer((_) async {});
+        when(
+          () => testContext.mockSecureStorage.read(key: any(named: 'key')),
+        ).thenAnswer((_) async => null);
+        when(
+          () => testContext.mockSecureStorage.write(
+            key: any(named: 'key'),
+            value: any(named: 'value'),
+          ),
+        ).thenAnswer((_) async {});
 
         // Should not throw when no security parameters provided
         await expectLater(storage.init(), completes);

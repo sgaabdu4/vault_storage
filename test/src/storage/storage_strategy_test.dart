@@ -16,8 +16,10 @@ void main() {
 
     test('should identify simple lists and maps as natively storable', () {
       expect(StorageStrategyHelper.determineStrategy([1, 2, 3]), equals(StorageStrategy.native));
-      expect(StorageStrategyHelper.determineStrategy({'a': 1, 'b': 2}),
-          equals(StorageStrategy.native));
+      expect(
+        StorageStrategyHelper.determineStrategy({'a': 1, 'b': 2}),
+        equals(StorageStrategy.native),
+      );
     });
 
     test('should identify complex objects as json storable', () {
@@ -29,11 +31,11 @@ void main() {
     test('should handle nested structures', () {
       final nested = [
         {
-          'a': [1, 2]
+          'a': [1, 2],
         },
         {
-          'b': {'c': 'd'}
-        }
+          'b': {'c': 'd'},
+        },
       ];
       expect(StorageStrategyHelper.determineStrategy(nested), equals(StorageStrategy.native));
     });

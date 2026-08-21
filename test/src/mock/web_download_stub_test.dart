@@ -13,11 +13,7 @@ void main() {
 
       // Act & Assert - Should complete without throwing
       expect(() {
-        downloadFileOnWeb(
-          fileBytes: fileBytes,
-          fileName: fileName,
-          mimeType: mimeType,
-        );
+        downloadFileOnWeb(fileBytes: fileBytes, fileName: fileName, mimeType: mimeType);
       }, returnsNormally);
     });
 
@@ -28,10 +24,7 @@ void main() {
 
       // Act & Assert - Should complete without throwing
       expect(() {
-        downloadFileOnWeb(
-          fileBytes: fileBytes,
-          fileName: fileName,
-        );
+        downloadFileOnWeb(fileBytes: fileBytes, fileName: fileName);
       }, returnsNormally);
     });
   });

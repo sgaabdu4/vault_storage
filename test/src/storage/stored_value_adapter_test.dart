@@ -1,9 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_ce/src/binary/binary_reader_impl.dart';
-import 'package:hive_ce/src/binary/binary_writer_impl.dart';
-import 'package:hive_ce/src/registry/type_registry_impl.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/storage/stored_value_adapter.dart';
 
@@ -104,39 +102,65 @@ void main() {
     test('strategy index 0 maps to native', () {
       // Write with native strategy, verify readByte returns 0
       const original = StoredValue('x', StorageStrategy.native);
-      final bytes = _serializeAdapter(adapter, original);
-      // First byte should be 0 (native)
-      expect(bytes[0], equals(0));
+      final encoded = _serializeAdapter(adapter, original);
+      expect(encoded.strategyIndex, equals(0));
     });
 
     test('strategy index 1 maps to json', () {
       const original = StoredValue('x', StorageStrategy.json);
-      final bytes = _serializeAdapter(adapter, original);
-      // First byte should be 1 (json)
-      expect(bytes[0], equals(1));
+      final encoded = _serializeAdapter(adapter, original);
+      expect(encoded.strategyIndex, equals(1));
     });
 
     test('throws RangeError for invalid strategy index', () {
-      // Manually craft bytes with an out-of-range strategy index
-      final writer = BinaryWriterImpl(TypeRegistryImpl());
-      writer.writeByte(99); // invalid strategy index
-      writer.write('value');
-      final bytes = writer.toBytes();
-
-      expect(() => _deserializeAdapter(adapter, bytes), throwsA(isA<RangeError>()));
+      const encoded = (strategyIndex: 99, value: 'value');
+      expect(() => _deserializeAdapter(adapter, encoded), throwsA(isA<RangeError>()));
     });
   });
 }
 
-/// Serialize a StoredValue using the adapter's write method via Hive's BinaryWriter.
-Uint8List _serializeAdapter(StoredValueAdapter adapter, StoredValue value) {
-  final writer = BinaryWriterImpl(TypeRegistryImpl());
+({int strategyIndex, dynamic value}) _serializeAdapter(
+  StoredValueAdapter adapter,
+  StoredValue value,
+) {
+  final writer = _RecordingBinaryWriter();
   adapter.write(writer, value);
-  return writer.toBytes();
+  return (strategyIndex: writer.strategyIndex, value: writer.value);
 }
 
-/// Deserialize a StoredValue using the adapter's read method via Hive's BinaryReader.
-StoredValue _deserializeAdapter(StoredValueAdapter adapter, Uint8List bytes) {
-  final reader = BinaryReaderImpl(bytes, TypeRegistryImpl());
+StoredValue _deserializeAdapter(
+  StoredValueAdapter adapter,
+  ({int strategyIndex, dynamic value}) encoded,
+) {
+  final reader = _RecordingBinaryReader(encoded);
   return adapter.read(reader);
+}
+
+class _RecordingBinaryWriter implements BinaryWriter {
+  late int strategyIndex;
+  dynamic value;
+
+  @override
+  void writeByte(int byte) => strategyIndex = byte;
+
+  @override
+  void write<T>(T value, {bool withTypeId = true}) => this.value = value;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingBinaryReader implements BinaryReader {
+  _RecordingBinaryReader(this.encoded);
+
+  final ({int strategyIndex, dynamic value}) encoded;
+
+  @override
+  int readByte() => encoded.strategyIndex;
+
+  @override
+  dynamic read([int? typeId]) => encoded.value;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

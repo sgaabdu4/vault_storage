@@ -29,15 +29,14 @@ void main() {
 
       // Mock path_provider to return the temporary directory
       const channel = MethodChannel('plugins.flutter.io/path_provider');
-      TestWidgetsFlutterBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-        channel,
-        (MethodCall methodCall) async {
-          if (methodCall.method == 'getApplicationDocumentsDirectory') {
-            return tempDir.path;
-          }
-          return null;
-        },
-      );
+      TestWidgetsFlutterBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        MethodCall methodCall,
+      ) async {
+        if (methodCall.method == 'getApplicationDocumentsDirectory') {
+          return tempDir.path;
+        }
+        return null;
+      });
     });
 
     tearDown(() async {
@@ -56,10 +55,12 @@ void main() {
         const testFileId = 'test-file-id';
 
         when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => testContext.mockSecureStorage.write(
-              key: any(named: 'key'),
-              value: any(named: 'value'),
-            )).thenAnswer((_) async {});
+        when(
+          () => testContext.mockSecureStorage.write(
+            key: any(named: 'key'),
+            value: any(named: 'value'),
+          ),
+        ).thenAnswer((_) async {});
 
         // Act
         final result = await fileOperations.saveSecureFile(
@@ -82,10 +83,12 @@ void main() {
         expect(result.containsKey('mac'), isTrue);
 
         verify(() => testContext.mockUuid.v4()).called(1);
-        verify(() => testContext.mockSecureStorage.write(
-              key: 'file_key_$testFileId',
-              value: any(named: 'value'),
-            )).called(1);
+        verify(
+          () => testContext.mockSecureStorage.write(
+            key: 'file_key_$testFileId',
+            value: any(named: 'value'),
+          ),
+        ).called(1);
       });
 
       test('should validate required parameters', () {
@@ -162,10 +165,12 @@ void main() {
           'mac': 'dGVzdE1hYw==',
         };
 
-        when(() => testContext.mockSecureFilesBox.get(testFileId))
-            .thenAnswer((_) async => 'dGVzdENvbnRlbnQ=');
-        when(() => testContext.mockSecureStorage.read(key: secureKeyName))
-            .thenAnswer((_) async => null);
+        when(
+          () => testContext.mockSecureFilesBox.get(testFileId),
+        ).thenAnswer((_) async => 'dGVzdENvbnRlbnQ=');
+        when(
+          () => testContext.mockSecureStorage.read(key: secureKeyName),
+        ).thenAnswer((_) async => null);
 
         // Act & Assert
         expect(
@@ -211,14 +216,12 @@ void main() {
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
 
-        final fileMetadata = {
-          'fileId': testFileId,
-          'secureKeyName': secureKeyName,
-        };
+        final fileMetadata = {'fileId': testFileId, 'secureKeyName': secureKeyName};
 
         when(() => testContext.mockSecureFilesBox.delete(testFileId)).thenAnswer((_) async {});
-        when(() => testContext.mockSecureStorage.delete(key: secureKeyName))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockSecureStorage.delete(key: secureKeyName),
+        ).thenAnswer((_) async {});
 
         // Act
         await fileOperations.deleteSecureFile(
@@ -261,8 +264,9 @@ void main() {
         const testFileId = 'test-file-id';
 
         when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => testContext.mockNormalFilesBox.put(any<String>(), any<String>()))
-            .thenAnswer((_) async {});
+        when(
+          () => testContext.mockNormalFilesBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
 
         // Act
         final result = await fileOperations.saveNormalFile(
@@ -316,13 +320,11 @@ void main() {
         const testFileId = 'test-file-id';
         final expectedBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
 
-        final fileMetadata = {
-          'fileId': testFileId,
-          'extension': 'txt',
-        };
+        final fileMetadata = {'fileId': testFileId, 'extension': 'txt'};
 
-        when(() => testContext.mockNormalFilesBox.get(testFileId))
-            .thenAnswer((_) async => 'AQIDBAU='); // base64 of [1,2,3,4,5]
+        when(
+          () => testContext.mockNormalFilesBox.get(testFileId),
+        ).thenAnswer((_) async => 'AQIDBAU='); // base64 of [1,2,3,4,5]
 
         // Act
         final result = await fileOperations.getNormalFile(
@@ -340,10 +342,7 @@ void main() {
         // Arrange
         const testFileId = 'test-file-id';
 
-        final fileMetadata = {
-          'fileId': testFileId,
-          'extension': 'txt',
-        };
+        final fileMetadata = {'fileId': testFileId, 'extension': 'txt'};
 
         when(() => testContext.mockNormalFilesBox.get(testFileId)).thenAnswer((_) async => null);
 
@@ -382,9 +381,7 @@ void main() {
         // Arrange
         const testFileId = 'test-file-id';
 
-        final fileMetadata = {
-          'fileId': testFileId,
-        };
+        final fileMetadata = {'fileId': testFileId};
 
         when(() => testContext.mockNormalFilesBox.delete(testFileId)).thenAnswer((_) async {});
 
@@ -403,10 +400,7 @@ void main() {
         // Arrange
         const testFileId = 'test-file-id';
 
-        final fileMetadata = {
-          'fileId': testFileId,
-          'filePath': '/nonexistent/path',
-        };
+        final fileMetadata = {'fileId': testFileId, 'filePath': '/nonexistent/path'};
 
         when(() => testContext.mockNormalFilesBox.delete(testFileId)).thenAnswer((_) async {});
 
@@ -463,12 +457,11 @@ void main() {
         // Arrange
         const testFileId = 'test-file-id';
 
-        final fileMetadata = {
-          'fileId': testFileId,
-        };
+        final fileMetadata = {'fileId': testFileId};
 
-        when(() => testContext.mockNormalFilesBox.delete(testFileId))
-            .thenThrow(Exception('Storage operation failed'));
+        when(
+          () => testContext.mockNormalFilesBox.delete(testFileId),
+        ).thenThrow(Exception('Storage operation failed'));
 
         // Act & Assert
         expect(

@@ -112,8 +112,9 @@ void main() {
         expect(result, isA<String>());
 
         // Verify it's the same as Uint8List encoding
-        final uint8Result =
-            await Uint8List.fromList(listData).encodeBase64Safely(context: 'uint8 test');
+        final uint8Result = await Uint8List.fromList(
+          listData,
+        ).encodeBase64Safely(context: 'uint8 test');
         expect(result, equals(uint8Result));
       });
 
@@ -203,10 +204,7 @@ void main() {
         final map = <String, dynamic>{'name': 'test'};
         map['self'] = map; // Create circular reference
 
-        await expectLater(
-          () => map.encodeJsonSafely(),
-          throwsA(isA<StorageSerializationError>()),
-        );
+        await expectLater(() => map.encodeJsonSafely(), throwsA(isA<StorageSerializationError>()));
       });
     });
   });
@@ -228,17 +226,11 @@ void main() {
       });
 
       test('should throw InvalidMetadataError for missing required string', () {
-        expect(
-          () => testMap.getRequiredString('missingKey'),
-          throwsA(isA<InvalidMetadataError>()),
-        );
+        expect(() => testMap.getRequiredString('missingKey'), throwsA(isA<InvalidMetadataError>()));
       });
 
       test('should throw InvalidMetadataError for wrong type required string', () {
-        expect(
-          () => testMap.getRequiredString('intKey'),
-          throwsA(isA<InvalidMetadataError>()),
-        );
+        expect(() => testMap.getRequiredString('intKey'), throwsA(isA<InvalidMetadataError>()));
       });
 
       test('should return optional string value', () {
@@ -289,10 +281,7 @@ void main() {
       final map = <String, dynamic>{'name': 'test'};
       map['self'] = map; // Create circular reference
 
-      await expectLater(
-        () => JsonSafe.encode(map),
-        throwsA(isA<StorageSerializationError>()),
-      );
+      await expectLater(() => JsonSafe.encode(map), throwsA(isA<StorageSerializationError>()));
     });
 
     test('should throw StorageSerializationError for decoding failures', () async {
@@ -510,7 +499,7 @@ void main() {
         'string': 'test value',
         'number': 42,
         'list': [1, 2, 3],
-        'nested': {'key': 'value'}
+        'nested': {'key': 'value'},
       };
 
       // Encode to JSON
@@ -578,10 +567,7 @@ void main() {
         'double': 3.14,
         'bool': true,
         'list': [1, 2, 3],
-        'nested': {
-          'inner': 'value',
-          'number': 100,
-        },
+        'nested': {'inner': 'value', 'number': 100},
       };
 
       final encoded = await JsonSafe.encode(complex);

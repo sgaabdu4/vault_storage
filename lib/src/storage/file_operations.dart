@@ -63,11 +63,13 @@ class FileOperations implements IFileOperations {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
         filePath = '${dir.path}/$fileId.$fileExtension.enc';
-        await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
+        await _writeCiphertext(filePath, secretBox.cipherText);
       }
 
       await secureStorage.write(
-          key: secureKeyName, value: await keyBytes.encodeBase64Safely(context: 'encryption key'));
+        key: secureKeyName,
+        value: await keyBytes.encodeBase64Safely(context: 'encryption key'),
+      );
 
       // Return unified metadata
       return {
@@ -100,124 +102,68 @@ class FileOperations implements IFileOperations {
       final secureKeyName = 'file_key_$fileId';
       final secretKey = await encryptionAlgorithm.newSecretKey();
       final keyBytes = await secretKey.extractBytes();
-
-      // Chunk config – guard against zero/negative size to avoid infinite loop
-      final size = chunkSize ?? (2 << 20); // 2MB default
+      final size = chunkSize ?? (2 << 20);
       if (size <= 0) {
         throw VaultStorageWriteError('Chunk size must be positive, got $size');
       }
-      final chunksMeta = <Map<String, dynamic>>[];
 
-      // Native: framed single file for IO efficiency
+      final useWeb = isWeb ?? kIsWeb;
+      final chunksMeta = <Map<String, dynamic>>[];
       String? filePath;
       IOSink? sink;
-      File? file;
-      if (!(isWeb ?? kIsWeb)) {
+      if (!useWeb) {
         final dir = await getApplicationDocumentsDirectory();
         filePath = '${dir.path}/$fileId.$fileExtension.encf';
-        file = File(filePath);
-        sink = file.openWrite();
+        sink = File(filePath).openWrite();
       }
 
-      // Accumulator for chunking
       final buffer = BytesBuilder(copy: false);
       var chunkIndex = 0;
-      await for (final part in stream) {
-        buffer.add(part);
-        while (buffer.length >= size) {
-          final data = buffer.takeBytes();
-          final toEncrypt = Uint8List.view(data.buffer, 0, size);
-
-          final SecretBox secretBox = await compute(
-            encryptInIsolate,
-            EncryptRequest(fileBytes: toEncrypt, keyBytes: keyBytes),
-          );
-
-          final nonceB64 = await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
-          final macB64 = await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
-
-          if (isWeb ?? kIsWeb) {
-            // WEB: Store chunk bytes directly as Uint8List — no base64 overhead.
-            final key = '$fileId:c:$chunkIndex';
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
-              key,
-              Uint8List.fromList(secretBox.cipherText),
+      try {
+        await for (final part in stream) {
+          buffer.add(part);
+          while (buffer.length >= size) {
+            final data = buffer.takeBytes();
+            chunksMeta.add(
+              await _encryptAndStoreChunk(
+                bytes: Uint8List.sublistView(data, 0, size),
+                keyBytes: keyBytes,
+                fileId: fileId,
+                chunkIndex: chunkIndex,
+                useWeb: useWeb,
+                getBox: getBox,
+                sink: sink,
+              ),
             );
-          } else {
-            // Write framed chunk: [len(4 bytes)][nonceLen(1)][nonce][macLen(1)][mac][ciphertext]
-            final bytes = secretBox.cipherText;
-            final header = BytesBuilder();
-            final len = bytes.length;
-            header.add([len >> 24 & 0xFF, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]);
-            header.add([secretBox.nonce.length]);
-            header.add(secretBox.nonce);
-            header.add([secretBox.mac.bytes.length]);
-            header.add(secretBox.mac.bytes);
-            sink!.add(header.takeBytes());
-            sink.add(bytes);
-          }
-
-          chunksMeta.add({
-            'i': chunkIndex,
-            'size': size,
-            'nonce': nonceB64,
-            'mac': macB64,
-          });
-          chunkIndex++;
-
-          // If any remainder from data, re-add to buffer
-          if (data.length > size) {
-            buffer.add(Uint8List.view(data.buffer, size));
+            chunkIndex++;
+            if (data.length > size) {
+              buffer.add(Uint8List.sublistView(data, size));
+            }
           }
         }
-      }
-
-      // Final small tail
-      final tail = buffer.takeBytes();
-      if (tail.isNotEmpty) {
-        final SecretBox secretBox = await compute(
-          encryptInIsolate,
-          EncryptRequest(fileBytes: Uint8List.fromList(tail), keyBytes: keyBytes),
-        );
-
-        final nonceB64 = await secretBox.nonce.encodeBase64Safely(context: 'chunk nonce');
-        final macB64 = await secretBox.mac.bytes.encodeBase64Safely(context: 'chunk mac');
-
-        if (isWeb ?? kIsWeb) {
-          // WEB: Store final chunk bytes directly as Uint8List.
-          final key = '$fileId:c:$chunkIndex';
-          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
-            key,
-            Uint8List.fromList(secretBox.cipherText),
+        final tail = buffer.takeBytes();
+        if (tail.isNotEmpty) {
+          chunksMeta.add(
+            await _encryptAndStoreChunk(
+              bytes: Uint8List.fromList(tail),
+              keyBytes: keyBytes,
+              fileId: fileId,
+              chunkIndex: chunkIndex,
+              useWeb: useWeb,
+              getBox: getBox,
+              sink: sink,
+            ),
           );
-        } else {
-          final bytes = secretBox.cipherText;
-          final header = BytesBuilder();
-          final len = bytes.length;
-          header.add([len >> 24 & 0xFF, len >> 16 & 0xFF, len >> 8 & 0xFF, len & 0xFF]);
-          header.add([secretBox.nonce.length]);
-          header.add(secretBox.nonce);
-          header.add([secretBox.mac.bytes.length]);
-          header.add(secretBox.mac.bytes);
-          sink!.add(header.takeBytes());
-          sink.add(bytes);
+          chunkIndex++;
         }
-
-        chunksMeta.add({
-          'i': chunkIndex,
-          'size': tail.length,
-          'nonce': nonceB64,
-          'mac': macB64,
-        });
-        chunkIndex++;
-      }
-
-      if (sink != null) {
-        await sink.close();
+      } finally {
+        await sink?.close();
       }
 
       await secureStorage.write(
-          key: secureKeyName, value: await keyBytes.encodeBase64Safely(context: 'encryption key'));
+        key: secureKeyName,
+        value: await keyBytes.encodeBase64Safely(context: 'encryption key'),
+      );
 
       return {
         'fileId': fileId,
@@ -235,6 +181,49 @@ class FileOperations implements IFileOperations {
     }
   }
 
+  Future<Map<String, dynamic>> _encryptAndStoreChunk({
+    required Uint8List bytes,
+    required List<int> keyBytes,
+    required String fileId,
+    required int chunkIndex,
+    required bool useWeb,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+    required IOSink? sink,
+  }) async {
+    final encryptedPayload = await compute(
+      encryptInIsolate,
+      EncryptRequest(fileBytes: bytes, keyBytes: keyBytes),
+    );
+    if (useWeb) {
+      await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
+        '$fileId:c:$chunkIndex',
+        Uint8List.fromList(encryptedPayload.cipherText),
+      );
+    } else {
+      _writeFramedChunk(sink!, encryptedPayload);
+    }
+    return {
+      'i': chunkIndex,
+      'size': bytes.length,
+      'nonce': await encryptedPayload.nonce.encodeBase64Safely(context: 'chunk nonce'),
+      'mac': await encryptedPayload.mac.bytes.encodeBase64Safely(context: 'chunk mac'),
+    };
+  }
+
+  void _writeFramedChunk(IOSink sink, SecretBox encryptedPayload) {
+    final bytes = encryptedPayload.cipherText;
+    final length = bytes.length;
+    final header = BytesBuilder()
+      ..add([length >> 24 & 0xFF, length >> 16 & 0xFF, length >> 8 & 0xFF, length & 0xFF])
+      ..add([encryptedPayload.nonce.length])
+      ..add(encryptedPayload.nonce)
+      ..add([encryptedPayload.mac.bytes.length])
+      ..add(encryptedPayload.mac.bytes);
+    sink
+      ..add(header.takeBytes())
+      ..add(bytes);
+  }
+
   /// Retrieve a secure (encrypted) file using its metadata
   ///
   /// Returns the decrypted file contents as a byte array.
@@ -249,176 +238,177 @@ class FileOperations implements IFileOperations {
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
-      // Extract required fields from metadata
       final fileId = fileMetadata.getRequiredString('fileId');
       final secureKeyName = fileMetadata.getRequiredString('secureKeyName');
-
-      // Decode base64 values from metadata
-      final nonce =
-          await fileMetadata.getRequiredString('nonce').decodeBase64Safely(context: 'nonce');
-      final macBytes =
-          await fileMetadata.getRequiredString('mac').decodeBase64Safely(context: 'MAC bytes');
-
-      // Streaming path
-      if (fileMetadata['streaming'] == true) {
-        final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
-        final chunks = (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-        final out = BytesBuilder(copy: false);
-
-        if (isWeb ?? kIsWeb) {
-          // Read encryption key once before the loop
-          final keyString = await secureStorage.read(key: secureKeyName);
-          if (keyString == null) {
-            throw KeyNotFoundError(secureKeyName);
-          }
-          final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
-
-          for (var i = 0; i < chunkCount; i++) {
-            final entry = chunks[i];
-            final nonceB =
-                await entry.getRequiredString('nonce').decodeBase64Safely(context: 'chunk nonce');
-            final macB =
-                await entry.getRequiredString('mac').decodeBase64Safely(context: 'chunk mac');
-            final key = '$fileId:c:$i';
-            final storedChunk = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(key);
-            if (storedChunk == null) {
-              throw FileNotFoundError(fileId, 'Hive secure files chunk $i');
-            }
-            // Handle both Uint8List (v4.x) and base64 string (v3.x legacy).
-            final enc = storedChunk is Uint8List
-                ? storedChunk
-                : await (storedChunk as String).decodeBase64Safely(context: 'encrypted chunk');
-            final dec = await compute(
-              decryptInIsolate,
-              DecryptRequest(
-                encryptedBytes: enc,
-                keyBytes: keyBytes,
-                nonce: nonceB,
-                macBytes: macB,
-              ),
+      final useWeb = isWeb ?? kIsWeb;
+      final decryptedBytes = fileMetadata['streaming'] == true
+          ? await _readStreamingSecureFile(
+              fileMetadata: fileMetadata,
+              fileId: fileId,
+              secureKeyName: secureKeyName,
+              useWeb: useWeb,
+              secureStorage: secureStorage,
+              getBox: getBox,
+            )
+          : await _readSingleSecureFile(
+              fileMetadata: fileMetadata,
+              fileId: fileId,
+              secureKeyName: secureKeyName,
+              useWeb: useWeb,
+              secureStorage: secureStorage,
+              getBox: getBox,
             );
-            out.add(dec);
-          }
-        } else {
-          // Read framed chunks sequentially
-          final filePath = fileMetadata.getOptionalString('filePath');
-          if (filePath == null) {
-            throw InvalidMetadataError('filePath');
-          }
-          final f = File(filePath);
-          if (!await f.exists()) {
-            throw FileNotFoundError(fileId, 'file system at path: $filePath');
-          }
-          final keyString = await secureStorage.read(key: secureKeyName);
-          if (keyString == null) {
-            throw KeyNotFoundError(secureKeyName);
-          }
-          final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
-          final raf = await f.open();
-          try {
-            while (true) {
-              final header = await raf.read(4);
-              if (header.isEmpty) break;
-              final len = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
-              final nLenB = await raf.read(1);
-              final nLen = nLenB[0];
-              final nonceB = await raf.read(nLen);
-              final mLenB = await raf.read(1);
-              final mLen = mLenB[0];
-              final macB = await raf.read(mLen);
-              final enc = await raf.read(len);
-              final dec = await compute(
-                decryptInIsolate,
-                DecryptRequest(
-                  encryptedBytes: enc,
-                  keyBytes: keyBytes,
-                  nonce: nonceB,
-                  macBytes: macB,
-                ),
-              );
-              out.add(dec);
-            }
-          } finally {
-            await raf.close();
-          }
-        }
-
-        final decryptedBytes = out.takeBytes();
-
-        if (isWeb ?? kIsWeb) {
-          final extension = fileMetadata.getOptionalString('extension') ?? '';
-          final fileName = downloadFileName ??
-              (extension.isNotEmpty
-                  ? '${fileId}_secure_file.$extension'
-                  : '${fileId}_secure_file.bin');
-          downloadFileOnWeb(
-            fileBytes: decryptedBytes,
-            fileName: fileName,
-            mimeType: _getMimeTypeFromExtension(extension),
-          );
-        }
-        return decryptedBytes;
-      }
-
-      // Non-streaming legacy path
-      Uint8List encryptedFileBytes;
-      if (isWeb ?? kIsWeb) {
-        final storedFile = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(fileId);
-        if (storedFile == null) {
-          throw FileNotFoundError(fileId, 'Hive secure files box');
-        }
-        // Handle both Uint8List (v4.x) and base64 string (v3.x legacy).
-        encryptedFileBytes = storedFile is Uint8List
-            ? storedFile
-            : await (storedFile as String).decodeBase64Safely(context: 'encrypted content');
-      } else {
-        final filePath = fileMetadata.getOptionalString('filePath');
-        if (filePath == null) {
-          throw InvalidMetadataError('filePath');
-        }
-        final file = File(filePath);
-        if (!await file.exists()) {
-          throw FileNotFoundError(fileId, 'file system at path: $filePath');
-        }
-        encryptedFileBytes = await file.readAsBytes();
-      }
-
-      // Get the encryption key from secure storage after verifying presence
-      final keyString = await secureStorage.read(key: secureKeyName);
-      if (keyString == null) {
-        throw KeyNotFoundError(secureKeyName);
-      }
-      final keyBytes = await keyString.decodeBase64Safely(context: 'encryption key');
-
-      final decryptedBytes = await compute(
-        decryptInIsolate,
-        DecryptRequest(
-          encryptedBytes: encryptedFileBytes,
-          keyBytes: keyBytes,
-          nonce: nonce,
-          macBytes: macBytes,
-        ),
-      );
-
-      if (isWeb ?? kIsWeb) {
-        final extension = fileMetadata.getOptionalString('extension') ?? '';
-        final fileName = downloadFileName ??
-            (extension.isNotEmpty
-                ? '${fileId}_secure_file.$extension'
-                : '${fileId}_secure_file.bin');
-        downloadFileOnWeb(
+      if (useWeb) {
+        _downloadFile(
           fileBytes: decryptedBytes,
-          fileName: fileName,
-          mimeType: _getMimeTypeFromExtension(extension),
+          fileId: fileId,
+          extension: fileMetadata.getOptionalString('extension') ?? '',
+          secure: true,
+          downloadFileName: downloadFileName,
         );
       }
-
       return decryptedBytes;
     } on VaultStorageError {
       rethrow;
     } catch (e) {
       throw VaultStorageReadError('Failed to read secure file', e);
     }
+  }
+
+  Future<Uint8List> _readStreamingSecureFile({
+    required Map<String, dynamic> fileMetadata,
+    required String fileId,
+    required String secureKeyName,
+    required bool useWeb,
+    required FlutterSecureStorage secureStorage,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+  }) async {
+    final keyBytes = await _readEncryptionKey(secureStorage, secureKeyName);
+    if (useWeb) {
+      return _readWebSecureChunks(
+        fileMetadata: fileMetadata,
+        fileId: fileId,
+        keyBytes: keyBytes,
+        getBox: getBox,
+      );
+    }
+    return _readNativeSecureChunks(fileMetadata: fileMetadata, fileId: fileId, keyBytes: keyBytes);
+  }
+
+  Future<Uint8List> _readWebSecureChunks({
+    required Map<String, dynamic> fileMetadata,
+    required String fileId,
+    required List<int> keyBytes,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+  }) async {
+    final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
+    final chunks = (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final output = BytesBuilder(copy: false);
+    for (var index = 0; index < chunkCount; index++) {
+      final stored = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(
+        '$fileId:c:$index',
+      );
+      if (stored == null) {
+        throw FileNotFoundError(fileId, 'Hive secure files chunk $index');
+      }
+      output.add(
+        await _decryptChunk(
+          encryptedBytes: stored is Uint8List
+              ? stored
+              : await (stored as String).decodeBase64Safely(context: 'encrypted chunk'),
+          keyBytes: keyBytes,
+          metadata: chunks[index],
+        ),
+      );
+    }
+    return output.takeBytes();
+  }
+
+  Future<Uint8List> _readNativeSecureChunks({
+    required Map<String, dynamic> fileMetadata,
+    required String fileId,
+    required List<int> keyBytes,
+  }) async {
+    final file = await _existingFile(fileMetadata, fileId);
+    final output = BytesBuilder(copy: false);
+    final reader = await file.open();
+    try {
+      while (true) {
+        final lengthBytes = await reader.read(4);
+        if (lengthBytes.isEmpty) break;
+        final length =
+            (lengthBytes[0] << 24) |
+            (lengthBytes[1] << 16) |
+            (lengthBytes[2] << 8) |
+            lengthBytes[3];
+        final nonce = await reader.read((await reader.read(1))[0]);
+        final mac = await reader.read((await reader.read(1))[0]);
+        output.add(
+          await compute(
+            decryptInIsolate,
+            DecryptRequest(
+              encryptedBytes: await reader.read(length),
+              keyBytes: keyBytes,
+              nonce: nonce,
+              macBytes: mac,
+            ),
+          ),
+        );
+      }
+    } finally {
+      await reader.close();
+    }
+    return output.takeBytes();
+  }
+
+  Future<Uint8List> _decryptChunk({
+    required Uint8List encryptedBytes,
+    required List<int> keyBytes,
+    required Map<String, dynamic> metadata,
+  }) async => compute(
+    decryptInIsolate,
+    DecryptRequest(
+      encryptedBytes: encryptedBytes,
+      keyBytes: keyBytes,
+      nonce: await metadata.getRequiredString('nonce').decodeBase64Safely(context: 'chunk nonce'),
+      macBytes: await metadata.getRequiredString('mac').decodeBase64Safely(context: 'chunk mac'),
+    ),
+  );
+
+  Future<Uint8List> _readSingleSecureFile({
+    required Map<String, dynamic> fileMetadata,
+    required String fileId,
+    required String secureKeyName,
+    required bool useWeb,
+    required FlutterSecureStorage secureStorage,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+  }) async => compute(
+    decryptInIsolate,
+    DecryptRequest(
+      encryptedBytes: useWeb
+          ? await _readWebFileBytes(
+              fileId: fileId,
+              boxType: BoxType.secureFiles,
+              location: 'Hive secure files box',
+              decodeContext: 'encrypted content',
+              getBox: getBox,
+            )
+          : await (await _existingFile(fileMetadata, fileId)).readAsBytes(),
+      keyBytes: await _readEncryptionKey(secureStorage, secureKeyName),
+      nonce: await fileMetadata.getRequiredString('nonce').decodeBase64Safely(context: 'nonce'),
+      macBytes: await fileMetadata
+          .getRequiredString('mac')
+          .decodeBase64Safely(context: 'MAC bytes'),
+    ),
+  );
+
+  Future<List<int>> _readEncryptionKey(
+    FlutterSecureStorage secureStorage,
+    String secureKeyName,
+  ) async {
+    final encodedKey = await secureStorage.read(key: secureKeyName);
+    if (encodedKey == null) throw KeyNotFoundError(secureKeyName);
+    return encodedKey.decodeBase64Safely(context: 'encryption key');
   }
 
   /// Delete a secure file and its associated encryption key
@@ -433,43 +423,35 @@ class FileOperations implements IFileOperations {
     try {
       final fileId = fileMetadata.getRequiredString('fileId');
       final secureKeyName = fileMetadata.getRequiredString('secureKeyName');
-
-      // Platform-aware deletion logic
-      if (fileMetadata['streaming'] == true) {
-        if (isWeb ?? kIsWeb) {
-          final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
-          for (var i = 0; i < chunkCount; i++) {
-            await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).delete('$fileId:c:$i');
-          }
-        } else {
-          final filePath = fileMetadata.getOptionalString('filePath');
-          if (filePath != null) {
-            final file = File(filePath);
-            if (await file.exists()) {
-              await file.delete();
-            }
-          }
-        }
+      final useWeb = isWeb ?? kIsWeb;
+      if (fileMetadata['streaming'] == true && useWeb) {
+        await _deleteWebChunks(fileMetadata, fileId, getBox);
       } else {
-        if (isWeb ?? kIsWeb) {
-          await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).delete(fileId);
-        } else {
-          final filePath = fileMetadata.getOptionalString('filePath');
-          if (filePath != null) {
-            final file = File(filePath);
-            if (await file.exists()) {
-              await file.delete();
-            }
-          }
-        }
+        await _deleteStoredFile(
+          fileMetadata: fileMetadata,
+          fileId: fileId,
+          useWeb: useWeb,
+          boxType: BoxType.secureFiles,
+          getBox: getBox,
+        );
       }
-
-      // Delete the encryption key
       await secureStorage.delete(key: secureKeyName);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageDeleteError('Failed to delete secure file', e);
     }
+  }
+
+  Future<void> _deleteWebChunks(
+    Map<String, dynamic> fileMetadata,
+    String fileId,
+    BoxBase<dynamic> Function(BoxType) getBox,
+  ) async {
+    final box = getBox(BoxType.secureFiles) as LazyBox<dynamic>;
+    final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
+    await Future.wait([
+      for (var index = 0; index < chunkCount; index++) box.delete('$fileId:c:$index'),
+    ]);
   }
 
   /// Save a normal (unencrypted) file
@@ -500,11 +482,7 @@ class FileOperations implements IFileOperations {
       }
 
       // Return metadata
-      return {
-        'fileId': fileId,
-        'filePath': filePath,
-        'extension': fileExtension,
-      };
+      return {'fileId': fileId, 'filePath': filePath, 'extension': fileExtension};
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageWriteError('Failed to save normal file', e);
@@ -524,46 +502,27 @@ class FileOperations implements IFileOperations {
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
-      // Extract required fields from metadata
       final fileId = fileMetadata.getRequiredString('fileId');
-
-      // Platform-aware retrieval logic
-      if (isWeb ?? kIsWeb) {
-        // WEB: Retrieve from Hive — handle Uint8List (v4.x) and base64 string (v3.x legacy).
-        final stored = await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).get(fileId);
-        if (stored == null) {
-          throw FileNotFoundError(fileId, 'Hive normal files box');
-        }
-
-        final fileBytes = stored is Uint8List
-            ? stored
-            : await (stored as String).decodeBase64Safely(context: 'normal file content');
-
-        // Trigger download on web
-        final extension = fileMetadata.getOptionalString('extension') ?? '';
-        final fileName = downloadFileName ??
-            (extension.isNotEmpty ? '${fileId}_file.$extension' : '${fileId}_file.bin');
-        downloadFileOnWeb(
+      final useWeb = isWeb ?? kIsWeb;
+      final fileBytes = useWeb
+          ? await _readWebFileBytes(
+              fileId: fileId,
+              boxType: BoxType.normalFiles,
+              location: 'Hive normal files box',
+              decodeContext: 'normal file content',
+              getBox: getBox,
+            )
+          : await (await _existingFile(fileMetadata, fileId)).readAsBytes();
+      if (useWeb) {
+        _downloadFile(
           fileBytes: fileBytes,
-          fileName: fileName,
-          mimeType: _getMimeTypeFromExtension(extension),
+          fileId: fileId,
+          extension: fileMetadata.getOptionalString('extension') ?? '',
+          secure: false,
+          downloadFileName: downloadFileName,
         );
-
-        return fileBytes;
-      } else {
-        // NATIVE: Retrieve from file system
-        final filePath = fileMetadata.getOptionalString('filePath');
-        if (filePath == null) {
-          throw InvalidMetadataError('filePath');
-        }
-
-        final file = File(filePath);
-        if (!await file.exists()) {
-          throw FileNotFoundError(fileId, 'file system at path: $filePath');
-        }
-
-        return await file.readAsBytes();
       }
+      return fileBytes;
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageReadError('Failed to retrieve normal file', e);
@@ -580,67 +539,102 @@ class FileOperations implements IFileOperations {
   }) async {
     try {
       final fileId = fileMetadata.getRequiredString('fileId');
-
-      // Platform-aware deletion
-      if (isWeb ?? kIsWeb) {
-        // WEB: Remove from Hive
-        await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).delete(fileId);
-      } else {
-        // NATIVE: Delete the file from the file system
-        final filePath = fileMetadata.getOptionalString('filePath');
-        if (filePath != null) {
-          final file = File(filePath);
-          if (await file.exists()) {
-            await file.delete();
-          }
-        }
-      }
+      await _deleteStoredFile(
+        fileMetadata: fileMetadata,
+        fileId: fileId,
+        useWeb: isWeb ?? kIsWeb,
+        boxType: BoxType.normalFiles,
+        getBox: getBox,
+      );
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageDeleteError('Failed to delete normal file', e);
     }
   }
 
-  /// Helper method to determine MIME type from file extension
-  String _getMimeTypeFromExtension(String extension) {
-    switch (extension.toLowerCase()) {
-      case 'pdf':
-        return 'application/pdf';
-      case 'txt':
-        return 'text/plain';
-      case 'json':
-        return 'application/json';
-      case 'xml':
-        return 'application/xml';
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'svg':
-        return 'image/svg+xml';
-      case 'mp4':
-        return 'video/mp4';
-      case 'avi':
-        return 'video/x-msvideo';
-      case 'mp3':
-        return 'audio/mpeg';
-      case 'wav':
-        return 'audio/wav';
-      case 'zip':
-        return 'application/zip';
-      case 'doc':
-        return 'application/msword';
-      case 'docx':
-        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case 'xls':
-        return 'application/vnd.ms-excel';
-      case 'xlsx':
-        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      default:
-        return 'application/octet-stream';
+  Future<void> _deleteStoredFile({
+    required Map<String, dynamic> fileMetadata,
+    required String fileId,
+    required bool useWeb,
+    required BoxType boxType,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+  }) async {
+    if (useWeb) {
+      await (getBox(boxType) as LazyBox<dynamic>).delete(fileId);
+      return;
     }
+    final filePath = fileMetadata.getOptionalString('filePath');
+    if (filePath == null) return;
+    final file = File(filePath);
+    if (await file.exists()) await file.delete();
   }
+
+  Future<Uint8List> _readWebFileBytes({
+    required String fileId,
+    required BoxType boxType,
+    required String location,
+    required String decodeContext,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+  }) async {
+    final stored = await (getBox(boxType) as LazyBox<dynamic>).get(fileId);
+    if (stored == null) throw FileNotFoundError(fileId, location);
+    return stored is Uint8List
+        ? stored
+        : (stored as String).decodeBase64Safely(context: decodeContext);
+  }
+
+  Future<File> _existingFile(Map<String, dynamic> fileMetadata, String fileId) async {
+    final filePath = fileMetadata.getOptionalString('filePath');
+    if (filePath == null) throw InvalidMetadataError('filePath');
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw FileNotFoundError(fileId, 'file system at path: $filePath');
+    }
+    return file;
+  }
+
+  void _downloadFile({
+    required Uint8List fileBytes,
+    required String fileId,
+    required String extension,
+    required bool secure,
+    required String? downloadFileName,
+  }) {
+    final suffix = secure ? '_secure_file' : '_file';
+    final fileName =
+        downloadFileName ??
+        (extension.isNotEmpty ? '$fileId$suffix.$extension' : '$fileId$suffix.bin');
+    downloadFileOnWeb(
+      fileBytes: fileBytes,
+      fileName: fileName,
+      mimeType: _getMimeTypeFromExtension(extension),
+    );
+  }
+
+  Future<void> _writeCiphertext(String filePath, List<int> ciphertext) =>
+      File(filePath).writeAsBytes(ciphertext, flush: true);
+
+  static const _mimeTypes = <String, String>{
+    'pdf': 'application/pdf',
+    'txt': 'text/plain',
+    'json': 'application/json',
+    'xml': 'application/xml',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'mp4': 'video/mp4',
+    'avi': 'video/x-msvideo',
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'zip': 'application/zip',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  };
+
+  String _getMimeTypeFromExtension(String extension) =>
+      _mimeTypes[extension.toLowerCase()] ?? 'application/octet-stream';
 }
