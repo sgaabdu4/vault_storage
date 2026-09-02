@@ -52,3 +52,9 @@ docs/
 .github/
 hard-eng.gates.json
 PRODUCT.md
+.claude/
+.codex/
+.hard-eng/
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
