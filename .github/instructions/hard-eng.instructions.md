@@ -69,6 +69,7 @@ applyTo: "**"
 - Preserve required security + trust + privacy + accessibility + schema + data-loss protections; new security control = concrete asset + plausible threat + impact/requirement → simplest sufficient maintainable control; speculative hardening = YAGNI.
 - Credential/secret cutover = candidate probe → external write → actual-consumer preflight → fixed claim; unprobed write or pre-preflight "fixed" forbidden.
 - File ≤700 lines; generated/schema or focused parser/scanner/dense contract test exception = reason + deterministic proof.
+- JS/TS format + lint = Biome (`biome.json` + `biome check`); Prettier/ESLint dependencies + configs + scripts + CI steps forbidden → migrate to Biome, never coexist.
 - Context reset = required at slice green checkpoint + stage handoff outside explicit continuity + allowed at alignment boundary; accepted brief/state + evidence receipt = resume owner; new approval forbidden.
 - Goal/automatic continuation = explicit user request.
 - Terminal handoff + unrelated request = recommend fresh task + context-cost reason; never inherit PLAN + approval + scope.
