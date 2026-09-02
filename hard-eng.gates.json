@@ -1,10 +1,27 @@
 {
   "schema_version": 1,
   "families": {
-    "format": ["dart", "format", "--line-length=100", "--set-exit-if-changed", "."],
+    "format": [
+      "dart",
+      "format",
+      "--line-length=100",
+      "--set-exit-if-changed",
+      "."
+    ],
     "dart-analyze": ["dart", "analyze", "--fatal-infos"],
     "dart-test": ["flutter", "test", "--coverage"],
     "dart-decimate": ["npx", "--yes", "dart-decimate@latest", "json", "."],
     "secrets": ["gitleaks", "git", "--redact", "--no-banner", "--no-color", "."]
+  },
+  "hard_eng": {
+    "schema_version": 1,
+    "channel": "prerelease",
+    "release_repository": "sgaabdu4/hard-eng",
+    "wiring": "shared",
+    "pin": {
+      "tag": "v0.1.0-alpha.g0e5d258d50bad0a162528f11cea00b3c5ddac181",
+      "archive_sha256": "a1fa54d46f8efb2e73ece95579b3f0a9371fcb53a5da8cd4d3063ccd8d8e3bc5",
+      "manifest_sha256": "7e25f950f21c8e30d36a5cb4307dd7bf8a38f497e36554bf611d85d34ccdd0c2"
+    }
   }
 }

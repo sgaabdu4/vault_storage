@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/hook.sh\" codex pretooluse",
+            "timeout": 2,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/bootstrap.sh\" codex",
+            "timeout": 300,
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume"
+      }
+    ]
+  }
+}

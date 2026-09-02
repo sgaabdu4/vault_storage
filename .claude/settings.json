@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/hook.sh\" claude pretooluse",
+            "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|Agent|mcp__.*",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/bootstrap.sh\" claude",
+            "timeout": 300,
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume|clear"
+      }
+    ]
+  },
+  "outputStyle": "Plain English"
+}

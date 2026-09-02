@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "preToolUse": [
+      {
+        "bash": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/hook.sh\" copilot pretooluse",
+        "timeoutSec": 2,
+        "type": "command"
+      }
+    ],
+    "sessionStart": [
+      {
+        "bash": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/bootstrap.sh\" copilot",
+        "timeoutSec": 300,
+        "type": "command"
+      }
+    ]
+  },
+  "version": 1
+}
