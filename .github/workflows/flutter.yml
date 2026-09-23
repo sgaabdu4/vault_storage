@@ -78,10 +78,10 @@ jobs:
       - name: Install coverage merger
         run: sudo apt-get update && sudo apt-get install -y lcov
       - name: Install package dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: Install example dependencies
         working-directory: example
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: Run native project checks
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -151,7 +151,7 @@ jobs:
             ${{ runner.os }}-flutter-
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Activate PANA
         run: dart pub global activate pana

@@ -22,8 +22,7 @@ migrate_working_dir/
 #.vscode/
 
 # Flutter/Dart/Pub related
-# Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
-/pubspec.lock
+# Lockfiles are tracked for reproducible repository checks; pubignore excludes them from releases.
 **/doc/api/
 .dart_tool/
 .flutter-plugins
@@ -44,7 +43,6 @@ example/android
 example/linux
 example/windows
 example/web
-example/pubspec.lock
 example/README.md
 
 .codebase-memory/*

@@ -35,7 +35,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Verify version matches tag
         run: |
