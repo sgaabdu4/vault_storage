@@ -1,28 +1,48 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/hook.sh\" claude pretooluse",
-            "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|Agent|mcp__.*",
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/bootstrap.sh\" claude",
-            "timeout": 300,
-            "type": "command"
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" session claude",
+            "timeout": 3600
           }
-        ],
-        "matcher": "startup|resume|clear"
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" failure claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" stop claude",
+            "timeout": 3600
+          }
+        ]
       }
     ]
   },
-  "outputStyle": "Plain English"
+  "extraKnownMarketplaces": {
+    "context-mode": {
+      "source": {
+        "source": "github",
+        "repo": "mksglu/context-mode"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "context-mode@context-mode": true
+  }
 }

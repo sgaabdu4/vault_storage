@@ -44,9 +44,17 @@ example/android
 example/linux
 example/windows
 example/web
-example/analysis_options.yaml
 example/pubspec.lock
 example/README.md
 
 .codebase-memory/*
 docs/*
+.git/
+__pycache__/
+.codebase-memory/
+.context-mode/
+.coverage
+.coverage.*
+
+# Local session cache used by the current Hard Eng runtime.
+.hard-eng/

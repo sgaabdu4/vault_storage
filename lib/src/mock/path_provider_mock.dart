@@ -2,7 +2,11 @@
 /// These functions should not be called on the web, and will throw if they are.
 library;
 
-Future<dynamic> getApplicationDocumentsDirectory() async {
+abstract interface class Directory {
+  String get path;
+}
+
+Future<Directory> getApplicationDocumentsDirectory() async {
   throw UnsupportedError('getApplicationDocumentsDirectory is not supported on the web.');
 }
 

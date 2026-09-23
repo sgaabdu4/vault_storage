@@ -6,7 +6,11 @@ Secure local key-value and file storage for Flutter apps across mobile, web, and
 
 Flutter teams that need one API for normal local data, encrypted local data, and files without maintaining separate storage and encryption systems.
 
-## Purpose
+## Problem
+
+Apps need local key-value and file storage across platforms while keeping encryption keys separate from encrypted content and preserving readable data across upgrades.
+
+## Product Purpose
 
 Store and retrieve app data locally with clear secure and normal operations, consistent errors, optional Android and iOS runtime security checks, and support for large encrypted files.
 

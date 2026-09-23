@@ -1,26 +1,27 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/hook.sh\" codex pretooluse",
-            "timeout": 2,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/bootstrap.sh\" codex",
-            "timeout": 300,
-            "type": "command"
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" session codex",
+            "timeout": 3600,
+            "statusMessage": "Hard Eng: updating project setup"
           }
-        ],
-        "matcher": "startup|resume"
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" stop codex",
+            "timeout": 3600,
+            "statusMessage": "Hard Eng: verifying changes"
+          }
+        ]
       }
     ]
   }

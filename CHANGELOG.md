@@ -1,3 +1,15 @@
+## [5.0.1] - 2026-09-23
+### Dependencies
+- Updated `flutter_secure_storage` to 11.2.0, `freerasp` to 8.2.2, and `hive_ce` to 2.20.0.
+- Updated development tools to `build_runner` 2.16.1 and stable `freezed` 4.0.2. Regenerating package models now requires Dart 3.13; consumer SDK requirements remain unchanged.
+- Updated the example to `file_picker` 13.1.0.
+
+### Maintenance and verification
+- Refactored encrypted stream chunking and storage lookup without changing the public API or stored-data format.
+- Added Chrome download checks with source-mapped coverage for the web helper.
+- Added example interaction tests and explicit budgets for encrypted file I/O and consumer startup.
+- Updated Hard Eng and integrated its checks into CI while retaining the required release checks.
+
 ## [5.0.0] - 2026-08-21
 ### Breaking changes
 - Raised the minimum Dart SDK to 3.10 and Flutter to 3.38 so the package can use the latest stable dependencies.

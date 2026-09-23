@@ -7,13 +7,23 @@ on:
     branches: [main]
   workflow_call:
 
+permissions: {}
+
+concurrency:
+  group: flutter-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   version-check:
     name: Check Version Consistency
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Read the package source for checks.
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Check version consistency
         run: |
@@ -37,108 +47,101 @@ jobs:
             echo "✅ Version consistency check passed: $PUBSPEC_VERSION"
           fi
 
-  format:
-    name: Check Formatting
+  verify:
+    name: Hard Eng checks
+    needs: version-check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # Read source and release metadata for the gates.
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          channel: "stable"
+          flutter-version: "3.47.5"
           cache: true
-
-      - name: Cache Flutter dependencies
-        uses: actions/cache@v6
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
-
-      - name: Install dependencies
+          node-version: "26"
+      - name: Setup pnpm
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          version: "12.4.1"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install coverage merger
+        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Install package dependencies
         run: flutter pub get
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+      - name: Run native project checks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 .hooks/hard-eng.py check --base "$BASE_SHA"
 
-      - name: Check formatting
-        run: dart format --line-length=100 --set-exit-if-changed .
+  format:
+    name: Check Formatting
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Verify native checks succeeded
+        env:
+          RESULT: ${{ needs.verify.result }}
+        run: test "$RESULT" = success
 
   analyze:
     name: Analyze Code
+    needs: verify
+    if: always()
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: Cache Flutter dependencies
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze code
-        run: flutter analyze --fatal-infos
+      - name: Verify native checks succeeded
+        env:
+          RESULT: ${{ needs.verify.result }}
+        run: test "$RESULT" = success
 
   test:
     name: Run Tests
+    needs: verify
+    if: always()
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: Cache Flutter dependencies
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run tests
-        run: flutter test --coverage
+      - name: Verify native checks succeeded
+        env:
+          RESULT: ${{ needs.verify.result }}
+        run: test "$RESULT" = success
 
   pana:
     name: Package Analysis (PANA)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Read the package source for checks.
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          channel: "stable"
+          flutter-version: "3.47.5"
           cache: true
 
       - name: Cache Flutter dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.pub-cache
@@ -170,20 +173,21 @@ jobs:
 
   tag:
     name: Auto-Tag Release
+    environment: package-release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [version-check, format, analyze, test, pana]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Create the release tag and GitHub release.
     outputs:
       tag_created: ${{ steps.tag.outputs.tag_created }}
       version: ${{ steps.tag.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT || github.token }}
+          persist-credentials: false
 
       - name: Create tag if version changed
         id: tag
@@ -205,7 +209,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git tag "$TAG"
-            git push origin "$TAG"
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$RELEASE_PAT" | base64 -w0)" push origin "$TAG"
             echo "✅ Tag $TAG created and pushed"
             echo "tag_created=true" >> "$GITHUB_OUTPUT"
           fi
@@ -214,9 +218,10 @@ jobs:
         if: steps.tag.outputs.tag_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          TAG="v${{ steps.tag.outputs.version }}"
-          awk '/^## \['"${{ steps.tag.outputs.version }}"'\]/{found=1; next} /^## \[/{if(found) exit} found' CHANGELOG.md > /tmp/release_notes.md
+          TAG="v$VERSION"
+          awk -v version="$VERSION" 'index($0, "## [" version "]") == 1 {found=1; next} /^## \[/{if(found) exit} found' CHANGELOG.md > /tmp/release_notes.md
           gh release create "$TAG" --title "$TAG" --notes-file /tmp/release_notes.md
 
   # Publishing is handled by publish.yml after RELEASE_PAT pushes the tag.

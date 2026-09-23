@@ -7,5 +7,7 @@ version: 2
 updates:
   - package-ecosystem: "pub"
     directory: "/"
+    cooldown:
+      default-days: 7
     schedule:
       interval: "daily"

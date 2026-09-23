@@ -1,0 +1,13 @@
+{
+  "ignore_patterns": [
+    ".agents/**"
+  ],
+  "boundaries": {
+    "rules": [
+      "lib/src/interface:lib/src/storage",
+      "lib/src/interface:lib/src/vault_storage_impl.dart",
+      "lib/src/entities:lib/src/storage",
+      "lib/src/entities:lib/src/vault_storage_impl.dart"
+    ]
+  }
+}
