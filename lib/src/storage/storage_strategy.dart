@@ -50,7 +50,7 @@ class StoredValue {
   }
 
   /// Checks if a value from Hive is wrapped with our metadata
-  static bool isWrapped(dynamic value) {
+  static bool isWrapped(Object? value) {
     if (value is! Map) return false;
     return value.length == 2 && value.containsKey(_strategyKey) && value.containsKey(_valueKey);
   }
@@ -61,13 +61,13 @@ class StorageStrategyHelper {
   StorageStrategyHelper._();
 
   /// Determines the optimal storage strategy for a given value
-  static StorageStrategy determineStrategy(dynamic value) {
+  static StorageStrategy determineStrategy(Object? value) {
     // Check if it's natively storable by Hive (includes primitives)
     return _isNativelyStorable(value) ? StorageStrategy.native : StorageStrategy.json;
   }
 
   /// Checks if a value can be stored natively by Hive without JSON encoding
-  static bool _isNativelyStorable(dynamic value) {
+  static bool _isNativelyStorable(Object? value) {
     final stack = [value];
 
     while (stack.isNotEmpty) {
@@ -89,6 +89,6 @@ class StorageStrategyHelper {
     return true;
   }
 
-  static bool _isHivePrimitive(dynamic value) =>
+  static bool _isHivePrimitive(Object? value) =>
       value == null || value is String || value is num || value is bool || value is Uint8List;
 }

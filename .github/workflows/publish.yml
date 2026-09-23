@@ -5,27 +5,37 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
 
+permissions: {}
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Publish to pub.dev
+    environment: pub-dev
     runs-on: ubuntu-latest
     permissions:
+      contents: read # Read the tagged package source.
       id-token: write # Required for OIDC authentication
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          channel: "stable"
+          flutter-version: "3.47.5"
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Verify version matches tag
         run: |

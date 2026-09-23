@@ -107,58 +107,15 @@ class FileOperations implements IFileOperations {
         throw VaultStorageWriteError('Chunk size must be positive, got $size');
       }
 
-      final useWeb = isWeb ?? kIsWeb;
-      final chunksMeta = <Map<String, dynamic>>[];
-      String? filePath;
-      IOSink? sink;
-      if (!useWeb) {
-        final dir = await getApplicationDocumentsDirectory();
-        filePath = '${dir.path}/$fileId.$fileExtension.encf';
-        sink = File(filePath).openWrite();
-      }
-
-      final buffer = BytesBuilder(copy: false);
-      var chunkIndex = 0;
-      try {
-        await for (final part in stream) {
-          buffer.add(part);
-          while (buffer.length >= size) {
-            final data = buffer.takeBytes();
-            chunksMeta.add(
-              await _encryptAndStoreChunk(
-                bytes: Uint8List.sublistView(data, 0, size),
-                keyBytes: keyBytes,
-                fileId: fileId,
-                chunkIndex: chunkIndex,
-                useWeb: useWeb,
-                getBox: getBox,
-                sink: sink,
-              ),
-            );
-            chunkIndex++;
-            if (data.length > size) {
-              buffer.add(Uint8List.sublistView(data, size));
-            }
-          }
-        }
-        final tail = buffer.takeBytes();
-        if (tail.isNotEmpty) {
-          chunksMeta.add(
-            await _encryptAndStoreChunk(
-              bytes: Uint8List.fromList(tail),
-              keyBytes: keyBytes,
-              fileId: fileId,
-              chunkIndex: chunkIndex,
-              useWeb: useWeb,
-              getBox: getBox,
-              sink: sink,
-            ),
-          );
-          chunkIndex++;
-        }
-      } finally {
-        await sink?.close();
-      }
+      final stored = await _writeSecureStream(
+        stream: stream,
+        size: size,
+        fileId: fileId,
+        fileExtension: fileExtension,
+        keyBytes: keyBytes,
+        useWeb: isWeb ?? kIsWeb,
+        getBox: getBox,
+      );
 
       await secureStorage.write(
         key: secureKeyName,
@@ -167,18 +124,69 @@ class FileOperations implements IFileOperations {
 
       return {
         'fileId': fileId,
-        'filePath': filePath,
+        'filePath': stored.filePath,
         'secureKeyName': secureKeyName,
         'extension': fileExtension,
         'streaming': true,
-        'chunkCount': chunkIndex,
+        'chunkCount': stored.chunks.length,
         'chunkSize': size,
-        'chunks': chunksMeta,
+        'chunks': stored.chunks,
       };
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageWriteError('Failed to save secure file (stream)', e);
     }
+  }
+
+  Future<({String? filePath, List<Map<String, dynamic>> chunks})> _writeSecureStream({
+    required Stream<List<int>> stream,
+    required int size,
+    required String fileId,
+    required String fileExtension,
+    required List<int> keyBytes,
+    required bool useWeb,
+    required BoxBase<dynamic> Function(BoxType) getBox,
+  }) async {
+    String? filePath;
+    IOSink? sink;
+    if (!useWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      filePath = '${dir.path}/$fileId.$fileExtension.encf';
+      sink = File(filePath).openWrite();
+    }
+    final chunks = <Map<String, dynamic>>[];
+    try {
+      await for (final bytes in _fileChunks(stream, size)) {
+        chunks.add(
+          await _encryptAndStoreChunk(
+            bytes: bytes,
+            keyBytes: keyBytes,
+            fileId: fileId,
+            chunkIndex: chunks.length,
+            useWeb: useWeb,
+            getBox: getBox,
+            sink: sink,
+          ),
+        );
+      }
+    } finally {
+      await sink?.close();
+    }
+    return (filePath: filePath, chunks: chunks);
+  }
+
+  Stream<Uint8List> _fileChunks(Stream<List<int>> stream, int size) async* {
+    final buffer = BytesBuilder(copy: false);
+    await for (final part in stream) {
+      buffer.add(part);
+      while (buffer.length >= size) {
+        final data = buffer.takeBytes();
+        yield Uint8List.sublistView(data, 0, size);
+        if (data.length > size) buffer.add(Uint8List.sublistView(data, size));
+      }
+    }
+    final tail = buffer.takeBytes();
+    if (tail.isNotEmpty) yield tail;
   }
 
   Future<Map<String, dynamic>> _encryptAndStoreChunk({

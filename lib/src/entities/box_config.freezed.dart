@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'box_config.dart';
@@ -9,6 +9,7 @@ part of 'box_config.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -31,16 +32,21 @@ $BoxConfigCopyWith<BoxConfig> get copyWith => _$BoxConfigCopyWithImpl<BoxConfig>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BoxConfig&&(identical(other.name, name) || other.name == name)&&(identical(other.encrypted, encrypted) || other.encrypted == encrypted)&&(identical(other.lazy, lazy) || other.lazy == lazy));
+  final _this = this as BoxConfig;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BoxConfig&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.encrypted, _this.encrypted) || other.encrypted == _this.encrypted)&&(identical(other.lazy, _this.lazy) || other.lazy == _this.lazy));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,name,encrypted,lazy);
+int get hashCode {
+  final _this = this as BoxConfig;
+  return Object.hash(runtimeType,_this.name,_this.encrypted,_this.lazy);
+}
 
 @override
 String toString() {
-  return 'BoxConfig(name: $name, encrypted: $encrypted, lazy: $lazy)';
+  final _this = this as BoxConfig;
+  return 'BoxConfig(name: ${_this.name}, encrypted: ${_this.encrypted}, lazy: ${_this.lazy})';
 }
 
 
@@ -69,7 +75,7 @@ class _$BoxConfigCopyWithImpl<$Res>
 /// Create a copy of BoxConfig
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? encrypted = null,Object? lazy = null,}) {
-  return _then(_self.copyWith(
+  return _then(BoxConfig(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,encrypted: null == encrypted ? _self.encrypted : encrypted // ignore: cast_nullable_to_non_nullable
 as bool,lazy: null == lazy ? _self.lazy : lazy // ignore: cast_nullable_to_non_nullable
@@ -237,16 +243,18 @@ _$BoxConfigCopyWith<_BoxConfig> get copyWith => __$BoxConfigCopyWithImpl<_BoxCon
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BoxConfig&&(identical(other.name, name) || other.name == name)&&(identical(other.encrypted, encrypted) || other.encrypted == encrypted)&&(identical(other.lazy, lazy) || other.lazy == lazy));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BoxConfig&&(identical(other.name, name) || other.name == name)&&(identical(other.encrypted, encrypted) || other.encrypted == encrypted)&&(identical(other.lazy, lazy) || other.lazy == lazy));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,name,encrypted,lazy);
+int get hashCode {
+    return Object.hash(runtimeType,name,encrypted,lazy);
+}
 
 @override
 String toString() {
-  return 'BoxConfig(name: $name, encrypted: $encrypted, lazy: $lazy)';
+    return 'BoxConfig(name: $name, encrypted: $encrypted, lazy: $lazy)';
 }
 
 

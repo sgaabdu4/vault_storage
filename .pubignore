@@ -56,5 +56,11 @@ PRODUCT.md
 .codex/
 .hard-eng/
 AGENTS.md
-AGENTS.override.md
 CLAUDE.md
+.agents/
+.hooks/
+.mcp.json
+.dart-decimaterc.json
+.semgrepignore
+DESIGN.md
+PLAN.md

@@ -91,7 +91,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   ///
   /// Handles backward compatibility for values that may be stored as different types.
   /// Throws VaultStorageReadError on type mismatch to allow graceful error handling.
-  T _coerceToType<T>(dynamic value) {
+  T _coerceToType<T>(Object? value) {
     // If value is already the correct type, return it
     if (value is T) return value;
 

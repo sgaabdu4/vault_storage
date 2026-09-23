@@ -40,62 +40,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       // Clear any previous threats
       _securityThreats.clear();
 
-      // Create VaultStorage with optional features:
-      // - customBoxes: Organize data into separate logical containers
-      // - storageDirectory: Set custom subdirectory for Hive storage
-      // - securityConfig: Configure runtime security with FreeRASP (Android/iOS only)
-      //
-      // Example with all features:
-      // vaultStorage = VaultStorage.create(
-      //   customBoxes: [
-      //     BoxConfig(name: 'themes', encrypted: false),
-      //     BoxConfig(name: 'auth', encrypted: true),
-      //   ],
-      //   storageDirectory: 'my_app_data',
-      //   securityConfig: VaultSecurityConfig.production(
-      //     watcherMail: 'security@example.com',
-      //     androidPackageName: 'com.example.app',           // Android
-      //     androidSigningCertHashes: ['your_cert_hash'],    // Android
-      //     iosBundleId: 'com.example.app',                  // iOS
-      //     iosTeamId: 'YOUR_TEAM_ID',                       // iOS
-      //     threatCallbacks: { ... },
-      //   ),
-      // );
-
-      // Create VaultStorage with security features for production
-      // Note: Security features only work on Android and iOS platforms
-      vaultStorage = VaultStorage.create(
-        securityConfig: VaultSecurityConfig.production(
-          watcherMail: 'security@example.com',
-          // Platform identifiers for FreeRASP security
-          iosBundleId: 'com.example.storageService.example', // iOS
-          iosTeamId: 'YOUR_TEAM_ID', // iOS
-          // androidPackageName: 'com.example.storage_service',   // Android
-          // androidSigningCertHashes: ['your_cert_hash'],        // Android
-          threatCallbacks: {
-            SecurityThreat.jailbreak: () =>
-                _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
-            SecurityThreat.tampering: () =>
-                _securityThreats.add('App tampering detected - app integrity compromised'),
-            SecurityThreat.debugging: () => _securityThreats.add('Debug environment detected'),
-            SecurityThreat.emulator: () => _securityThreats.add('Running on emulator/simulator'),
-            SecurityThreat.hooks: () =>
-                _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
-            SecurityThreat.unofficialStore: () =>
-                _securityThreats.add('App installed from unofficial store'),
-            SecurityThreat.screenshot: () => _securityThreats.add('Screen capture detected'),
-            SecurityThreat.screenRecording: () => _securityThreats.add('Screen recording detected'),
-            SecurityThreat.systemVPN: () => _securityThreats.add('System VPN detected'),
-            SecurityThreat.passcode: () => _securityThreats.add('Device passcode not set'),
-            SecurityThreat.secureHardware: () =>
-                _securityThreats.add('Secure hardware not available'),
-            SecurityThreat.developerMode: () => _securityThreats.add('Developer mode enabled'),
-            SecurityThreat.adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
-            SecurityThreat.multiInstance: () =>
-                _securityThreats.add('Multiple app instances detected'),
-          },
-        ),
-      );
+      vaultStorage = _createStorage();
 
       // Initialize storage - all config is in create(), so init() takes no params
       await vaultStorage.init();
@@ -103,7 +48,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       // Load existing keys
       final keys = await vaultStorage.keys();
 
-      // Update UI
+      if (!mounted) return;
       setState(() {
         _isInitialized = true;
         _availableKeys
@@ -141,6 +86,34 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       });
     }
   }
+
+  IVaultStorage _createStorage() => VaultStorage.create(
+    securityConfig: VaultSecurityConfig.production(
+      watcherMail: 'security@example.com',
+      iosBundleId: 'com.example.storageService.example',
+      iosTeamId: 'YOUR_TEAM_ID',
+      threatCallbacks: {
+        SecurityThreat.jailbreak: () =>
+            _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
+        SecurityThreat.tampering: () =>
+            _securityThreats.add('App tampering detected - app integrity compromised'),
+        SecurityThreat.debugging: () => _securityThreats.add('Debug environment detected'),
+        SecurityThreat.emulator: () => _securityThreats.add('Running on emulator/simulator'),
+        SecurityThreat.hooks: () =>
+            _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
+        SecurityThreat.unofficialStore: () =>
+            _securityThreats.add('App installed from unofficial store'),
+        SecurityThreat.screenshot: () => _securityThreats.add('Screen capture detected'),
+        SecurityThreat.screenRecording: () => _securityThreats.add('Screen recording detected'),
+        SecurityThreat.systemVPN: () => _securityThreats.add('System VPN detected'),
+        SecurityThreat.passcode: () => _securityThreats.add('Device passcode not set'),
+        SecurityThreat.secureHardware: () => _securityThreats.add('Secure hardware not available'),
+        SecurityThreat.developerMode: () => _securityThreats.add('Developer mode enabled'),
+        SecurityThreat.adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
+        SecurityThreat.multiInstance: () => _securityThreats.add('Multiple app instances detected'),
+      },
+    ),
+  );
 
   // Simple dialog showing all collected threats
   void _showSecurityDialog() {
@@ -443,34 +416,10 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
           '${appSupportDir.path}${Platform.pathSeparator}flutter_secure_storage.dat';
       final fileExists = File(encryptedFilePath).existsSync();
 
-      final message =
-          '''
-Storage Location Information:
-
-📁 Application Support Directory:
-${appSupportDir.path}
-
-🔐 Encrypted Key File:
-$encryptedFilePath
-
-File exists: ${fileExists ? '✅ YES' : '❌ NO'}
-
-${fileExists ? '''
-To view in File Explorer:
-1. Press Win+R
-2. Paste: ${appSupportDir.path}
-3. Look for: flutter_secure_storage.dat
-
-This file contains your encryption key encrypted with Windows DPAPI.
-The key 'hive_encryption_key' is stored inside this file.
-''' : '''
-The file will be created when you first save secure data.
-Try saving a secure value first.
-'''}
-      ''';
+      final message = _storageLocationMessage(appSupportDir.path, fileExists);
 
       if (mounted) {
-        showDialog<void>(
+        await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Storage Location'),
@@ -496,6 +445,32 @@ Try saving a secure value first.
       setState(() => _errorMessage = 'Error getting storage location: $e');
     }
   }
+
+  String _storageLocationMessage(String path, bool fileExists) =>
+      '''
+Storage Location Information:
+
+📁 Application Support Directory:
+$path
+
+🔐 Encrypted Key File:
+$path${Platform.pathSeparator}flutter_secure_storage.dat
+
+File exists: ${fileExists ? '✅ YES' : '❌ NO'}
+
+${fileExists ? '''
+To view in File Explorer:
+1. Press Win+R
+2. Paste: $path
+3. Look for: flutter_secure_storage.dat
+
+This file contains your encryption key encrypted with Windows DPAPI.
+The key 'hive_encryption_key' is stored inside this file.
+''' : '''
+The file will be created when you first save secure data.
+Try saving a secure value first.
+'''}
+      ''';
 
   Future<void> _clearSecureStorage() async {
     _clearMessages();
@@ -549,25 +524,8 @@ Try saving a secure value first.
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (!_isInitialized)
-            const Padding(
-              padding: EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  SizedBox(width: 8),
-                  Text('Initializing storage...'),
-                ],
-              ),
-            ),
-          if (_operationResult != null || _errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                _errorMessage ?? _operationResult!,
-                style: TextStyle(color: _errorMessage != null ? Colors.red : Colors.green),
-              ),
-            ),
+          if (!_isInitialized) const _StorageInitialization(),
+          _OperationMessage(result: _operationResult, error: _errorMessage),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(12.0),
@@ -623,5 +581,38 @@ Try saving a secure value first.
       // Ignore errors if vaultStorage was never initialized
     }
     super.dispose();
+  }
+}
+
+class _StorageInitialization extends StatelessWidget {
+  const _StorageInitialization();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.all(12.0),
+    child: Row(
+      children: [
+        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox(width: 8),
+        Text('Initializing storage...'),
+      ],
+    ),
+  );
+}
+
+class _OperationMessage extends StatelessWidget {
+  const _OperationMessage({required this.result, required this.error});
+
+  final String? result;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final message = error ?? result;
+    if (message == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Text(message, style: TextStyle(color: error != null ? Colors.red : Colors.green)),
+    );
   }
 }

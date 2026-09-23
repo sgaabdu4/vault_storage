@@ -5,17 +5,20 @@ on:
     - cron: "17 3 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  issues: read
-  pull-requests: read
+permissions: {}
+
+concurrency:
+  group: codex-maintenance-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   maintain:
+    name: Maintain dependency updates
+    environment: maintenance
     permissions:
-      contents: write
-      issues: read
-      pull-requests: write
+      contents: write # Commit version updates after dependency merges.
+      issues: read # Read open issues for the existing owner report.
+      pull-requests: write # Queue dependency merges and open version pull requests.
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
@@ -55,10 +58,12 @@ jobs:
               echo "- queued #$pr: $title" >> "$report"
             else
               blocked=$((blocked + 1))
-              echo "- could not queue #$pr: $title" >> "$report"
-              echo '```' >> "$report"
-              echo "$output" >> "$report"
-              echo '```' >> "$report"
+              {
+                echo "- could not queue #$pr: $title"
+                echo '```'
+                echo "$output"
+                echo '```'
+              } >> "$report"
             fi
           done
 
@@ -169,7 +174,7 @@ jobs:
               | select(.merged_at >= $cutoff)
               | [.number, .merged_at]
               | @tsv')
-          while IFS=$'\t' read -r pr merged_at; do
+          while IFS=$'\t' read -r pr _merged_at; do
             [ -n "$pr" ] || continue
             marker="Dependabot PR #$pr"
             if printf '%s\n' "$recent_messages" | grep -Fq "$marker"; then

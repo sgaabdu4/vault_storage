@@ -372,7 +372,7 @@ void main() {
         await testContext.vaultStorage.saveNormal(key: 'deep', value: deepMap);
         final result = await testContext.vaultStorage.get<Map<String, dynamic>>('deep');
 
-        expect(result!['level1']['level2']['level3']['level4']['value'], equals('deep'));
+        expect(result, equals(deepMap));
       });
 
       test('should handle lists with mixed types', () async {

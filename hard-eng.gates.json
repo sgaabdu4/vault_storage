@@ -1,27 +1,371 @@
 {
-  "schema_version": 1,
-  "families": {
-    "format": [
-      "dart",
-      "format",
-      "--line-length=100",
-      "--set-exit-if-changed",
-      "."
-    ],
-    "dart-analyze": ["dart", "analyze", "--fatal-infos"],
-    "dart-test": ["flutter", "test", "--coverage"],
-    "dart-decimate": ["npx", "--yes", "dart-decimate@latest", "json", "."],
-    "secrets": ["gitleaks", "git", "--redact", "--no-banner", "--no-color", "."]
-  },
-  "hard_eng": {
-    "schema_version": 1,
-    "channel": "prerelease",
-    "release_repository": "sgaabdu4/hard-eng",
-    "wiring": "shared",
-    "pin": {
-      "tag": "v0.1.0-alpha.g0761411fe1877805db39c2ea13660ac470a0a3c6",
-      "archive_sha256": "231b068e87cff3d124a64051c647c6b9f460ea6156dbc9e927c03d437c83c613",
-      "manifest_sha256": "5b18149222c9b3ef41ed2187b213e6c7c459d80bafa0cc929e52db5e5e188796"
+  "version": 1,
+  "packages": [
+    {
+      "name": "vault_storage",
+      "path": ".",
+      "language": "dart",
+      "sources": [
+        "lib"
+      ],
+      "checks": [
+        {
+          "name": "lockfile",
+          "role": "lockfiles",
+          "command": [
+            "flutter",
+            "pub",
+            "get",
+            "--enforce-lockfile"
+          ]
+        },
+        {
+          "name": "format",
+          "role": "format",
+          "command": [
+            "dart",
+            "format",
+            "--line-length=100",
+            "--output=none",
+            "--set-exit-if-changed",
+            "lib",
+            "test",
+            "tool"
+          ]
+        },
+        {
+          "name": "dart-analyze",
+          "role": "types",
+          "command": [
+            "dart",
+            "analyze",
+            "--fatal-infos",
+            "lib",
+            "test",
+            "tool"
+          ]
+        },
+        {
+          "name": "browser-download-coverage",
+          "command": [
+            "dart",
+            "run",
+            "tool/browser_coverage.dart"
+          ]
+        },
+        {
+          "name": "dart-test",
+          "role": "tests",
+          "command": [
+            "flutter",
+            "test",
+            "--no-pub",
+            "--machine",
+            "--coverage",
+            "--coverage-path=coverage/lcov.info",
+            "--merge-coverage",
+            "--concurrency=1"
+          ],
+          "report": {
+            "type": "dart-tests",
+            "tests": "coverage/tests.jsonl",
+            "coverage": "coverage/lcov.info"
+          }
+        },
+        {
+          "name": "dart-decimate",
+          "role": "dead-code-duplicates",
+          "command": [
+            "dart-decimate",
+            "check",
+            ".",
+            "--threshold",
+            "0",
+            "--strict",
+            "--format",
+            "json"
+          ],
+          "report": {
+            "type": "dart-decimate",
+            "path": "coverage/dart-decimate.json",
+            "stdout": true
+          }
+        },
+        {
+          "name": "lint:boundaries",
+          "role": "boundaries",
+          "command": [
+            "dart-decimate",
+            "check",
+            ".",
+            "--boundary-violations",
+            "--strict"
+          ]
+        },
+        {
+          "name": "secure-stream-performance",
+          "role": "performance",
+          "command": [
+            "flutter",
+            "test",
+            "--no-pub",
+            "--concurrency=1",
+            "--machine",
+            "test/performance/secure_stream_performance_test.dart"
+          ],
+          "report": {
+            "type": "performance-dart",
+            "path": "coverage/performance.jsonl",
+            "stdout": true
+          }
+        }
+      ],
+      "depends_on": []
+    },
+    {
+      "name": "storage-example",
+      "path": "example",
+      "language": "dart",
+      "sources": [
+        "lib"
+      ],
+      "checks": [
+        {
+          "name": "lockfile",
+          "role": "lockfiles",
+          "command": [
+            "flutter",
+            "pub",
+            "get",
+            "--enforce-lockfile"
+          ]
+        },
+        {
+          "name": "format",
+          "role": "format",
+          "command": [
+            "dart",
+            "format",
+            "--line-length=100",
+            "--output=none",
+            "--set-exit-if-changed",
+            "lib",
+            "test"
+          ]
+        },
+        {
+          "name": "dart-analyze",
+          "role": "types",
+          "command": [
+            "dart",
+            "analyze",
+            "--fatal-infos",
+            "."
+          ]
+        },
+        {
+          "name": "dart-test",
+          "role": "tests",
+          "command": [
+            "flutter",
+            "test",
+            "--no-pub",
+            "--machine",
+            "--coverage",
+            "--coverage-path=coverage/lcov.info",
+            "--concurrency=1"
+          ],
+          "report": {
+            "type": "dart-tests",
+            "tests": "coverage/tests.jsonl",
+            "coverage": "coverage/lcov.info"
+          }
+        },
+        {
+          "name": "dart-decimate",
+          "role": "dead-code-duplicates",
+          "command": [
+            "dart-decimate",
+            "check",
+            ".",
+            "--threshold",
+            "0",
+            "--strict",
+            "--format",
+            "json"
+          ],
+          "report": {
+            "type": "dart-decimate",
+            "path": "coverage/dart-decimate.json",
+            "stdout": true
+          }
+        },
+        {
+          "name": "lint:boundaries",
+          "role": "boundaries",
+          "command": [
+            "dart-decimate",
+            "check",
+            ".",
+            "--boundary-violations",
+            "--strict"
+          ]
+        },
+        {
+          "name": "consumer-startup-performance",
+          "role": "performance",
+          "command": [
+            "flutter",
+            "test",
+            "--no-pub",
+            "--concurrency=1",
+            "--machine",
+            "test/performance/storage_startup_test.dart"
+          ],
+          "report": {
+            "type": "performance-dart",
+            "path": "coverage/performance.jsonl",
+            "stdout": true
+          }
+        }
+      ],
+      "depends_on": [
+        "."
+      ]
     }
+  ],
+  "shared": [
+    {
+      "name": "secrets-history",
+      "role": "secrets-history",
+      "command": [
+        "gitleaks",
+        "git",
+        ".",
+        "--redact=100",
+        "--no-banner",
+        "--no-color",
+        "--log-opts=--all",
+        "--report-format",
+        "sarif",
+        "--report-path",
+        "coverage/gitleaks-history.sarif"
+      ],
+      "report": {
+        "type": "gitleaks",
+        "path": "coverage/gitleaks-history.sarif"
+      }
+    },
+    {
+      "name": "actionlint",
+      "role": "workflows",
+      "parallel": true,
+      "command": [
+        "actionlint",
+        "-no-color"
+      ]
+    },
+    {
+      "name": "zizmor",
+      "role": "ci-security",
+      "parallel": true,
+      "command": [
+        "zizmor",
+        "--strict-collection",
+        "--persona=auditor",
+        "--format=plain",
+        "."
+      ]
+    },
+    {
+      "name": "shellcheck",
+      "role": "shell",
+      "parallel": true,
+      "command": [
+        "shellcheck",
+        "--",
+        "release.sh"
+      ]
+    },
+    {
+      "name": "secrets-files",
+      "role": "secrets-files",
+      "parallel": true,
+      "command": [
+        "gitleaks",
+        "dir",
+        ".",
+        "--redact=100",
+        "--no-banner",
+        "--report-format",
+        "sarif",
+        "--report-path",
+        "coverage/gitleaks-files.sarif"
+      ],
+      "report": {
+        "type": "gitleaks",
+        "path": "coverage/gitleaks-files.sarif"
+      }
+    },
+    {
+      "name": "vulnerabilities",
+      "role": "vulnerabilities",
+      "parallel": true,
+      "command": [
+        "osv-scanner",
+        "scan",
+        "source",
+        "--lockfile=pubspec.lock",
+        "--lockfile=example/pubspec.lock",
+        "--all-packages",
+        "--format=json",
+        "--output-file=coverage/osv.json"
+      ],
+      "report": {
+        "type": "osv",
+        "path": "coverage/osv.json"
+      }
+    },
+    {
+      "name": "security",
+      "role": "security",
+      "parallel": true,
+      "command": [
+        "semgrep",
+        "scan",
+        "--config",
+        ".agents/skills/he/security",
+        "--jobs",
+        "2",
+        "--error",
+        "--strict",
+        "--time",
+        "--json",
+        "--output",
+        "coverage/semgrep.json",
+        "."
+      ],
+      "report": {
+        "type": "semgrep",
+        "path": "coverage/semgrep.json"
+      }
+    }
+  ],
+  "shipping": {
+    "base": "main",
+    "checks": [
+      "Check Version Consistency",
+      "Hard Eng checks",
+      "Check Formatting",
+      "Analyze Code",
+      "Run Tests",
+      "Package Analysis (PANA)"
+    ],
+    "ui_paths": [
+      "example/lib/**"
+    ],
+    "ci_seconds": 600,
+    "pre_push_seconds": 600,
+    "delivery": []
   }
 }

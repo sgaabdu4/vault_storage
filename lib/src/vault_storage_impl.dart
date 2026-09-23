@@ -97,48 +97,52 @@ class VaultStorageImpl implements IVaultStorage {
         }
       }
 
-      // Search all boxes and detect ambiguity
-      final foundBoxes = <String>[];
-      T? result;
-
-      // Check default normal box
-      final normalValue = await getFromBox<T>(BoxType.normal, key);
-      if (normalValue != null) {
-        foundBoxes.add('normal');
-        result = normalValue;
-      }
-
-      // Check default secure box
-      final secureValue = await getFromBox<T>(BoxType.secure, key);
-      if (secureValue != null) {
-        foundBoxes.add('secure');
-        result = secureValue;
-      }
-
-      // Check custom boxes
-      for (final entry in customBoxes.entries) {
-        final value = await _getFromBoxBase<T>(entry.value, key);
-        if (value != null) {
-          foundBoxes.add(entry.key);
-          result = value;
-        }
-      }
-
-      // If found in multiple boxes, throw ambiguity error
-      if (foundBoxes.length > 1) {
-        throw AmbiguousKeyError(
-          key,
-          foundBoxes,
-          'Key "$key" found in multiple boxes: ${foundBoxes.join(", ")}. '
-          'Specify the box parameter to disambiguate.',
-        );
-      }
-
-      return result;
+      return await _findStoredValue<T>(key);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageReadError('Failed to get "$key"', e);
     }
+  }
+
+  Future<T?> _findStoredValue<T>(String key) async {
+    // Search all boxes and detect ambiguity
+    final foundBoxes = <String>[];
+    T? result;
+
+    // Check default normal box
+    final normalValue = await getFromBox<T>(BoxType.normal, key);
+    if (normalValue != null) {
+      foundBoxes.add('normal');
+      result = normalValue;
+    }
+
+    // Check default secure box
+    final secureValue = await getFromBox<T>(BoxType.secure, key);
+    if (secureValue != null) {
+      foundBoxes.add('secure');
+      result = secureValue;
+    }
+
+    // Check custom boxes
+    for (final entry in customBoxes.entries) {
+      final value = await _getFromBoxBase<T>(entry.value, key);
+      if (value != null) {
+        foundBoxes.add(entry.key);
+        result = value;
+      }
+    }
+
+    // If found in multiple boxes, throw ambiguity error
+    if (foundBoxes.length > 1) {
+      throw AmbiguousKeyError(
+        key,
+        foundBoxes,
+        'Key "$key" found in multiple boxes: ${foundBoxes.join(", ")}. '
+        'Specify the box parameter to disambiguate.',
+      );
+    }
+
+    return result;
   }
 
   @override
@@ -341,28 +345,10 @@ class VaultStorageImpl implements IVaultStorage {
         return;
       }
 
-      // Default secure file storage logic
-      final ext = originalFileName?.split('.').last ?? 'bin';
-      final shouldStream = fileBytes.length >= VaultStorageConfig.secureFileStreamingThresholdBytes;
-
-      final fileMetadata = shouldStream
-          ? await _fileOperations.saveSecureFileStream(
-              stream: Stream<List<int>>.value(fileBytes),
-              fileExtension: ext,
-              isWeb: kIsWeb,
-              secureStorage: _secureStorage,
-              uuid: _uuid,
-              getBox: getInternalBox,
-              chunkSize: VaultStorageConfig.secureFileStreamingChunkSizeBytes,
-            )
-          : await _fileOperations.saveSecureFile(
-              fileBytes: fileBytes,
-              fileExtension: ext,
-              isWeb: kIsWeb,
-              secureStorage: _secureStorage,
-              uuid: _uuid,
-              getBox: getInternalBox,
-            );
+      final fileMetadata = await _storeSecureFileBytes(
+        fileBytes,
+        originalFileName?.split('.').last ?? 'bin',
+      );
 
       // Tag the metadata as secure and merge any user-provided metadata
       final toStore = <String, dynamic>{
@@ -378,6 +364,31 @@ class VaultStorageImpl implements IVaultStorage {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageWriteError('Failed to save secure file "$key"', e);
     }
+  }
+
+  Future<Map<String, dynamic>> _storeSecureFileBytes(Uint8List fileBytes, String ext) async {
+    // Default secure file storage logic
+
+    final shouldStream = fileBytes.length >= VaultStorageConfig.secureFileStreamingThresholdBytes;
+
+    return shouldStream
+        ? await _fileOperations.saveSecureFileStream(
+            stream: Stream<List<int>>.value(fileBytes),
+            fileExtension: ext,
+            isWeb: kIsWeb,
+            secureStorage: _secureStorage,
+            uuid: _uuid,
+            getBox: getInternalBox,
+            chunkSize: VaultStorageConfig.secureFileStreamingChunkSizeBytes,
+          )
+        : await _fileOperations.saveSecureFile(
+            fileBytes: fileBytes,
+            fileExtension: ext,
+            isWeb: kIsWeb,
+            secureStorage: _secureStorage,
+            uuid: _uuid,
+            getBox: getInternalBox,
+          );
   }
 
   @override

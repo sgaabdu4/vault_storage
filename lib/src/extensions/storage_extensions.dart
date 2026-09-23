@@ -287,7 +287,7 @@ class JsonSafe {
   ///
   /// v2.x stored primitives as JSON-encoded strings without type markers.
   /// Simple type coercion only - complex migrations should be handled by users.
-  static T _coerceType<T>(dynamic value) {
+  static T _coerceType<T>(Object? value) {
     if (value is T) return value;
 
     if (T == int) return _coerceInt(value) as T;
@@ -297,7 +297,7 @@ class JsonSafe {
     throw _typeMismatch<T>(value);
   }
 
-  static int _coerceInt(dynamic value) {
+  static int _coerceInt(Object? value) {
     if (value is num) return value.toInt();
     if (value is String) {
       try {
@@ -313,7 +313,7 @@ class JsonSafe {
     throw _typeMismatch<int>(value);
   }
 
-  static double _coerceDouble(dynamic value) {
+  static double _coerceDouble(Object? value) {
     if (value is num) return value.toDouble();
     if (value is String) {
       try {
@@ -329,7 +329,7 @@ class JsonSafe {
     throw _typeMismatch<double>(value);
   }
 
-  static VaultStorageSerializationError _typeMismatch<T>(dynamic value) =>
+  static VaultStorageSerializationError _typeMismatch<T>(Object? value) =>
       VaultStorageSerializationError(
         'Type mismatch: Cannot convert "$value" (${value.runtimeType}) to type $T. '
         'Consider clearing corrupted data.',

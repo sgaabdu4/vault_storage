@@ -1,17 +1,24 @@
 {
   "hooks": {
-    "preToolUse": [
-      {
-        "bash": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/hook.sh\" copilot pretooluse",
-        "timeoutSec": 2,
-        "type": "command"
-      }
-    ],
     "sessionStart": [
       {
-        "bash": "bash \"$(git rev-parse --show-toplevel)/.hard-eng/bootstrap.sh\" copilot",
-        "timeoutSec": 300,
-        "type": "command"
+        "type": "command",
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" session copilot",
+        "timeoutSec": 3600
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "type": "command",
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" failure copilot",
+        "timeoutSec": 10
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.hooks/hard-eng.py\" stop copilot",
+        "timeoutSec": 3600
       }
     ]
   },

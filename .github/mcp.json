@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "context-mode": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "context-mode@latest"
+      ]
+    },
+    "codebase-memory-mcp": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "codebase-memory-mcp@latest"
+      ]
+    },
+    "dart": {
+      "command": "dart",
+      "args": [
+        "mcp-server"
+      ]
+    },
+    "marionette": {
+      "command": "dart",
+      "args": [
+        "run",
+        "marionette_mcp@"
+      ]
+    }
+  }
+}
