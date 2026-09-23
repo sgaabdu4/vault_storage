@@ -63,7 +63,8 @@
             "--machine",
             "--coverage",
             "--coverage-path=coverage/lcov.info",
-            "--merge-coverage"
+            "--merge-coverage",
+            "--concurrency=1"
           ],
           "report": {
             "type": "dart-tests",
@@ -171,7 +172,8 @@
             "--no-pub",
             "--machine",
             "--coverage",
-            "--coverage-path=coverage/lcov.info"
+            "--coverage-path=coverage/lcov.info",
+            "--concurrency=1"
           ],
           "report": {
             "type": "dart-tests",
