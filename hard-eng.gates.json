@@ -35,7 +35,7 @@
         },
         {
           "name": "dart-analyze",
-          "role": "types",
+          "role": "project-types",
           "command": [
             "dart",
             "analyze",
@@ -118,6 +118,18 @@
             "path": "coverage/performance.jsonl",
             "stdout": true
           }
+        },
+        {
+          "name": "strict-types-lint",
+          "role": "types",
+          "parallel": true,
+          "command": [
+            "dart",
+            "analyze",
+            "--fatal-infos",
+            "lib",
+            "test"
+          ]
         }
       ],
       "depends_on": []

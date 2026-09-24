@@ -12,6 +12,7 @@ from operator import itemgetter
 from pathlib import Path
 
 UPSTREAM = "sgaabdu4/hard-eng"
+REPOSITORY = f"https://github.com/{UPSTREAM}.git"
 SOURCE_FILE = ".hooks/hard-eng-source.json"
 
 
@@ -114,7 +115,7 @@ def fetch_sources(temporary: Path, revision: str, previous: str) -> tuple[Path, 
             "clone",
             "--quiet",
             "--filter=blob:none",
-            f"https://github.com/{UPSTREAM}.git",
+            REPOSITORY,
             str(source),
         ],
         check=True,
@@ -166,6 +167,14 @@ def scaffold_files(source: Path) -> set[str]:
             *(skill for skill in skills if skill.is_symlink()),
         ]
         for path in repository_files(skill)
+    }
+
+
+def without_skills(files: set[str], skills: set[str]) -> set[str]:
+    return {
+        name
+        for name in files
+        if not any(name.startswith(f".agents/skills/{skill}/") for skill in skills)
     }
 
 
@@ -234,7 +243,11 @@ def update_plan(
         for name, content in plan["files"].items()
         if not (root / name).is_file() or (root / name).read_text() != content
     }
-    for name in scaffold_files(previous) - scaffold_files(source):
+    skills = {path.name for path in (source / ".agents/skills").iterdir()}
+    unused = skills - {Path(name).name for name in plan["links"]}
+    for name in scaffold_files(previous) - without_skills(
+        scaffold_files(source), unused
+    ):
         target = root / name
         if target.exists():
             if (
@@ -250,9 +263,9 @@ def update_plan(
         for name, target in plan["links"].items()
         if not (root / name).is_symlink()
     }
-    removed_skills = {path.name for path in (previous / ".agents/skills").iterdir()} - {
-        path.name for path in (source / ".agents/skills").iterdir()
-    }
+    removed_skills = {path.name for path in (previous / ".agents/skills").iterdir()} - (
+        skills - unused
+    )
     for skill in removed_skills:
         name = ".claude/skills/" + skill
         link = root / name
@@ -268,6 +281,10 @@ def write_changes(root: Path, changes: dict[str, str | None]) -> None:
         target = root / name
         if content is None:
             target.unlink(missing_ok=True)
+            for parent in target.parents:
+                if parent == root or not parent.is_dir() or any(parent.iterdir()):
+                    break
+                parent.rmdir()
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
@@ -432,13 +449,14 @@ def commit_update(
             cwd=root,
             check=True,
         )
+        message = f"Update Hard Eng to {revision}"
         result = subprocess.run(
             [
                 "git",
                 "commit",
                 "--only",
                 "-m",
-                f"Update Hard Eng to {revision}",
+                message,
                 "--",
                 *names,
             ],
@@ -462,6 +480,7 @@ def commit_update(
             if content is None:
                 target.unlink(missing_ok=True)
             else:
+                target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(content)
         for name, target in before_links.items():
             (root / name).unlink(missing_ok=True)
@@ -635,8 +654,9 @@ def check_scaffold_update(root: Path, base: str) -> bool:
 def preserved_instructions(root: Path, base: str, names: set[str]) -> bool:
     end = "<!-- hard-eng:end -->\n\n"
     for name in names & {"AGENTS.md", "CLAUDE.md", "AGENTS.override.md"}:
+        blob = f"{base}:{name}"
         original = subprocess.run(
-            ["git", "show", f"{base}:{name}"],
+            ["git", "show", blob],
             cwd=root,
             text=True,
             capture_output=True,
