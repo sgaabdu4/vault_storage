@@ -58,6 +58,11 @@ LANGUAGES = {
     "package.json": "javascript",
     "pubspec.yaml": "dart",
 }
+LOCKFILES = {
+    "python": ("uv.lock", "poetry.lock"),
+    "javascript": ("pnpm-lock.yaml",),
+    "dart": ("pubspec.lock",),
+}
 
 
 def package_manifests(root: Path, files: list[Path]) -> set[tuple[str, str]]:
@@ -65,12 +70,38 @@ def package_manifests(root: Path, files: list[Path]) -> set[tuple[str, str]]:
     generated = generated_sources(
         root, [str(path.relative_to(root)) for path in candidates]
     )
-    return {
-        (str(path.parent.relative_to(root)), LANGUAGES[path.name])
+    manifests = [
+        path
         for path in candidates
         if ".agents" not in path.relative_to(root).parts
         and str(path.relative_to(root)) not in generated
+    ]
+    return {
+        (str(path.parent.relative_to(root)), LANGUAGES[path.name])
+        for path in manifests
+        if not fixture_manifest(root, path, manifests)
     }
+
+
+def fixture_manifest(root: Path, manifest: Path, manifests: list[Path]) -> bool:
+    """Test input: under a test directory, no own lockfile, no declaring workspace."""
+    from project_setup import workspace_matches, workspace_members
+
+    directory, language = manifest.parent, LANGUAGES[manifest.name]
+    return (
+        nonproduction_source(manifest.relative_to(root))
+        and not any((directory / name).exists() for name in LOCKFILES[language])
+        and not any(
+            owner != manifest
+            and owner.name == manifest.name
+            and directory.is_relative_to(owner.parent)
+            and workspace_matches(
+                str(directory.relative_to(owner.parent)),
+                workspace_members(owner.parent, language),
+            )
+            for owner in manifests
+        )
+    )
 
 
 def repository_files(root: Path) -> list[Path]:
