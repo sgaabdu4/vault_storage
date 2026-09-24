@@ -1,49 +1,47 @@
-# Storage refactor and dependency release
+# Refresh the installed Hard Eng scaffold
 
 Status: Complete
 
 ## Outcome + scope
 
-Release updated compatible dependencies after refactoring storage internals and adapting the installed Hard Eng checks. Preserve public APIs, existing stored data and platform behavior.
+Update the repository tooling to the latest CI-verified Hard Eng revision and remove installer-owned skills no longer applicable to this package. Package APIs, dependencies, storage formats and the published version remain unchanged.
 
 ## Repository context
 
-Owners: `lib/src/storage/file_operations.dart`, `lib/src/vault_storage_impl.dart`, `example/lib/main.dart`, `test/`, `hard-eng.gates.json`, `.github/workflows/flutter.yml`, `pubspec.yaml`, `CHANGELOG.md`.
+Owners: `.hooks/`, `.agents/skills/`, `.claude/skills/`, `hard-eng.gates.json`, and this plan. The existing Flutter workflow owns required CI; the version-tag publisher is unchanged. The previous storage refactor and version 5.0.1 release are recorded in repository history.
 
 ## Decisions + authorization
 
 Blockers: None
 Handoff: Approval
-Authority: User requested latest dependencies, refactor before release, current checkout, latest Hard Eng, tests and push to origin/main. Package publication is authorized. Consumer app distribution is excluded.
+Authority: The user requested the latest Hard Eng installation throughout the active repositories, removal of obsolete tooling and completion through origin/main. No application distribution or new package version is part of this scaffold-only change.
 
 ## Acceptance + steps
 
-- [x] Shorten storage and example functions while preserving encryption, chunk framing, keys, metadata and error behavior.
-- [x] Update dependencies and changelog; retain SDK-compatible versions.
-- [x] Adapt project documentation, native checks and existing release workflow to Hard Eng without duplicate checks or hidden findings.
-- [x] Pass analysis, formatting, full tests, coverage, boundaries, performance, security, dependency audit and PANA.
+- [x] Install the supported verified revision b5a5d31c67aba93e87f19ff058f3b012d99a9413 through the upstream setup command.
+- [x] Remove only installer-owned unused Appwrite guidance; preserve package sources, existing coverage and performance checks.
+- [x] Pass strict analysis, tests, coverage, formatting, boundaries, performance, dependency/security and workflow checks under the updated scaffold.
+- [x] Review the complete public diff and keep package publication contents unchanged.
 
 ## Baseline + execution
 
 Result: Passed
-Evidence: Initial checks failed on PRODUCT.md structure, ten analyzer infos, six large functions and interface-signature duplication. These failures initiated the repair. The repaired baseline now passes its required categories; the initial failure above remains recorded. The browser report covers the missing executable helper.
-Update: Installed CI-verified Hard Eng dcda0bba5eeea7d34ce27d914018ec1f899c8bc5. The published updater confirms no newer verified revision. Its classifier now correctly omits the bodyless interface from executable coverage; Chrome now supplies measured, source-mapped browser coverage which Flutter merges with the native report.
-Migration: Removed the legacy override, old runtime scripts, stale copied Copilot rules and obsolete Claude output-style setting. Copilot and Claude resolve current AGENTS.md; all hooks use .hooks/hard-eng.py. The supported installer owns the current scaffold; project checks additionally run the Chrome helper and merge its coverage. No extra legacy skill directories remain.
-Execution: One builder in the authorized current checkout. Refactor existing owners first, run focused tests, then adapt and run full gates. Preserve existing dependency work.
+Evidence: The supported updater ran the existing repository gates before recording its isolated local scaffold commit. Root package line coverage was 798/981 (81.35%) and example coverage 213/285 (74.74%), both above the unchanged 70% requirement. Both performance budgets passed. The first delivery attempt correctly stopped because the previous release plan did not apply to this new scaffold change.
+Execution: One coordinator reviewed the generated scaffold diff and updated this existing plan. The pre-push gate rechecks the actual outgoing commit, followed by exact-head GitHub checks before merge.
 
 ## Risks + recovery
 
-Encrypted data must remain readable across versions. Existing compatibility and chunked-file tests protect the storage contract. Publication follows successful checks through the existing CI publisher only.
+Changes affect developer verification and setup only. The updater-owned revision and diff are recorded together; a regression can be repaired through a normal reviewed tooling change without modifying stored user data. Existing package runtime and publishing workflow are unchanged.
 
 ## ux_reference
 
-N/A — internal refactor and dependency/tooling update; preserve the example's controls, labels and flow.
+N/A — only repository tooling and documentation changed; no application or example interface changed.
 
 ## Verification
 
 Result: Passed
-Evidence: 430 package tests and eight example tests pass. Strict analysis, formatting, boundary scans, actionlint, Zizmor, secret scans, OSV and Semgrep pass. PANA scores 160/160. Both performance budgets pass and intentionally zero budgets fail. Full suites run serially, matching the dedicated benchmarks, so competing test workers do not invalidate the unchanged five-second budget. The boundary rule passes an allowed import, rejects a forbidden implementation import and passes after restoration. Published Dart Decimate 0.0.45 passes both packages with zero findings after removing the obsolete suppression. Browser downloads pass with real bytes, MIME types, filenames, anchor removal and URL revocation; a deliberately leaked URL fails and emits no coverage. Nested unexecuted browser ranges retain zero counts. Native and Chrome coverage merge successfully. The clean-checkout pre-push check exposed ignored lockfiles; root and example lockfiles are now tracked and CI enforces them, while package publication continues to exclude them. All required check categories passed; the analyzer-only redundant default arguments were removed and strict analysis passed again. The final integrated Complete gate verifies this result before shipping.
-E2E: Passed — existing tests exercise legacy-data reads and storage round trips. Added tests exercise native encrypted streaming and the example's save, get, delete, clear, file-picker cancellation and clipboard flows. Baseline and final example renders are identical at an 800 by 600 viewport in ready and saved states. Platform channels are mocked in these tests; consuming apps still need their device release validation.
+Evidence: The upstream setup command installed b5a5d31 and passed lockfile, formatting, strict analysis, package and example tests with coverage, browser-download coverage, Dart Decimate, dependency boundaries, both performance checks, actionlint, shellcheck, Zizmor, secret scans, vulnerability and security checks. The complete diff contains only installer-owned scaffold files, gate integration and this plan; all are excluded from package publication by the existing pubignore.
+E2E: N/A — this change adds no runtime behavior or user interaction; the retained package, browser-download and example behavior tests passed under the new scaffold.
 
 Delivery target: Merge
-Delivery: Pending — main CI plus automatic package publishing must be verified.
+Delivery: Pending — push the scoped task branch, verify required checks for its exact head, merge and verify main CI.

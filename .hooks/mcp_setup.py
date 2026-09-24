@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 import tomllib
 from pathlib import Path
 from urllib.parse import urlparse
@@ -128,12 +129,14 @@ def appwrite_server(root: Path) -> JsonObject | None:
         print(
             "MCP setup pending: Appwrite needs the deployed endpoint. Reuse the project's existing configuration; "
             "ask only if unresolved, then supply APPWRITE_ENDPOINT. Follow "
-            ".agents/skills/appwrite-backend/references/mcp-servers.md for Cloud OAuth or the self-hosted launcher."
+            ".agents/skills/appwrite-backend/references/mcp-servers.md for Cloud OAuth or the self-hosted launcher.",
+            file=sys.stderr,
         )
         return None
     print(
         "MCP setup pending: self-hosted Appwrite requires executable scripts/appwrite-mcp loading the existing gitignored env file; "
-        "follow the canonical Appwrite MCP guidance before setup. Never put the API key in tracked MCP configuration."
+        "follow the canonical Appwrite MCP guidance before setup. Never put the API key in tracked MCP configuration.",
+        file=sys.stderr,
     )
     return None
 
@@ -171,7 +174,8 @@ def sentry_server(root: Path) -> JsonObject | None:
             return {"command": launcher}
         print(
             "MCP setup pending: existing Sentry MCP target is not a supported hosted URL or direct repository-local launcher; "
-            "preserve it and configure missing hosts manually."
+            "preserve it and configure missing hosts manually.",
+            file=sys.stderr,
         )
         return None
     launcher = repository_launcher(root, "./scripts/sentry-mcp")
@@ -180,7 +184,8 @@ def sentry_server(root: Path) -> JsonObject | None:
     print(
         "MCP setup pending: Sentry needs the existing service target: SENTRY_MCP_URL for SaaS (prefer the intended organization/project scope), "
         "or a repository scripts/sentry-mcp launcher loading self-hosted credentials from the existing gitignored env file. "
-        "Reuse existing project choices; ask only if unresolved."
+        "Reuse existing project choices; ask only if unresolved.",
+        file=sys.stderr,
     )
     return None
 
@@ -275,8 +280,9 @@ def configure_mcp(root: Path, changes: dict[str, str]) -> None:
             servers[plugin] = (
                 {"type": "http", **settings} if "url" in settings else settings
             )
-        existing.update(servers)
-        changes[name] = json.dumps(current, indent=2) + "\n"
+        if servers:
+            existing.update(servers)
+            changes[name] = json.dumps(current, indent=2) + "\n"
     target = root / ".codex/config.toml"
     codex_config = target.read_text() if target.exists() else ""
     parsed = tomllib.loads(codex_config)

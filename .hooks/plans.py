@@ -119,7 +119,7 @@ def e2e_proof(verification: str, status: str, *, legacy: bool = False) -> None:
         )
 
 
-def ux_proof(content: str) -> None:
+def ux_proof(content: str, *, legacy: bool = False) -> None:
     if re.fullmatch(r"N/A — [^\n]+", content.strip()):
         return
     proof(content, {"Passed"})
@@ -128,6 +128,8 @@ def ux_proof(content: str) -> None:
         raise ValueError(
             "UX evidence needs a Markdown image reference to the rendered proposal"
         )
+    if legacy and not re.search(r"(?m)^Surface:", content):
+        return
     surface = field(content, "Surface")
     if not re.fullmatch(r"(Existing|New|Mock) — \S.+", surface):
         raise ValueError(
@@ -162,7 +164,7 @@ def readiness_errors(
             if name == "Baseline + execution":
                 proof(sections[name], {"Passed"})
             elif name == "ux_reference":
-                ux_proof(sections[name])
+                ux_proof(sections[name], legacy=legacy)
             else:
                 e2e_proof(sections[name], status, legacy=legacy)
         except ValueError as error:
