@@ -1,47 +1,47 @@
-# Refresh the installed Hard Eng scaffold
+# Refresh Hard Eng package discovery
 
 Status: Complete
 
 ## Outcome + scope
 
-Update the repository tooling to the latest CI-verified Hard Eng revision and remove installer-owned skills no longer applicable to this package. Package APIs, dependencies, storage formats and the published version remain unchanged.
+Install the latest verified Hard Eng package-discovery fix while preserving package APIs, dependencies, storage formats, version 5.0.1, and all existing verification requirements.
 
 ## Repository context
 
-Owners: `.hooks/`, `.agents/skills/`, `.claude/skills/`, `hard-eng.gates.json`, and this plan. The existing Flutter workflow owns required CI; the version-tag publisher is unchanged. The previous storage refactor and version 5.0.1 release are recorded in repository history.
+Owners: `.hooks/gate_config.py`, `.hooks/hard-eng-source.json`, and this plan. The existing Flutter workflow owns required CI; the version-tag publisher and package sources remain unchanged.
 
 ## Decisions + authorization
 
 Blockers: None
 Handoff: Approval
-Authority: The user requested the latest Hard Eng installation throughout the active repositories, removal of obsolete tooling and completion through origin/main. No application distribution or new package version is part of this scaffold-only change.
+Authority: The user requested the latest Hard Eng throughout the active repositories and completion through origin/main. This tooling-only update adds no package publication or app distribution.
 
 ## Acceptance + steps
 
-- [x] Install the supported verified revision b5a5d31c67aba93e87f19ff058f3b012d99a9413 through the upstream setup command.
-- [x] Remove only installer-owned unused Appwrite guidance; preserve package sources, existing coverage and performance checks.
-- [x] Pass strict analysis, tests, coverage, formatting, boundaries, performance, dependency/security and workflow checks under the updated scaffold.
-- [x] Review the complete public diff and keep package publication contents unchanged.
+- [x] Install verified revision 2f9b4ec42702024faf72875128d3488b429ef4b9 through the supported upstream updater.
+- [x] Confirm the package discovery file exactly matches upstream and existing project gates are unchanged.
+- [x] Pass package and example analysis, tests, coverage, performance, dependency, security, and workflow checks.
+- [x] Review the public diff; retain package publication contents and the existing version.
 
 ## Baseline + execution
 
 Result: Passed
-Evidence: The supported updater ran the existing repository gates before recording its isolated local scaffold commit. Root package line coverage was 798/981 (81.35%) and example coverage 213/285 (74.74%), both above the unchanged 70% requirement. Both performance budgets passed. The first delivery attempt correctly stopped because the previous release plan did not apply to this new scaffold change.
-Execution: One coordinator reviewed the generated scaffold diff and updated this existing plan. The pre-push gate rechecks the actual outgoing commit, followed by exact-head GitHub checks before merge.
+Evidence: The preceding scaffold update on main passed required CI and native delivered verification. Its root package coverage was 81.35% and example coverage 74.74%, above the unchanged 70% requirement. The new updater produced an isolated commit containing only two managed files; it did not run application checks.
+Execution: One coordinator reviews the upstream diff, runs the existing native gate, then verifies the exact-head PR and main checks.
 
 ## Risks + recovery
 
-Changes affect developer verification and setup only. The updater-owned revision and diff are recorded together; a regression can be repaired through a normal reviewed tooling change without modifying stored user data. Existing package runtime and publishing workflow are unchanged.
+The package-discovery change can affect developer check selection. The upstream fix retains real locked/workspace packages while excluding unowned lockfile-less test fixtures. Package runtime and stored data are unaffected; regressions can be repaired through a normal reviewed tooling commit.
 
 ## ux_reference
 
-N/A — only repository tooling and documentation changed; no application or example interface changed.
+N/A — no package or example user interface changed.
 
 ## Verification
 
 Result: Passed
-Evidence: The upstream setup command installed b5a5d31 and passed lockfile, formatting, strict analysis, package and example tests with coverage, browser-download coverage, Dart Decimate, dependency boundaries, both performance checks, actionlint, shellcheck, Zizmor, secret scans, vulnerability and security checks. The complete diff contains only installer-owned scaffold files, gate integration and this plan; all are excluded from package publication by the existing pubignore.
-E2E: N/A — this change adds no runtime behavior or user interaction; the retained package, browser-download and example behavior tests passed under the new scaffold.
+Evidence: The full native Draft check passed with the updated scaffold: package and example lockfile, format, strict analysis, tests and line coverage, browser-download behavior, Dart Decimate, dependency boundaries, both performance budgets, secret scans, Actionlint, Zizmor, Shellcheck, OSV and Semgrep. Installed discovery code exactly matches the verified upstream revision and project gates are byte-identical.
+E2E: N/A — no runtime behavior changed; existing package, browser-download and example behavior tests remain required in the native gate.
 
 Delivery target: Merge
-Delivery: Pending — push the scoped task branch, verify required checks for its exact head, merge and verify main CI.
+Delivery: Pending — verify the scoped branch, required checks at its exact head, merge, and verify main CI.
