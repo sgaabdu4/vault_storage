@@ -28,7 +28,7 @@
         },
         {
           "name": "dart-analyze",
-          "role": "types",
+          "role": "project-types",
           "command": ["dart", "analyze", "--fatal-infos", "lib", "test", "tool"]
         },
         {
@@ -74,17 +74,6 @@
           }
         },
         {
-          "name": "lint:boundaries",
-          "role": "boundaries",
-          "command": [
-            "dart-decimate",
-            "check",
-            ".",
-            "--boundary-violations",
-            "--strict"
-          ]
-        },
-        {
           "name": "secure-stream-performance",
           "role": "performance",
           "command": [
@@ -100,6 +89,12 @@
             "path": "coverage/performance.jsonl",
             "stdout": true
           }
+        },
+        {
+          "name": "strict-types-lint",
+          "role": "types",
+          "parallel": true,
+          "command": ["dart", "analyze", "--fatal-infos", "."]
         }
       ],
       "depends_on": []
@@ -169,17 +164,6 @@
             "path": "coverage/dart-decimate.json",
             "stdout": true
           }
-        },
-        {
-          "name": "lint:boundaries",
-          "role": "boundaries",
-          "command": [
-            "dart-decimate",
-            "check",
-            ".",
-            "--boundary-violations",
-            "--strict"
-          ]
         },
         {
           "name": "consumer-startup-performance",

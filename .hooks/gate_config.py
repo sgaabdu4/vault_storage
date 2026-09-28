@@ -7,12 +7,81 @@ import subprocess
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
-from dependency_graph import dependency_review_guidance, expand_dependents, secrets_only
+from dependency_graph import (
+    dependency_review_guidance,
+    expand_dependents,
+    impact_inputs,
+    secrets_only,
+)
 
 type JsonValue = (
     str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]
 )
 type JsonObject = dict[str, JsonValue]
+
+
+def expanded(value: object) -> bool:
+    if isinstance(value, dict):
+        return bool(value)
+    return isinstance(value, list) and any(expanded(item) for item in value)
+
+
+def json_text(
+    value: object, layout: tuple[str, int, int], indent: str = "", used: int = 0
+) -> str:
+    unit, tab, width = layout
+    if isinstance(value, list) and not expanded(value):
+        flat = json.dumps(value, separators=(", ", ": "))
+        if used + len(flat) <= width:
+            return flat
+    if not isinstance(value, (dict, list)) or not value:
+        return json.dumps(value)
+    inner = indent + unit
+    entries = (
+        [(f"{json.dumps(key)}: ", item) for key, item in value.items()]
+        if isinstance(value, dict)
+        else [("", item) for item in value]
+    )
+    last = len(entries) - 1
+    body = ",\n".join(
+        inner
+        + head
+        + json_text(
+            item,
+            layout,
+            inner,
+            len((inner + head).expandtabs(tab)) + (index < last),
+        )
+        for index, (head, item) in enumerate(entries)
+    )
+    opening, closing = "{}" if isinstance(value, dict) else "[]"
+    return f"{opening}\n{body}\n{indent}{closing}"
+
+
+JSONC = re.compile(r'("(?:\\.|[^"\\])*")|//[^\n]*|/\*.*?\*/', re.DOTALL)
+
+
+def json_layout(root: Path) -> tuple[str, int, int]:
+    """Read the root Biome config's JSON formatting, else use Prettier's defaults."""
+    for name in ("biome.json", "biome.jsonc"):
+        if (root / name).is_file():
+            text = JSONC.sub(lambda match: match[1] or "", (root / name).read_text())
+            try:
+                config = json.loads(re.sub(r",(\s*[}\]])", r"\1", text))
+            except ValueError:
+                return "\t", 2, 80
+            options = {
+                **config.get("formatter", {}),
+                **config.get("json", {}).get("formatter", {}),
+            }
+            tab = options.get("indentWidth", 2)
+            unit = "\t" if options.get("indentStyle", "tab") == "tab" else " " * tab
+            return unit, tab, options.get("lineWidth", 80)
+    return "  ", 2, 80
+
+
+def json_file(root: Path, value: object) -> str:
+    return json_text(value, json_layout(root)) + "\n"
 
 
 Report = TypedDict(
@@ -39,6 +108,7 @@ Group = TypedDict(
         "language": NotRequired[str],
         "sources": NotRequired[list[str]],
         "depends_on": NotRequired[list[str]],
+        "impact_inputs": NotRequired[list[str]],
     },
 )
 GateConfig = TypedDict(
@@ -123,6 +193,20 @@ def nonproduction_source(relative: Path) -> bool:
         or relative.name.startswith("test_")
         or relative.stem.endswith(("_test", ".test", ".spec"))
         or relative.name.endswith((".d.ts", ".d.mts", ".d.cts"))
+    )
+
+
+def dart_test_support(path: str, language: str | None, packages: list[Group]) -> bool:
+    """A parent Dart package's package-root analysis and formatting cover it."""
+    return (
+        language == "dart"
+        and nonproduction_source(Path(path))
+        and any(
+            group.get("language") == "dart"
+            and Path(path) != Path(group["path"])
+            and Path(path).is_relative_to(group["path"])
+            for group in packages
+        )
     )
 
 
@@ -330,10 +414,25 @@ def validate_gate(gate: Gate, directory: Path, report_paths: set[Path]) -> None:
     validate_command_output(command, directory, report)
 
 
+def dart_scan_includes_boundaries(gate: Gate) -> bool:
+    command = ["dart-decimate", "check", ".", "--threshold", "0"]
+    report = gate.get("report", {})
+    return (
+        gate.get("role") == "dead-code-duplicates"
+        and gate["command"]
+        in (
+            [*command, "--strict", "--format", "json"],
+            [*command, "--format", "json", "--strict"],
+        )
+        and report.get("type") == "dart-decimate"
+        and report.get("stdout") is True
+    )
+
+
 def validate_dart_boundaries(
     command: list[str], directory: Path, timeout: float
 ) -> None:
-    if command[:4] != ["dart-decimate", "check", ".", "--boundary-violations"]:
+    if command[:3] != ["dart-decimate", "check", "."]:
         return
     from tool_setup import managed_command
 
@@ -415,20 +514,30 @@ def changed_packages(
 ) -> set[str] | None:
     from plans import is_documentation
 
+    inputs = {path: impact_inputs(group) for path, group in by_path.items()}
     names = changed_files(root, base)
     if names is None:
         return None
-    names = {name for name in names if not is_documentation(Path(name))}
     selected: set[str] = set()
     for name in names:
-        matches = [path for path in by_path if Path(name).is_relative_to(path)]
-        if (
-            not matches
-            or name.startswith((".hooks/", ".agents/", ".github/"))
-            or name in {"hard-eng.gates.json", "AGENTS.md"}
-        ):
+        if name.startswith((".hooks/", ".agents/", ".github/")) or name in {
+            "hard-eng.gates.json",
+            "AGENTS.md",
+        }:
             return None
-        selected.add(max(matches, key=len))
+        consumers = {
+            path
+            for path, prefixes in inputs.items()
+            if any(Path(name).is_relative_to(prefix) for prefix in prefixes)
+        }
+        if not consumers and is_documentation(Path(name)):
+            continue
+        matches = [path for path in by_path if Path(name).is_relative_to(path)]
+        if not matches and not consumers:
+            return None
+        selected.update(consumers)
+        if matches:
+            selected.add(max(matches, key=len))
     return selected
 
 
@@ -437,6 +546,8 @@ def affected_groups(root: Path, groups: list[Group], base: str | None) -> list[G
     if base is None or not packages:
         return groups
     by_path = {group["path"]: group for group in packages}
+    if len(by_path) != len(packages):
+        return groups
     selected = changed_packages(root, by_path, base)
     if selected is None:
         return groups
@@ -446,8 +557,6 @@ def affected_groups(root: Path, groups: list[Group], base: str | None) -> list[G
     if any("depends_on" not in group for group in packages):
         if guidance is not None:
             print("Package impact is unknown; checking all packages. " + guidance)
-        return groups
-    if len(by_path) != len(packages):
         return groups
     selected = expand_dependents(packages, by_path, selected)
     print("Affected packages and dependents: " + ", ".join(sorted(selected)))
@@ -503,6 +612,7 @@ def validate_group(root: Path, group: Group, report_paths: set[Path]) -> int:
         )
     if group.get("language") not in {None, *LANGUAGES.values()}:
         raise ValueError(f"Unsupported package language: {group.get('language')}")
+    impact_inputs(group)
     required = {
         "python": {
             "format",
@@ -526,6 +636,10 @@ def validate_group(root: Path, group: Group, report_paths: set[Path]) -> int:
         "dart": {"format", "types", "tests", "dead-code-duplicates", "boundaries"},
     }.get(group.get("language", ""), set())
     roles = {gate.get("role") for gate in group["checks"] if isinstance(gate, dict)}
+    if group.get("language") == "dart" and any(
+        dart_scan_includes_boundaries(gate) for gate in group["checks"]
+    ):
+        roles.add("boundaries")
     if required - roles:
         raise ValueError(
             f"{group['path']}: missing mandatory checks: {', '.join(sorted(required - roles))}"
@@ -568,12 +682,28 @@ def validate_manifest_groups(
         if (path, language) in declared:
             continue
         group = declared.get((path, None))
+        test_support = dart_test_support(path, language, config["packages"])
         if group is None:
             raise ValueError(
                 f"Supported {language} package is missing from gate configuration: {path}"
+                + (
+                    "; declare a test-support package without language or sources,"
+                    " with lockfile and vulnerability checks"
+                    if test_support
+                    else ""
+                )
             )
-        if group.get("sources") or not workspace_members(root / path, language):
+        if group.get("sources") or not (
+            test_support or workspace_members(root / path, language)
+        ):
             raise ValueError(f"{path}: package language must be {language}")
+
+
+def has_workflows(root: Path, files: list[Path]) -> bool:
+    return any(
+        path.parent == root / ".github/workflows" and path.suffix in {".yml", ".yaml"}
+        for path in files
+    )
 
 
 def validate_required_checks(root: Path, config: GateConfig) -> None:
@@ -588,10 +718,7 @@ def validate_required_checks(root: Path, config: GateConfig) -> None:
     required = {"secrets-files"}
     if config.get("scan_git_history", True):
         required.add("secrets-history")
-    if any(
-        path.parent == root / ".github/workflows" and path.suffix in {".yml", ".yaml"}
-        for path in files
-    ):
+    if has_workflows(root, files):
         required.update({"workflows", "ci-security"})
     if any(is_shell_script(path) for path in files):
         required.add("shell")
@@ -644,7 +771,12 @@ def validate_package_services(
     shared_roles: set[str],
     package_groups: list[Group] | None = None,
 ) -> None:
-    from project_setup import python_roots, workspace_matches, workspace_members
+    from project_setup import (
+        dependency_command,
+        python_roots,
+        workspace_matches,
+        workspace_members,
+    )
 
     directory = (root / group["path"]).resolve()
     language = group.get("language") or manifests.get(str(Path(group["path"])), "")
@@ -657,6 +789,8 @@ def validate_package_services(
         ):
             inherited.update(gate.get("role", "") for gate in parent["checks"])
     require_roles(group["path"], {"lockfiles", "vulnerabilities"}, roles | inherited)
+    if language == "python":
+        dependency_command(directory, language)  # Raises when no lockfile exists.
     if not group.get("language"):
         return
     require_roles(group["path"], {"security"}, roles | shared_roles)
@@ -700,7 +834,7 @@ def parse_config(content: str) -> GateConfig:
         or not isinstance(config.get("shared"), list)
     ):
         raise TypeError(
-            "Gate configuration must contain packages and shared lists; preserve existing checks and migrate to the current HE templates before reinstalling"
+            "Gate configuration must contain packages and shared lists; rerun the Hard Eng installer to regenerate a retired families configuration from the current templates"
         )
     return config
 

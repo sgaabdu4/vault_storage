@@ -1,4 +1,4 @@
-"""Run a current-files Gitleaks scan without ignored build output."""
+"""Run current-files scans without ignored build output."""
 
 import os
 import shutil
@@ -27,7 +27,7 @@ def scan_paths(repository: Path) -> list[Path]:
     paths = {Path(value) for value in result.stdout.split("\0") if value}
     paths -= {Path(value) for value in deleted.stdout.split("\0") if value}
     if any(path.is_absolute() or ".." in path.parts for path in paths):
-        raise ValueError("Gitleaks inventory contains an unsafe repository path")
+        raise ValueError("Scan inventory contains an unsafe repository path")
     return sorted(paths)
 
 
@@ -43,6 +43,18 @@ def is_gitlink(repository: Path, relative_path: Path) -> bool:
     return any(
         entry.startswith("160000 ") for entry in result.stdout.split("\0") if entry
     )
+
+
+def is_tracked(path: Path) -> bool:
+    """Ask the repository owning the file, which may be a submodule."""
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--", path.name],
+        cwd=path.parent,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return bool(result.stdout)
 
 
 def validate_current_files_command(command: list[str]) -> None:
@@ -69,7 +81,7 @@ def copy_link_target(source: Path, target: Path, ancestors: frozenset[Path]) -> 
         copy_scan_tree(source, target, ancestors)
         return
     if not source.is_file():
-        raise ValueError(f"Gitleaks source is not a regular file: {source}")
+        raise ValueError(f"Scan source is not a regular file: {source}")
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, target)
 
@@ -82,21 +94,21 @@ def copy_scan_entry(
     try:
         source = entry.resolve(strict=True)
     except OSError as error:
-        raise ValueError(f"Gitleaks source is missing: {relative_path}") from error
+        raise ValueError(f"Scan source is missing: {relative_path}") from error
     if not source.is_relative_to(root):
-        raise ValueError(f"Gitleaks source escapes the repository: {relative_path}")
+        raise ValueError(f"Scan source escapes the repository: {relative_path}")
     target = destination / relative_path
     if entry.is_symlink():
+        if source.is_file() and not is_tracked(source):
+            return
         copy_link_target(source, target, ancestors)
         return
     if source.is_dir():
         if not is_gitlink(root, relative_path):
-            raise ValueError(
-                f"Gitleaks source is not a tracked submodule: {relative_path}"
-            )
+            raise ValueError(f"Scan source is not a tracked submodule: {relative_path}")
         if not (source / ".git").exists():
             raise ValueError(
-                f"Gitleaks submodule is uninitialized: {relative_path}; run git submodule update --init --recursive"
+                f"Scan submodule is uninitialized: {relative_path}; run git submodule update --init --recursive"
             )
         copy_scan_tree(source, target, ancestors)
         return
@@ -109,7 +121,7 @@ def copy_scan_tree(
     """Copy scan inputs, recursively scanning tracked submodules."""
     root = repository.resolve()
     if root in ancestors:
-        raise ValueError("Gitleaks source contains a directory symlink cycle")
+        raise ValueError("Scan source contains a directory symlink cycle")
     next_ancestors = ancestors | {root}
     for relative_path in scan_paths(root):
         copy_scan_entry(root, destination, relative_path, next_ancestors)
@@ -193,15 +205,55 @@ def run_gate_command(
     stdout: IO[str] | None,
     stderr: IO[str],
 ) -> subprocess.CompletedProcess[bytes]:
-    """Run ordinary gates directly and snapshot only the native files scan."""
+    """Run ordinary gates directly and point current-file scans at a snapshot."""
     if role == "secrets-files":
         return run_current_files(command, directory, timeout, stdout, stderr)
-    return subprocess.run(
-        command,
-        cwd=directory,
-        check=False,
-        timeout=timeout,
-        env={**os.environ, "PNPM_CONFIG_DLX_CACHE_MAX_AGE": "0"},
-        stdout=stdout,
-        stderr=stderr,
-    )
+    environment = {**os.environ, "PNPM_CONFIG_DLX_CACHE_MAX_AGE": "0"}
+    with tempfile.TemporaryDirectory(prefix="hard-eng-gate-") as temporary:
+        if role == "ci-security":
+            from update import github_token
+
+            if token := github_token():
+                environment["GH_TOKEN"] = token
+            environment["ZIZMOR_CONFIG"] = zizmor_config(directory, Path(temporary))
+        if role == "deployment":
+            copy_scan_tree(directory, Path(temporary))
+            command = [temporary if value == "." else value for value in command]
+        result = subprocess.run(
+            command,
+            cwd=directory,
+            check=False,
+            timeout=timeout,
+            env=environment,
+            stdout=stdout,
+            stderr=stderr,
+        )
+    if role == "ci-security" and result.returncode == 3:
+        from gate_config import has_workflows, repository_files
+
+        zizmor = any(
+            Path(part).name.partition("@")[0] == "zizmor" for part in command[:2]
+        )
+        if zizmor and not has_workflows(directory, repository_files(directory)):
+            stderr.write("No GitHub workflows to audit: zizmor collected no inputs.\n")
+            result.returncode = 0
+    return result
+
+
+def zizmor_config(directory: Path, temporary: Path) -> str:
+    """actionlint rejects `$/`, zizmor's only fix for self-repository, so that audit is off."""
+    import yaml
+
+    empty: dict[str, object] = {}
+    config: object = empty
+    for name in ("zizmor.yml", ".github/zizmor.yml"):
+        if (directory / name).is_file():
+            config = yaml.safe_load((directory / name).read_text()) or empty
+            break
+    rules = config.setdefault("rules", {}) if isinstance(config, dict) else None
+    if not isinstance(rules, dict):
+        raise TypeError("zizmor configuration must map rules to settings")
+    rules["self-repository"] = {"disable": True}
+    path = temporary / "zizmor.yml"
+    path.write_text(yaml.safe_dump(config))
+    return str(path)

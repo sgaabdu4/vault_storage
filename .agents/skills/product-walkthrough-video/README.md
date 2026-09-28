@@ -238,7 +238,7 @@ node scripts/review-video.mjs \
   --output-dir /path/to/accepted/video-review \
   --report /path/to/accepted/video-review.json \
   --approve \
-  --reviewer "Copilot" \
+  --reviewer "Claude" \
   --notes "Watched the complete video at 1x and inspected the opening sheet, all contact sheets, every checkpoint, all navigations, pointer continuity, and smooth scrolls."
 ```
 

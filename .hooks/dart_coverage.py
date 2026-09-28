@@ -27,8 +27,19 @@ bool erased(CompilationUnitMember node) {
   }
   if (node is EnumDeclaration) {
     return node.withClause == null && node.implementsClause == null &&
-        !descendants(node).any((child) => child is ClassMember ||
-            child is ArgumentList || child is FormalParameterList);
+        node.body.members.every(erasedEnumMember);
+  }
+  return false;
+}
+
+// Enum values are const, so their constructors and final fields emit no counters.
+bool erasedEnumMember(ClassMember member) {
+  if (member is FieldDeclaration) {
+    return member.isStatic ? member.fields.isConst : member.fields.isFinal;
+  }
+  if (member is ConstructorDeclaration) {
+    return member.constKeyword != null && member.factoryKeyword == null &&
+        member.body is EmptyFunctionBody;
   }
   return false;
 }

@@ -3,10 +3,30 @@
 from __future__ import annotations
 
 from collections import deque
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from gate_config import Group
+
+
+def impact_inputs(group: Group) -> list[PurePosixPath]:
+    inputs = group.get("impact_inputs", [])
+    if not isinstance(inputs, list) or any(
+        not isinstance(value, str)
+        or not value.strip()
+        or value.strip("./") == ""
+        or PurePosixPath(value).is_absolute()
+        or PureWindowsPath(value).drive
+        or ".." in PurePosixPath(value).parts
+        or any(mark in value for mark in "*?[]\\")
+        for value in inputs
+    ):
+        raise ValueError(
+            "impact_inputs must list explicit repository-relative files or directory "
+            "prefixes without globs or parent traversal"
+        )
+    return [PurePosixPath(value) for value in inputs]
 
 
 def dependency_review_guidance(packages: list[Group]) -> str | None:

@@ -2,14 +2,107 @@
 
 import json
 import os
+import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
 from urllib.parse import urlparse
 
-from gate_config import JsonObject
+from gate_config import JsonObject, json_file, repository_files
 
 APPWRITE_CLOUD_MCP_URL = "https://mcp.appwrite.io/"
+RETIRED_INTEGRATIONS = re.compile(
+    r"(?<![a-z0-9-])(?:context-mode|codebase-memory(?:-mcp)?)(?![a-z0-9-])",
+    re.IGNORECASE,
+)
+APPWRITE_CLI_FILES = (
+    ".agents/skills/appwrite-backend/references/appwrite-cli.md",
+    ".agents/skills/appwrite-backend/scripts/appwrite-schema-guard.mjs",
+    ".agents/skills/appwrite-backend/scripts/appwrite-schema-guard.test.mjs",
+)
+
+
+def retire_appwrite_cli(root: Path, source: Path, previous: Path | None) -> list[str]:
+    from update import contained, scaffold_files
+
+    retired = [
+        name
+        for name in APPWRITE_CLI_FILES
+        if not (source / name).is_file()
+        and ((root / name).exists() or (root / name).is_symlink())
+    ]
+    if not retired:
+        return []
+    owned = scaffold_files(source) | set(retired)
+    owned |= scaffold_files(previous) if previous is not None else set()
+    separator = r"""(?:[/\\]+|['"]\s*/\s*['"])"""
+    reference = re.compile(
+        r"\.(?:agents|claude)"
+        + separator
+        + separator.join(
+            re.escape(part)
+            for part in (
+                "skills",
+                "appwrite-backend",
+                "scripts",
+                "appwrite-schema-guard.mjs",
+            )
+        )
+    )
+    for path in repository_files(root) if APPWRITE_CLI_FILES[1] in retired else []:
+        name = path.relative_to(root).as_posix()
+        if (
+            name in owned
+            or not contained(root, path)
+            or path.suffix
+            not in {
+                ".py",
+                ".sh",
+                ".bash",
+                ".zsh",
+                ".ps1",
+                ".js",
+                ".mjs",
+                ".cjs",
+                ".jsx",
+                ".ts",
+                ".tsx",
+                ".dart",
+                ".json",
+                ".jsonc",
+                ".yaml",
+                ".yml",
+                ".toml",
+                ".ini",
+                ".cfg",
+            }
+        ):
+            continue
+        if reference.search(path.read_text(errors="replace").replace(r"\.", ".")):
+            raise ValueError(
+                f"Appwrite CLI migration required: {name} references the retiring installed schema guard; "
+                "move the required guard and its callers to project-owned scripts before setup."
+            )
+    deleted = []
+    for name in retired:
+        target = root / name
+        if not target.exists() and not target.is_symlink():
+            continue
+        old = previous / name if previous is not None else None
+        if (
+            not contained(root, target)
+            or target.is_symlink()
+            or old is None
+            or not old.is_file()
+            or target.read_bytes() != old.read_bytes()
+        ):
+            raise ValueError(
+                f"Preserve local Appwrite CLI file before setup: {name}; "
+                "retirement requires unchanged bytes from the previous source."
+            )
+        deleted.append(name)
+    return deleted
 
 
 def repository_launcher(root: Path, command: object) -> str | None:
@@ -193,6 +286,7 @@ def sentry_server(root: Path) -> JsonObject | None:
 def marionette_server(root: Path) -> JsonObject | None:
     """Register for any Flutter app; pin to the locked package when present."""
     import yaml
+
     from gate_config import nonproduction_source, repository_files
 
     for path in repository_files(root):
@@ -253,47 +347,279 @@ def detected_servers(root: Path) -> dict[str, JsonObject]:
     }
 
 
-def configure_mcp(root: Path, changes: dict[str, str]) -> None:
-    detected = detected_servers(root)
-    for name in (".mcp.json", ".github/mcp.json"):
-        target = root / name
-        current: JsonObject = json.loads(target.read_text()) if target.exists() else {}
-        plugins = (
-            ["codebase-memory-mcp"]
-            if name == ".mcp.json"
-            else ["context-mode", "codebase-memory-mcp"]
+def retired_integration(value: object) -> bool:
+    return isinstance(value, str) and RETIRED_INTEGRATIONS.search(value) is not None
+
+
+def retired_server(name: str, settings: object) -> bool:
+    if not isinstance(settings, dict):
+        return retired_integration(name)
+    command = str(settings.get("command", ""))
+    args = settings.get("args")
+    arguments: list[object] = args if isinstance(args, list) else []
+    if Path(command).name in {"sh", "bash"} and arguments[:1] == ["-c"]:
+        launcher = arguments[1] if len(arguments) == 2 else ""
+        expected = 'exec python3 "$(git rev-parse --show-toplevel)/.hooks/codebase-memory-mcp.py"'
+        if launcher == expected:
+            return True
+        if retired_integration(launcher):
+            raise ValueError(
+                "Retired MCP launcher contains custom shell commands; preserve unrelated commands before removing the retired integration."
+            )
+    if retired_integration(name) or retired_integration(command):
+        return True
+    if Path(command).name in {"pnpm", "npm"} and arguments[:1] in (["dlx"], ["exec"]):
+        arguments = arguments[1:]
+    elif Path(command).name in {"node", "python", "python3"}:
+        return bool(arguments) and retired_integration(arguments[0])
+    elif Path(command).name not in {"npx", "bunx", "uvx"}:
+        return False
+    first = next(
+        (
+            argument
+            for argument in arguments
+            if isinstance(argument, str) and not argument.startswith("-")
+        ),
+        "",
+    )
+    return retired_integration(first)
+
+
+def retire_claude_integrations(
+    settings: JsonObject, aliases: set[str] | None = None
+) -> None:
+    for key in ("enabledPlugins", "extraKnownMarketplaces"):
+        entries = settings.get(key)
+        if isinstance(entries, dict):
+            kept = {
+                name: value
+                for name, value in entries.items()
+                if not retired_integration(name)
+                and not retired_integration(json.dumps(value))
+            }
+            settings[key] = kept
+            if not kept:
+                del settings[key]
+    for key in ("enabledMcpjsonServers", "disabledMcpjsonServers"):
+        entries = settings.get(key)
+        if isinstance(entries, list):
+            kept = [
+                name
+                for name in entries
+                if not retired_integration(name) and name not in (aliases or set())
+            ]
+            settings[key] = kept
+            if not kept:
+                del settings[key]
+
+    permissions = settings.get("permissions")
+    if isinstance(permissions, dict):
+        for key in ("allow", "deny", "ask"):
+            entries = permissions.get(key)
+            if isinstance(entries, list):
+                permissions[key] = [
+                    item for item in entries if not retired_integration(item)
+                ]
+
+
+def retired_settings(settings: Path) -> str | None:
+    from agent_hooks import remove_old_generation
+
+    if not settings.is_file() or settings.is_symlink() or settings.parent.is_symlink():
+        return None
+    current = json.loads(settings.read_text())
+    before = json.dumps(current)
+    retire_claude_integrations(current)
+    if isinstance(hooks := current.get("hooks"), dict):
+        remove_old_generation(hooks)
+        if not hooks:
+            del current["hooks"]
+    if current.get("outputStyle") == "Plain English":
+        del current["outputStyle"]
+    return (
+        None if json.dumps(current) == before else json.dumps(current, indent=2) + "\n"
+    )
+
+
+def codex_table(server: str, settings: JsonObject) -> str:
+    return f'\n[mcp_servers."{server}"]\n' + "".join(
+        f"{key} = {json.dumps(value)}\n" for key, value in settings.items()
+    )
+
+
+def retire_codex_servers(config: str, removed: set[str]) -> str:
+    expected = tomllib.loads(config)
+    for name in removed:
+        del expected["mcp_servers"][name]
+    headers = list(re.finditer(r"(?m)^\[[^\n]+\][ \t]*(?:#.*)?$", config))
+    for index in reversed(range(len(headers))):
+        header = headers[index]
+        if any(
+            re.fullmatch(
+                rf"\[mcp_servers\.(?:{re.escape(name)}|\"{re.escape(name)}\"|'{re.escape(name)}')(?:\.[^\]]+)?\][ \t]*(?:#.*)?",
+                header.group(),
+            )
+            for name in removed
+        ):
+            end = (
+                headers[index + 1].start() if index + 1 < len(headers) else len(config)
+            )
+            config = config[: header.start()] + config[end:]
+    actual = tomllib.loads(config)
+    for parsed in (expected, actual):
+        if parsed.get("mcp_servers") == {}:
+            del parsed["mcp_servers"]
+    if actual != expected:
+        raise ValueError(
+            "Retired MCP definitions use unsupported TOML formatting; remove only their tables before setup."
         )
-        servers: JsonObject = {
-            plugin: {"command": "pnpm", "args": ["dlx", f"{plugin}@latest"]}
-            for plugin in plugins
-        }
-        existing = current.setdefault("mcpServers", {})
-        if not isinstance(existing, dict):
-            raise TypeError(f"Conflicting MCP servers in {name}; expected an object")
-        servers = {
-            plugin: settings
-            for plugin, settings in servers.items()
-            if plugin not in existing
-        }
-        for plugin in sorted(detected.keys() - existing.keys()):
-            settings = detected[plugin]
-            servers[plugin] = (
-                {"type": "http", **settings} if "url" in settings else settings
+    return config
+
+
+def approve_claude_servers(
+    root: Path, changes: dict[str, str], servers: list[str]
+) -> None:
+    name = ".claude/settings.json"
+    text = changes.get(name) or (
+        (root / name).read_text() if (root / name).is_file() else "{}"
+    )
+    settings: JsonObject = json.loads(text)
+    approved = settings.setdefault("enabledMcpjsonServers", [])
+    if not isinstance(approved, list):
+        raise TypeError(
+            f"Conflicting setting enabledMcpjsonServers in {name}; expected a list"
+        )
+    missing = [server for server in servers if server not in approved]
+    if missing:
+        approved.extend(missing)
+        changes[name] = json_file(root, settings)
+
+
+def retired_integration_files(root: Path) -> list[str]:
+    from update import contained
+
+    retired: list[str] = []
+    retired += subprocess.check_output(
+        ["git", "ls-files", "--", ".context-mode", ".codebase-memory"],
+        cwd=root,
+        text=True,
+    ).splitlines()
+    wrapper = root / ".hooks/codebase-memory-mcp.py"
+    if wrapper.exists() or wrapper.is_symlink():
+        if wrapper.is_symlink() or not contained(root, wrapper):
+            raise ValueError(
+                "Preserve the linked retired Codebase Memory launcher before setup"
             )
-        if servers:
-            existing.update(servers)
-            changes[name] = json.dumps(current, indent=2) + "\n"
+        retired.append(wrapper.relative_to(root).as_posix())
+    return retired
+
+
+def configure_mcp(root: Path, changes: dict[str, str]) -> list[str]:
+    from update import contained
+
+    detected = detected_servers(root)
+    target = root / ".mcp.json"
+    current: JsonObject = json.loads(target.read_text()) if target.exists() else {}
+    before = json.dumps(current)
+    existing = current.setdefault("mcpServers", {})
+    if not isinstance(existing, dict):
+        raise TypeError("Conflicting MCP servers in .mcp.json; expected an object")
+    removed = {
+        name for name, settings in existing.items() if retired_server(name, settings)
+    }
+    for name in removed:
+        del existing[name]
+    for plugin in sorted(detected.keys() - existing.keys()):
+        settings = detected[plugin]
+        existing[plugin] = (
+            {"type": "http", **settings} if "url" in settings else settings
+        )
+    retired = retired_integration_files(root)
+    if json.dumps(current) != before:
+        if current == {"mcpServers": {}}:
+            if target.exists():
+                retired.append(".mcp.json")
+        else:
+            changes[".mcp.json"] = json_file(root, current)
+    settings_name = ".claude/settings.json"
+    text = changes.get(settings_name) or (
+        (root / settings_name).read_text() if (root / settings_name).is_file() else "{}"
+    )
+    settings = json.loads(text)
+    retire_claude_integrations(settings, removed)
+    if settings != json.loads(text):
+        changes[settings_name] = json_file(root, settings)
+    approve_claude_servers(root, changes, sorted(detected.keys() & existing.keys()))
+    codex_retired, codex_config = configure_codex_mcp(root, changes, detected)
+    retired += codex_retired + retire_copilot_mcp(root, existing, codex_config)
+    if any(not contained(root, root / name) for name in retired):
+        raise ValueError(
+            "Retired files are reached through a linked directory; preserve the shared targets before setup"
+        )
+    return retired
+
+
+def configure_codex_mcp(
+    root: Path, changes: dict[str, str], detected: dict[str, JsonObject]
+) -> tuple[list[str], str]:
+    retired: list[str] = []
     target = root / ".codex/config.toml"
-    codex_config = target.read_text() if target.exists() else ""
-    parsed = tomllib.loads(codex_config)
-    for plugin in ("context-mode", "codebase-memory-mcp"):
-        existing_server = parsed.get("mcp_servers", {}).get(plugin)
-        if existing_server is None:
-            codex_config += f'\n[mcp_servers."{plugin}"]\ncommand = "pnpm"\nargs = ["dlx", "{plugin}@latest"]\n'
+    original = target.read_text() if target.exists() else ""
+    configured = tomllib.loads(original).get("mcp_servers", {})
+    removed = {
+        name for name, settings in configured.items() if retired_server(name, settings)
+    }
+    codex_config = retire_codex_servers(original, removed)
     for plugin, settings in detected.items():
-        if plugin not in parsed.get("mcp_servers", {}):
-            codex_config += f'\n[mcp_servers."{plugin}"]\n'
-            codex_config += "".join(
-                f"{key} = {json.dumps(value)}\n" for key, value in settings.items()
+        if plugin not in configured:
+            codex_config += codex_table(plugin, settings)
+    if codex_config != original:
+        if not codex_config.strip():
+            retired.append(".codex/config.toml")
+        else:
+            changes[".codex/config.toml"] = codex_config
+    return retired, codex_config
+
+
+def retire_copilot_mcp(
+    root: Path, claude_servers: JsonObject, codex_config: str
+) -> list[str]:
+    from update import contained
+
+    name = ".github/mcp.json"
+    target = root / name
+    if not target.exists():
+        return []
+    current: JsonObject = json.loads(target.read_text())
+    servers = current.get("mcpServers")
+    if not isinstance(servers, dict):
+        raise TypeError(f"Conflicting MCP servers in {name}; expected an object")
+    supported = tomllib.loads(codex_config).get("mcp_servers", {})
+    for server, settings in servers.items():
+        if not isinstance(settings, dict):
+            raise TypeError(
+                f"Conflicting MCP server {server} in {name}; expected an object"
             )
-    changes[".codex/config.toml"] = codex_config
+        standard = retired_server(server, settings)
+        native = (
+            {key: value for key, value in settings.items() if key != "type"}
+            if settings.get("type") == "http"
+            else settings
+        )
+        if (
+            not standard
+            and settings != claude_servers.get(server)
+            and native != supported.get(server)
+        ):
+            raise ValueError(
+                f"Harness migration required: preserve the {server} MCP definition from {name} in Claude or Codex, then remove the retired configuration before setup."
+            )
+    if (
+        current.keys() > {"mcpServers"}
+        or target.is_symlink()
+        or not contained(root, target)
+    ):
+        raise ValueError(
+            f"Preserve custom or linked retired harness config before setup: {name}"
+        )
+    return [name]

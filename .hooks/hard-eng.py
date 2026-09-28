@@ -2,6 +2,7 @@
 """Run native gate commands and handle the three agreed hook events."""
 
 import configparser
+import fcntl
 import json
 import os
 import shlex
@@ -10,10 +11,12 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import tomllib
 import xml.etree.ElementTree as ET
+from collections.abc import Generator
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
 from typing import TypedDict, cast
 from urllib.parse import unquote, urljoin, urlparse
@@ -335,19 +338,32 @@ def production_files(
     return files
 
 
-def prepare_command(group: Group, gate: Gate, timeout: float) -> list[str]:
+def prepare_command(
+    group: Group, gate: Gate, timeout: float, groups: list[Group] | None = None
+) -> list[str]:
     command = managed_command(gate["command"], ROOT / group["path"])
+    if gate.get("role") == "security" and "p/python" in command:
+        index = command.index("p/python") + 1
+        command = [
+            *command[:index],
+            "--config",
+            str(ROOT / ".agents/skills/he/semgrep/python.yaml"),
+            "--exclude-rule",
+            "python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1",
+            *command[index:],
+        ]
     if command[0] == "biome" and "." in command:
         from project_setup import javascript_files
 
+        files = javascript_files(
+            ROOT / group["path"], biome_children(group, gate, groups or [])
+        )
+        if not files:
+            return []
         command = [
             value
             for argument in command
-            for value in (
-                javascript_files(ROOT / group["path"])
-                if argument == "."
-                else [argument]
-            )
+            for value in (files if argument == "." else [argument])
         ]
     if gate.get("role") == "types":
         directory = ROOT / group["path"]
@@ -471,14 +487,20 @@ def run_gate(
     gate: Gate,
     timeout: float,
     output_lock: AbstractContextManager[object],
+    groups: list[Group] | None = None,
 ) -> bool:
-    failed = False
+    started = time.monotonic()
     print(f"CHECK {group['path']}/{gate['name']}", flush=True)
     try:
         report_path = coverage_path = None
         directory = ROOT / group["path"]
         expected_sources: set[Path] = set()
-        command = prepare_command(group, gate, timeout)
+        command = prepare_command(group, gate, timeout, groups)
+        if not command:
+            print(
+                f"COVERED {gate['name']} by selected child checks; elapsed {time.monotonic() - started:.3f}s"
+            )
+            return False
         from reports import SCANNERS, emit_dart_test_failure, validate_scanner_log
 
         report = gate.get("report", {})
@@ -504,8 +526,9 @@ def run_gate(
             report_path, coverage_path, directory, expected_sources = prepare_reports(
                 group, report, kind, tests, scanner, command
             )
-        capture = tests and kind == "dart-tests" and report.get("stdout", True)
-        capture = capture or scanner and report.get("stdout") is True
+        capture = (tests and kind == "dart-tests" and report.get("stdout", True)) or (
+            scanner and report.get("stdout") is True
+        )
         result = None
         with tempfile.TemporaryFile(
             mode="w+", encoding="utf-8", errors="replace"
@@ -564,11 +587,12 @@ def run_gate(
             if covered * 100 < total * 70:
                 raise ValueError("Line coverage is below the required 70%")
         print(
-            f"{'PASS' if result.returncode == 0 else 'FAIL'} {gate['name']} (exit {result.returncode})"
+            f"{'PASS' if result.returncode == 0 else 'FAIL'} {gate['name']} "
+            f"(exit {result.returncode}; elapsed {time.monotonic() - started:.3f}s)"
             + parallel_hint(result.returncode, tests, command),
             flush=True,
         )
-        failed |= result.returncode != 0
+        return result.returncode != 0
     except (
         ImportError,
         OSError,
@@ -578,13 +602,66 @@ def run_gate(
         subprocess.TimeoutExpired,
         subprocess.CalledProcessError,
     ) as error:
-        print(f"FAIL {gate['name']}: {error}")
-        failed = True
-    return failed
+        print(
+            f"FAIL {gate['name']}: {error}; elapsed {time.monotonic() - started:.3f}s"
+        )
+        return True
+
+
+@contextmanager
+def check_lock(root: Path) -> Generator[None]:
+    """Gates write fixed report paths, so one check runs per checkout at a time."""
+    name = subprocess.check_output(
+        ["git", "rev-parse", "--git-path", "hard-eng-check.lock"], cwd=root, text=True
+    ).strip()
+    with (root / name).open("w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("Waiting for another Hard Eng check in this checkout", flush=True)
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def gate_timeout(root: Path) -> float:
+    """Each gate may use the whole configured budget: CI's in CI, pre-push's elsewhere."""
+    from shipping import load_policy
+
+    policy = load_policy(root, required=False)
+    if policy is None:
+        return 600
+    return policy["ci_seconds" if os.environ.get("CI") else "pre_push_seconds"]
+
+
+def biome_children(group: Group, gate: Gate, groups: list[Group]) -> tuple[Path, ...]:
+    command = gate["command"]
+    if (
+        group["path"] != "."
+        or group.get("language") != "javascript"
+        or gate.get("role") not in {"format-lint", "focused-tests", "typing-style"}
+        or gate.get("report")
+        or command[:2] not in (["biome", "ci"], ["biome", "lint"])
+        or "." not in command
+        or any(
+            arg not in {".", "--error-on-warnings"} and not arg.startswith("--only=")
+            for arg in command[2:]
+        )
+    ):
+        return ()
+    return tuple(
+        ROOT / child["path"]
+        for child in groups
+        if child["path"] != "."
+        and child.get("language") == "javascript"
+        and any(
+            check.get("role") == gate.get("role") and check["command"] == command
+            for check in child["checks"]
+        )
+    )
 
 
 def check(
-    timeout: float = 600,
+    timeout: float | None = None,
     base: str | None = None,
     plan_stage: str | None = None,
     *,
@@ -596,54 +673,66 @@ def check(
     if base is not None and check_scaffold_update(ROOT, base):
         return 0
 
-    groups = load_groups(ROOT, base)
-    from plans import report_stage, validate_plans
+    with check_lock(ROOT):
+        groups = load_groups(ROOT, base)
+        timeout = timeout or gate_timeout(ROOT)
+        from comments import validate_comments
+        from plans import report_stage, validate_plans
 
-    if verify_plan:
-        plan_stage = validate_plans(ROOT, base, plan_stage)
-    provision_tools(ROOT, groups, timeout)
-    output_lock = threading.Lock()
+        if verify_plan:
+            plan_stage = validate_plans(ROOT, base, plan_stage)
+        validate_comments(ROOT, base)
+        provision_tools(ROOT, groups, timeout)
+        output_lock = threading.Lock()
 
-    failed = False
-    pending: set[Future[bool]] = set()
-    checks = [(group, gate) for group in groups for gate in group["checks"]]
-    ordered = [item for item in checks if item[1].get("role") == "lockfiles"]
-    ordered += [item for item in checks if item[1].get("role") != "lockfiles"]
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        for group, gate in ordered:
-            if gate.get("parallel", False) and gate.get("role") != "lockfiles":
-                if len(pending) == 2:
-                    done, pending = wait(pending, return_when=FIRST_COMPLETED)
-                    for future in done:
+        failed = False
+        pending: set[Future[bool]] = set()
+        checks = [(group, gate) for group in groups for gate in group["checks"]]
+        ordered = [item for item in checks if item[1].get("role") == "lockfiles"]
+        ordered += [item for item in checks if item[1].get("role") != "lockfiles"]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for group, gate in ordered:
+                if gate.get("parallel", False) and gate.get("role") != "lockfiles":
+                    if len(pending) == 2:
+                        done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                        for future in done:
+                            failed |= future.result()
+                    pending.add(
+                        pool.submit(run_gate, group, gate, timeout, output_lock, groups)
+                    )
+                else:
+                    for future in pending:
                         failed |= future.result()
-                pending.add(pool.submit(run_gate, group, gate, timeout, output_lock))
-            else:
-                for future in pending:
-                    failed |= future.result()
-                pending.clear()
-                result = run_gate(group, gate, timeout, output_lock)
-                failed |= result
-                if result and gate.get("role") == "lockfiles":
-                    print("Dependency setup failed; remaining checks were not run.")
-                    report_stage(True, plan_stage)
-                    return 1
-        for future in pending:
-            failed |= future.result()
-    report_stage(failed, plan_stage)
-    return int(failed)
+                    pending.clear()
+                    result = run_gate(group, gate, timeout, output_lock, groups)
+                    failed |= result
+                    if result and gate.get("role") == "lockfiles":
+                        print("Dependency setup failed; remaining checks were not run.")
+                        report_stage(True, plan_stage)
+                        return 1
+            for future in pending:
+                failed |= future.result()
+        report_stage(failed, plan_stage)
+        return int(failed)
 
 
 def impact(base: str) -> int:
     """Tell CI whether the check will run only the secret scan, before tools."""
     from contextlib import redirect_stdout
 
-    from gate_config import changed_packages, parse_config
+    from ci_setup import impact_tools
+    from gate_config import affected_groups, parse_config
 
     config = parse_config((ROOT / "hard-eng.gates.json").read_text())
-    by_path = {group["path"]: group for group in config["packages"]}
+    groups: list[Group] = [
+        *config["packages"],
+        {"path": ".", "checks": config["shared"]},
+    ]
     with redirect_stdout(sys.stderr):
-        docs_only = bool(by_path) and changed_packages(ROOT, by_path, base) == set()
+        selected = affected_groups(ROOT, groups, base)
+    docs_only = bool(config["packages"]) and len(selected) == 1
     print(f"docs_only={str(docs_only).lower()}")
+    print("tools=" + " ".join(impact_tools(ROOT, selected)))
     return 0
 
 
@@ -682,7 +771,7 @@ def main() -> int:
     shipping.add_argument("--merge-method", choices=("merge", "squash", "rebase"))
     for event in ("session", "failure", "stop"):
         hook = commands.add_parser(event, help=f"Handle a native {event} hook")
-        hook.add_argument("agent", choices=("claude", "codex", "copilot"))
+        hook.add_argument("agent", choices=("claude", "codex"))
     args = parser.parse_args()
     if args.command == "check":
         from tool_setup import ensure_python_runtime
@@ -706,6 +795,9 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
+        # ssh under `git push` shares this pipe and leaves it non-blocking.
+        for stream in (sys.stdout, sys.stderr):
+            os.set_blocking(stream.fileno(), True)
         raise SystemExit(main())
     except (
         ImportError,
