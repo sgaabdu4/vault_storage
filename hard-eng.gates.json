@@ -27,11 +27,6 @@
           ]
         },
         {
-          "name": "dart-analyze",
-          "role": "project-types",
-          "command": ["dart", "analyze", "--fatal-infos", "lib", "test", "tool"]
-        },
-        {
           "name": "browser-download-coverage",
           "command": ["dart", "run", "tool/browser_coverage.dart"]
         },

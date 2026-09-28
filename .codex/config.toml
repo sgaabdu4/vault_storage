@@ -1,7 +1,7 @@
 
 [mcp_servers."dart"]
 command = "dart"
-args = ["mcp-server"]
+args = ["mcp-server", "--force-roots-fallback"]
 
 [mcp_servers."marionette"]
 command = "dart"
