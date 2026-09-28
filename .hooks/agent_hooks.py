@@ -66,7 +66,12 @@ def configure_instructions(
             not path.is_symlink()
             and path.is_file()
             and path.read_text().strip()
-            in {CLAUDE_IMPORT.strip(), "@.agents/hard-eng/current/AGENTS.md"}
+            in {
+                CLAUDE_IMPORT.strip(),
+                "@AGENTS.md",
+                (CLAUDE_IMPORT + "@AGENTS.md").strip(),
+                "@.agents/hard-eng/current/AGENTS.md",
+            }
         )
         if linked or imported:
             if not contained(root, path):
@@ -111,6 +116,7 @@ def configure_instructions(
                 else content
             )
             prefix = f"{start}\n{old}\n{end}\n\n"
+            existing = prefix if existing == prefix.removesuffix("\n") else existing
             if (
                 existing.count(start) != 1
                 or existing.count(end) != 1
