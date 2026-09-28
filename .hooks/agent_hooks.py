@@ -19,6 +19,17 @@ def replaces_agents(path: Path) -> bool:
     return path.is_symlink() or path.exists()
 
 
+def instruction_suffix(content: str) -> str:
+    end = "<!-- hard-eng:end -->\n"
+    if (
+        content.startswith("<!-- hard-eng:start -->\n")
+        and content.endswith(end)
+        and content.count("<!-- hard-eng:end -->") == 1
+    ):
+        return ""
+    return content.split(end + "\n", 1)[-1]
+
+
 def configure_instructions(
     root: Path, source: Path, previous: Path | None, changes: dict[str, str]
 ) -> list[str]:
@@ -126,7 +137,9 @@ def configure_instructions(
                     f"Local Hard Eng instructions differ or have conflicting markers in {name}; preserve them and resolve before replacing them"
                 )
             existing = existing[len(prefix) :]
-        changes[name] = f"{start}\n{content}\n{end}\n\n{existing}"
+        changes[name] = f"{start}\n{content}\n{end}\n" + (
+            f"\n{existing}" if existing else ""
+        )
     return retired
 
 
