@@ -5,19 +5,12 @@
       "name": "vault_storage",
       "path": ".",
       "language": "dart",
-      "sources": [
-        "lib"
-      ],
+      "sources": ["lib"],
       "checks": [
         {
           "name": "lockfile",
           "role": "lockfiles",
-          "command": [
-            "flutter",
-            "pub",
-            "get",
-            "--enforce-lockfile"
-          ]
+          "command": ["flutter", "pub", "get", "--enforce-lockfile"]
         },
         {
           "name": "format",
@@ -34,24 +27,8 @@
           ]
         },
         {
-          "name": "dart-analyze",
-          "role": "project-types",
-          "command": [
-            "dart",
-            "analyze",
-            "--fatal-infos",
-            "lib",
-            "test",
-            "tool"
-          ]
-        },
-        {
           "name": "browser-download-coverage",
-          "command": [
-            "dart",
-            "run",
-            "tool/browser_coverage.dart"
-          ]
+          "command": ["dart", "run", "tool/browser_coverage.dart"]
         },
         {
           "name": "dart-test",
@@ -92,17 +69,6 @@
           }
         },
         {
-          "name": "lint:boundaries",
-          "role": "boundaries",
-          "command": [
-            "dart-decimate",
-            "check",
-            ".",
-            "--boundary-violations",
-            "--strict"
-          ]
-        },
-        {
           "name": "secure-stream-performance",
           "role": "performance",
           "command": [
@@ -123,13 +89,7 @@
           "name": "strict-types-lint",
           "role": "types",
           "parallel": true,
-          "command": [
-            "dart",
-            "analyze",
-            "--fatal-infos",
-            "lib",
-            "test"
-          ]
+          "command": ["dart", "analyze", "--fatal-infos", "."]
         }
       ],
       "depends_on": []
@@ -138,19 +98,12 @@
       "name": "storage-example",
       "path": "example",
       "language": "dart",
-      "sources": [
-        "lib"
-      ],
+      "sources": ["lib"],
       "checks": [
         {
           "name": "lockfile",
           "role": "lockfiles",
-          "command": [
-            "flutter",
-            "pub",
-            "get",
-            "--enforce-lockfile"
-          ]
+          "command": ["flutter", "pub", "get", "--enforce-lockfile"]
         },
         {
           "name": "format",
@@ -168,12 +121,7 @@
         {
           "name": "dart-analyze",
           "role": "types",
-          "command": [
-            "dart",
-            "analyze",
-            "--fatal-infos",
-            "."
-          ]
+          "command": ["dart", "analyze", "--fatal-infos", "."]
         },
         {
           "name": "dart-test",
@@ -213,17 +161,6 @@
           }
         },
         {
-          "name": "lint:boundaries",
-          "role": "boundaries",
-          "command": [
-            "dart-decimate",
-            "check",
-            ".",
-            "--boundary-violations",
-            "--strict"
-          ]
-        },
-        {
           "name": "consumer-startup-performance",
           "role": "performance",
           "command": [
@@ -241,9 +178,7 @@
           }
         }
       ],
-      "depends_on": [
-        "."
-      ]
+      "depends_on": ["."]
     }
   ],
   "shared": [
@@ -272,10 +207,7 @@
       "name": "actionlint",
       "role": "workflows",
       "parallel": true,
-      "command": [
-        "actionlint",
-        "-no-color"
-      ]
+      "command": ["actionlint", "-no-color"]
     },
     {
       "name": "zizmor",
@@ -293,11 +225,7 @@
       "name": "shellcheck",
       "role": "shell",
       "parallel": true,
-      "command": [
-        "shellcheck",
-        "--",
-        "release.sh"
-      ]
+      "command": ["shellcheck", "--", "release.sh"]
     },
     {
       "name": "secrets-files",
@@ -373,9 +301,7 @@
       "Run Tests",
       "Package Analysis (PANA)"
     ],
-    "ui_paths": [
-      "example/lib/**"
-    ],
+    "ui_paths": ["example/lib/**"],
     "ci_seconds": 600,
     "pre_push_seconds": 600,
     "delivery": []

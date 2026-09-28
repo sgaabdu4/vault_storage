@@ -2,10 +2,12 @@
 
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
 import time
+from contextlib import suppress
 from pathlib import Path
 
 from shipping import (
@@ -20,7 +22,11 @@ from shipping import (
 from update import require_current
 
 
-def remote_base(root: Path, branch: str | None) -> str:
+def remote_base(root: Path, branch: str | None) -> str | None:
+    """The remote base revision, or None when the remote has no branches yet."""
+    destination = git(root, "remote", "get-url", "--push", "origin").strip()
+    if not git(root, "ls-remote", "--heads", destination).strip():
+        return None
     reference = f"refs/heads/{branch}" if branch else "HEAD"
     advertised = git(root, "ls-remote", "--exit-code", "origin", reference).split()
     if (
@@ -34,7 +40,58 @@ def remote_base(root: Path, branch: str | None) -> str:
     return revision
 
 
+def interrupted(number: int, _frame: object) -> None:
+    raise SystemExit(128 + number)
+
+
+def run_check(checkout: Path, base: str | None, environment: dict[str, str]) -> int:
+    """Run the snapshot's check in its own group so an interrupt stops every gate first."""
+    command = [sys.executable, str(checkout / ".hooks/hard-eng.py"), "check"]
+    check = subprocess.Popen(
+        [*command, *(["--base", base] if base else [])],
+        cwd=checkout,
+        env=environment,
+        start_new_session=True,
+    )
+    try:
+        return check.wait()
+    finally:
+        if check.poll() is None:
+            os.killpg(check.pid, signal.SIGTERM)
+            with suppress(subprocess.TimeoutExpired):
+                check.wait(timeout=10)
+            with suppress(ProcessLookupError):
+                os.killpg(check.pid, signal.SIGKILL)
+            check.wait()
+
+
+def push_base(
+    root: Path, branch: str, target: str, remote: str, revision: str
+) -> str | None:
+    """Diff base for one pushed ref; None checks everything on a remote's first push."""
+    if set(remote) != {"0"}:
+        if target == f"refs/heads/{branch}":
+            raise ValueError(
+                "Push a task branch and use a PR; direct base updates are blocked"
+            )
+        return remote
+    base = remote_base(root, branch)
+    if base is None:
+        print("The remote has no branches yet; checking everything for its first push.")
+    elif target == f"refs/heads/{branch}":
+        raise ValueError(
+            "Push a task branch and use a PR; direct base updates are blocked"
+        )
+    else:
+        # A new branch owns only what it added since leaving the base, not later base edits.
+        with suppress(ShippingError):
+            base = git(root, "merge-base", base, revision).strip()
+    return base
+
+
 def pre_push(root: Path) -> int:
+    signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGHUP, interrupted)
     policy = load_policy(root)
     assert policy is not None
     started = time.monotonic()
@@ -43,15 +100,20 @@ def pre_push(root: Path) -> int:
         if len(fields) != 4:
             raise ValueError("Invalid pre-push input")
         revision = fields[1]
-        if fields[2] == f"refs/heads/{policy['base']}":
-            raise ValueError(
-                "Push a task branch and use a PR; direct base updates are blocked"
-            )
+        base = push_base(root, policy["base"], fields[2], fields[3], revision)
         if set(revision) == {"0"}:
             continue
-        base = fields[3]
-        if set(base) == {"0"}:
-            base = remote_base(root, policy["base"])
+        with suppress(ShippingError):
+            if re.match(
+                r"(?:ssh://)?git@github\.com[:/]",
+                git(root, "remote", "get-url", "--push", "origin"),
+            ):
+                print(
+                    "Hard Eng: origin pushes to GitHub over SSH, which can drop the idle "
+                    "connection while these checks run (push exit 141 after they pass). "
+                    "Switch to HTTPS: git remote set-url origin https://github.com/<owner>/<repo>.git",
+                    flush=True,
+                )
         environment = os.environ.copy()
         for name in git(root, "rev-parse", "--local-env-vars").splitlines():
             environment.pop(name, None)
@@ -71,20 +133,9 @@ def pre_push(root: Path) -> int:
                         env=environment,
                         check=True,
                     )
-                result = subprocess.run(
-                    [
-                        sys.executable,
-                        str(checkout / ".hooks/hard-eng.py"),
-                        "check",
-                        "--base",
-                        base,
-                    ],
-                    cwd=checkout,
-                    env=environment,
-                    check=False,
-                )
-                if result.returncode:
-                    return result.returncode
+                returncode = run_check(checkout, base, environment)
+                if returncode:
+                    return returncode
             finally:
                 subprocess.run(
                     ["git", "worktree", "remove", "--force", str(checkout)],
@@ -92,9 +143,13 @@ def pre_push(root: Path) -> int:
                     env=environment,
                     check=True,
                 )
-        if time.monotonic() - started > policy["pre_push_seconds"]:
+        elapsed = time.monotonic() - started
+        if elapsed > policy["pre_push_seconds"]:
             raise ValueError(
-                "Pre-push verification exceeded its configured time budget"
+                f"Pre-push checks passed but took {elapsed:.0f}s, over the "
+                f"{policy['pre_push_seconds']:.0f}s pre_push_seconds time budget in "
+                "hard-eng.gates.json; speed up the slowest gates or raise the budget, "
+                "then push again"
             )
     print(f"Pre-push verification: {time.monotonic() - started:.2f}s")
     return 0

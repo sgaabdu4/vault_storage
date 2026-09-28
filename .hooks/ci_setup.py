@@ -6,8 +6,7 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
-from gate_config import GateConfig
+from gate_config import GateConfig, Group
 from project_setup import dependency_command
 
 MAINTENANCE_EVENTS = {"schedule", "workflow_dispatch"}
@@ -16,6 +15,69 @@ OLD_TRIGGERS = (
 )
 OLD_BASE = "${{ github.event.pull_request.base.sha || github.event.before }}"
 NEW_BASE = "${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.before }}"
+BOOTSTRAP_TOOLS = ["uv@latest", "python@3.12", "node@latest"]
+
+
+def pnpm_specification(root: Path, package: Group, groups: list[Group]) -> str:
+    """Reuse the pin of an established workspace dependency-install owner."""
+    directory = root / package["path"]
+    manifest = json.loads((directory / "package.json").read_text())
+    if (
+        "packageManager" not in manifest
+        and not (directory / "pnpm-lock.yaml").exists()
+        and not any(gate.get("role") == "lockfiles" for gate in package["checks"])
+    ):
+        owners = sorted(
+            (
+                root / group["path"]
+                for group in groups
+                if root / group["path"] in directory.parents
+                and any(
+                    gate.get("role") == "lockfiles"
+                    and gate["command"] == ["pnpm", "install", "--frozen-lockfile"]
+                    for gate in group["checks"]
+                )
+            ),
+            key=lambda path: len(path.parts),
+            reverse=True,
+        )
+        if owners and (owners[0] / "package.json").is_file():
+            manifest = json.loads((owners[0] / "package.json").read_text())
+    declared = manifest.get("packageManager", "pnpm@latest")
+    if (
+        not isinstance(declared, str)
+        or re.fullmatch(
+            r"pnpm@(?:latest|\d+(?:\.\d+){0,2}(?:-[\w.-]+)?)(?:\+[\w.-]+)?", declared
+        )
+        is None
+    ):
+        raise ValueError("CI requires a valid pnpm packageManager version")
+    return declared.split("+", 1)[0]
+
+
+def impact_tools(root: Path, groups: list[Group]) -> list[str]:
+    """Read selected SDK requirements before third-party Python packages exist."""
+    tools = list(BOOTSTRAP_TOOLS)
+    for group in groups:
+        directory = root / group["path"]
+        language = group.get("language")
+        commands = " ".join(" ".join(gate["command"]) for gate in group["checks"])
+        executables = {Path(gate["command"][0]).name for gate in group["checks"]}
+        flutter = "flutter" in executables or re.search(
+            r"\bflutter\s+(?:pub|test|analyze|build)\b", commands
+        )
+        dart = "dart" in executables or re.search(
+            r"\bdart\s+(?:pub|test|analyze|compile|run|format)\b", commands
+        )
+        if language == "dart" or flutter or dart:
+            tools.append("flutter@latest" if flutter else "dart@latest")
+        if language == "python" and (directory / "poetry.lock").exists():
+            tools.append("poetry@latest")
+        if language == "javascript":
+            tools.append(pnpm_specification(root, group, groups))
+    if "flutter@latest" in tools:
+        tools = [tool for tool in tools if tool != "dart@latest"]
+    return list(dict.fromkeys(tools))
 
 
 def workflow_triggers(source: Path, base: str) -> tuple[str, str]:
@@ -80,8 +142,12 @@ def migrate_workflow_pins(content: str) -> str:
     return content
 
 
+OLD_LAUNCHER = "pnpm dlx --allow-build=@jdxcode/mise"
+LAUNCHER = "pnpm dlx --config.ignore-scripts=false --allow-build=@jdxcode/mise"
+
+
 def migrate_workflow_tools(content: str) -> str:
-    launcher = "pnpm dlx --allow-build=@jdxcode/mise --package=@jdxcode/mise@latest mise --no-config"
+    launcher = f"{LAUNCHER} --package=@jdxcode/mise@latest mise --no-config"
     return re.sub(
         r"(?m)^        run: >-\n"
         r"          pnpm dlx --allow-build=@jdxcode/mise\n"
@@ -95,7 +161,7 @@ def migrate_workflow_tools(content: str) -> str:
             f"          MISE_FETCH_REMOTE_VERSIONS_CACHE=1h {launcher} exec {match['tools']} -- {match['check']}\n"
         ),
         content,
-    )
+    ).replace(f"{OLD_LAUNCHER} ", f"{LAUNCHER} ")
 
 
 def migrate_docs_path(source: Path, content: str) -> str:
@@ -128,7 +194,11 @@ def migrate_docs_path(source: Path, content: str) -> str:
 
 
 def workflow_tools(root: Path, config: GateConfig) -> list[str]:
-    tools = ["uv@latest", "python@3.12", "node@latest"]
+    tools = list(BOOTSTRAP_TOOLS)
+    groups: list[Group] = [
+        *config["packages"],
+        {"path": ".", "checks": config["shared"]},
+    ]
     for package in config["packages"]:
         directory = root / package["path"]
         language = package.get("language")
@@ -136,14 +206,15 @@ def workflow_tools(root: Path, config: GateConfig) -> list[str]:
             continue
         manager, _, _ = dependency_command(directory, language)
         if manager in {"dart", "flutter", "pnpm", "yarn", "bun", "poetry"}:
-            version = "latest"
-            if language == "javascript":
-                declared = json.loads((directory / "package.json").read_text()).get(
-                    "packageManager", ""
+            specification = (
+                pnpm_specification(root, package, groups)
+                if language == "javascript"
+                else manager + "@latest"
+            )
+            if re.fullmatch(r"[a-z]+@[\w.+-]+", specification) is None:
+                raise ValueError(
+                    "CI SDK specifications must contain a tool and version"
                 )
-                if declared.startswith(manager + "@"):
-                    version = declared.split("@", 1)[1].split("+", 1)[0]
-            specification = manager + "@" + version
             if specification not in tools:
                 tools.append(specification)
     if "flutter@latest" in tools and "dart@latest" in tools:
@@ -151,11 +222,47 @@ def workflow_tools(root: Path, config: GateConfig) -> list[str]:
     return tools
 
 
+def workflow_extra_tools(root: Path, config: GateConfig) -> list[str]:
+    """Keep manifest SDKs hidden behind custom command wrappers available."""
+    extras: list[str] = []
+    for package in config["packages"]:
+        inferred = impact_tools(root, [package])
+        required = workflow_tools(root, {"packages": [package], "shared": []})
+        extras.extend(tool for tool in required if tool not in inferred)
+    return list(dict.fromkeys(extras))
+
+
 def migrate_workflow_sdks(root: Path, config: GateConfig, content: str) -> str:
     """Add SDKs that packages added after CI generation need; keep project tools."""
     required = workflow_tools(root, config)[3:]
+    if "SDK_TOOLS: ${{ steps.impact.outputs.tools" in content:
+        import yaml
+
+        extras = workflow_extra_tools(root, config)
+        extra_pattern = r"(?m)^      EXTRA_SDK_TOOLS: (?P<tools>[^\n]+)$"
+        match = re.search(extra_pattern, content)
+        if extras and match:
+            old = yaml.safe_load(match["tools"])
+            if isinstance(old, str) and not old.startswith("${{"):
+                names = {tool.split("@", 1)[0] for tool in old.split()}
+                missing = [
+                    tool for tool in extras if tool.split("@", 1)[0] not in names
+                ]
+                if missing:
+                    content = re.sub(
+                        extra_pattern,
+                        "      EXTRA_SDK_TOOLS: "
+                        + json.dumps(" ".join([*old.split(), *missing])),
+                        content,
+                    )
+        fallback = " ".join([*BOOTSTRAP_TOOLS, *required])
+        return re.sub(
+            r"SDK_TOOLS: \$\{\{ steps\.impact\.outputs\.tools \|\| '[^']*' \}\}",
+            "SDK_TOOLS: ${{ steps.impact.outputs.tools || '" + fallback + "' }}",
+            content,
+        )
     pattern = re.compile(
-        r"(?m)^(?P<indent> +)(?P<launcher>pnpm dlx \S+ \S+ mise --no-config) "
+        r"(?m)^(?P<indent> +)(?P<launcher>pnpm dlx (?:\S+ )+?mise --no-config) "
         r"install (?P<tools>[^&\n]+) &&\n"
         r"(?P=indent)MISE_FETCH_REMOTE_VERSIONS_CACHE=1h (?P=launcher) exec (?P=tools) -- "
     )
@@ -181,8 +288,99 @@ def migrate_workflow_sdks(root: Path, config: GateConfig, content: str) -> str:
     return content.replace(match.group(0), updated, 1)
 
 
+def migrate_affected_tools(
+    root: Path, source: Path, config: GateConfig, content: str
+) -> str:
+    """Replace only the generated SDK/cache blocks; retain declared extra tools."""
+    import yaml
+
+    if "SDK_TOOLS: ${{ steps.impact.outputs.tools" in content:
+        return content
+    try:
+        jobs = yaml.safe_load(content).get("jobs", {})
+    except (yaml.YAMLError, AttributeError):
+        return content
+    if (
+        not isinstance(jobs, dict)
+        or list(jobs) != ["hard-eng"]
+        or not isinstance(jobs["hard-eng"], dict)
+        or "env" in jobs["hard-eng"]
+    ):
+        return content
+    pattern = re.compile(
+        r"(?m)^          (?P<launcher>pnpm dlx (?:\S+ )+?mise --no-config) "
+        r"install (?P<tools>[\w@.+ -]+) &&\n"
+        r"          MISE_FETCH_REMOTE_VERSIONS_CACHE=1h (?P=launcher) exec (?P=tools) -- "
+        r'uv run --no-project --with pyyaml python \.hooks/hard-eng\.py check --base "\$BASE_SHA"\n'
+    )
+    match = pattern.search(content)
+    marker = "      - name: Run required checks\n"
+    if match is None or "id: impact" not in content or content.count(marker) != 1:
+        return content
+    if "        env:\n" not in content.split(marker, 1)[1].split("\n      - ", 1)[0]:
+        return content
+    template = (source / ".github/workflows/hard-eng.yml").read_text()
+    required = workflow_tools(root, config)
+    known = {tool.split("@", 1)[0] for tool in required}
+    redundant_latest = "pnpm@latest" not in required and any(
+        tool.startswith("pnpm@") and tool in required for tool in match["tools"].split()
+    )
+    if any(
+        tool.split("@", 1)[0] in known
+        and tool not in required
+        and not (tool == "pnpm@latest" and redundant_latest)
+        for tool in match["tools"].split()
+    ):
+        print(
+            "Affected SDK setup pending: preserve and review the workflow's custom SDK versions before using dynamic provisioning.",
+            file=sys.stderr,
+        )
+        return content
+    extras = [
+        tool for tool in match["tools"].split() if tool.split("@", 1)[0] not in known
+    ]
+    extras = list(dict.fromkeys([*extras, *workflow_extra_tools(root, config)]))
+    environment = template[
+        template.index("    env:\n") : template.index("    steps:\n")
+    ]
+    environment = environment.replace(
+        "EXTRA_SDK_TOOLS: dart@latest",
+        "EXTRA_SDK_TOOLS: " + json.dumps(" ".join(extras)),
+    )
+    content = content.replace("    steps:\n", environment + "    steps:\n", 1)
+    run = template[template.index("          read -r -a tools") :]
+    content = content.replace(match.group(0), run, 1)
+    before, checks = content.split(marker, 1)
+    sdk = (
+        "          SDK_TOOLS: ${{ steps.impact.outputs.tools || '"
+        + " ".join(required)
+        + "' }}\n"
+    )
+    checks = checks.replace("        env:\n", "        env:\n" + sdk, 1)
+    return migrate_tool_cache(source, before + marker + checks)
+
+
+def migrate_tool_cache(source: Path, content: str) -> str:
+    """Keep installed tools and store data without their duplicate download caches."""
+    template = (source / ".github/workflows/hard-eng.yml").read_text()
+    old = '        run: python3 .hooks/hard-eng.py impact --base "$BASE_SHA" >> "$GITHUB_OUTPUT" || echo docs_only=false >> "$GITHUB_OUTPUT"\n'
+    start = template.index("        run: |\n", template.index("id: impact"))
+    end = template.index("      - name: Cache native", start)
+    content = content.replace(old, template[start:end], 1)
+    pattern = re.compile(
+        r"(?m)^          path: \$\{\{ runner\.temp \}\}/hard-eng-tools\n"
+        r"          key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-hard-eng-tools-[^\n]+\n"
+        r"          restore-keys: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-hard-eng-tools-\n"
+    )
+    start = template.index("          path: |\n")
+    end = template.index("      - uses:", start)
+    return pattern.sub(lambda _match: template[start:end], content, count=1)
+
+
 def maintenance_workflows_only(workflows: list[Path]) -> bool:
     """Allow a generated quality owner beside scheduled/manual maintenance jobs."""
+    import yaml
+
     if not workflows:
         return False
     for path in workflows:
@@ -203,17 +401,44 @@ def maintenance_workflows_only(workflows: list[Path]) -> bool:
         )
         if not events or not events <= MAINTENANCE_EVENTS:
             return False
-        jobs = workflow.get("jobs")
-        if isinstance(jobs, dict) and any(
-            isinstance(step, dict)
-            and isinstance(step.get("run"), str)
-            and re.search(r"\.hooks/hard-eng\.py\s+check(?:\s|$)", step["run"])
-            for job in jobs.values()
-            if isinstance(job, dict) and isinstance(job.get("steps"), list)
-            for step in job["steps"]
-        ):
+        if runs_hard_eng_check(workflow):
             return False
     return True
+
+
+def runs_hard_eng_check(workflow: object, *, require_base: bool = False) -> bool:
+    jobs = workflow.get("jobs") if isinstance(workflow, dict) else None
+    pattern = r"\.hooks/hard-eng\.py\s+check(?:\s|$)"
+    if require_base:
+        pattern += r"[^\n;|&]*--base(?:\s|=)\S+"
+    return isinstance(jobs, dict) and any(
+        isinstance(step, dict)
+        and isinstance(step.get("run"), str)
+        and re.search(pattern, step["run"].replace("\\\n", " "))
+        for job in jobs.values()
+        if isinstance(job, dict) and isinstance(job.get("steps"), list)
+        for step in job["steps"]
+    )
+
+
+def integrated(workflows: list[Path]) -> bool:
+    """Existing CI that already runs the check needs no integration reminder."""
+    import yaml
+
+    for path in workflows:
+        try:
+            workflow = yaml.safe_load(path.read_text())
+            if runs_hard_eng_check(workflow):
+                if runs_hard_eng_check(workflow, require_base=True):
+                    return True
+                print(
+                    f"CI adaptation pending: {path.name} runs Hard Eng without --base; "
+                    "pass the PR/push comparison commit to enable affected checks.",
+                    file=sys.stderr,
+                )
+        except yaml.YAMLError:
+            continue
+    return False
 
 
 def configure_ci(
@@ -227,8 +452,10 @@ def configure_ci(
         migrated = migrate_workflow_triggers(
             root, source, migrate_docs_path(source, migrated)
         )
+        migrated = migrate_affected_tools(root, source, config, migrated)
         if migrated != original:
             changes[name] = migrated
+        integrated([root / name])
         return
     workflows = [
         path
@@ -236,6 +463,8 @@ def configure_ci(
         if path.is_file() and path.suffix in {".yml", ".yaml"}
     ]
     if workflows and not maintenance_workflows_only(workflows):
+        if integrated(workflows):
+            return
         print(
             "Existing CI retained: integrate missing Hard Eng checks into their current jobs and require those results in shipping.checks; do not add a duplicate full pipeline.",
             file=sys.stderr,
@@ -263,7 +492,18 @@ def configure_ci(
     changes[name] = (
         (source / name)
         .read_text()
-        .replace("uv@latest python@3.12 node@latest dart@latest", " ".join(tools))
+        .replace(
+            "      EXTRA_SDK_TOOLS: dart@latest\n",
+            "      EXTRA_SDK_TOOLS: "
+            + json.dumps(" ".join(workflow_extra_tools(root, config)))
+            + "\n",
+            1,
+        )
+        .replace(
+            " || 'uv@latest python@3.12 node@latest'",
+            " || '" + " ".join(tools) + "'",
+            1,
+        )
         .replace(block, triggers, 1)
     )
     changes[name] = workflow_budget(root, changes[name])

@@ -49,10 +49,9 @@ example/README.md
 docs/*
 .git/
 __pycache__/
-.codebase-memory/
-.context-mode/
 .coverage
 .coverage.*
 
 # Local session cache used by the current Hard Eng runtime.
 .hard-eng/
+.claude/worktrees/
