@@ -919,14 +919,26 @@ def check_scaffold_update(root: Path, base: str) -> bool:
         return False
     if (
         SOURCE_FILE not in names
+        or not isinstance(previous, str)
+        or not isinstance(revision, str)
         or revision == previous
-        or not all(
-            isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value)
-            for value in (previous, revision)
-        )
+        or not re.fullmatch(r"[0-9a-f]{40}", previous)
+        or not re.fullmatch(r"[0-9a-f]{40}", revision)
     ):
         return False
-    if not isinstance(previous, str) or not isinstance(revision, str):
+    if any(
+        name
+        not in {
+            SOURCE_FILE,
+            "AGENTS.md",
+            "CLAUDE.md",
+            "AGENTS.override.md",
+            ".husky/pre-push",
+            ".agents/biome.json",
+        }
+        and not name.startswith((".hooks/", ".agents/skills/", ".claude/skills/"))
+        for name in names
+    ):
         return False
     if not verified_revision(revision):
         raise ValueError(
@@ -970,7 +982,8 @@ def check_scaffold_update(root: Path, base: str) -> bool:
 
 
 def preserved_instructions(root: Path, base: str, names: set[str]) -> bool:
-    end = "<!-- hard-eng:end -->\n\n"
+    from agent_hooks import instruction_suffix
+
     for name in names & {"AGENTS.md", "CLAUDE.md", "AGENTS.override.md"}:
         blob = f"{base}:{name}"
         original = subprocess.run(
@@ -980,9 +993,8 @@ def preserved_instructions(root: Path, base: str, names: set[str]) -> bool:
             capture_output=True,
             check=False,
         ).stdout
-        if (
-            not (root / name).is_file()
-            or original.split(end, 1)[-1] != (root / name).read_text().split(end, 1)[-1]
-        ):
+        if not (root / name).is_file() or instruction_suffix(
+            original
+        ) != instruction_suffix((root / name).read_text()):
             return False
     return True
