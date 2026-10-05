@@ -34,6 +34,7 @@ from gate_config import (
 )
 from project_setup import package_script_arguments as test_arguments
 from tool_setup import managed_command, provision_tools
+from untrusted_input import DECLARATIONS, reject_jsdoc_casts
 
 DartAnalyzer = TypedDict(
     "DartAnalyzer",
@@ -360,6 +361,8 @@ def prepare_command(
         )
         if not files:
             return []
+        if gate.get("role") == "typing-style":
+            reject_jsdoc_casts(ROOT / group["path"], files)
         command = [
             value
             for argument in command
@@ -441,6 +444,10 @@ def validate_typescript(
     expected = production_files(directory, group)
     if not {(directory / name).resolve() for name in expected} <= files:
         raise ValueError("TypeScript configuration omits declared production files")
+    if (ROOT / DECLARATIONS).resolve() not in files:
+        raise ValueError(
+            f"TypeScript configuration omits {DECLARATIONS}; rerun the Hard Eng installer"
+        )
 
 
 def prepare_reports(
@@ -674,6 +681,23 @@ def require_ci_base(base: str | None) -> None:
         )
 
 
+def proven_elsewhere(base: str | None) -> bool:
+    """A merged PR or verified upstream release already proved this change."""
+    from shipping import reused_pull_request
+    from update import check_scaffold_update
+
+    if base is None:
+        return False
+    if head := reused_pull_request(ROOT, base):
+        print(
+            f"PR head {head} passed the required checks on this exact tree; "
+            "not repeating them on the base branch.",
+            flush=True,
+        )
+        return True
+    return check_scaffold_update(ROOT, base)
+
+
 def check(
     timeout: float | None = None,
     base: str | None = None,
@@ -682,11 +706,10 @@ def check(
     verify_plan: bool = True,
 ) -> int:
     from gate_config import load_groups, parse_config
-    from update import check_scaffold_update
 
     require_ci_base(base)
     parse_config((ROOT / "hard-eng.gates.json").read_text())
-    if base is not None and check_scaffold_update(ROOT, base):
+    if proven_elsewhere(base):
         return 0
 
     with check_lock(ROOT):
@@ -776,6 +799,22 @@ def main() -> int:
     )
     impacts.add_argument("--base", required=True)
     commands.add_parser("pre-push", help="Verify the actual commits being pushed")
+    usage = commands.add_parser(
+        "ci-usage", help="Report billed GitHub Actions minutes by workflow and job"
+    )
+    usage.add_argument("--repo", help="owner/name; defaults to origin")
+    usage.add_argument("--days", type=int, default=14)
+    mutating = commands.add_parser(
+        "mutation",
+        help="Report changed lines whose tests miss small deliberate bugs",
+    )
+    mutating.add_argument("--base", required=True)
+    mutating.add_argument("--seconds", type=float, help="Stop after this many seconds")
+    mutating.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Mutate this checkout, which must be disposable, instead of a snapshot",
+    )
     updating = commands.add_parser(
         "update",
         help="Install the newest CI-verified Hard Eng revision and record the result",
@@ -806,6 +845,14 @@ def main() -> int:
         return impact(args.base)
     if args.command == "pre-push":
         return pre_push()
+    if args.command == "ci-usage":
+        from ci_setup import ci_usage
+
+        return ci_usage(ROOT, args.repo, args.days)
+    if args.command == "mutation":
+        from ship_actions import mutate
+
+        return mutate(ROOT, args.base, args.seconds, args.in_place, production_files)
     if args.command == "update":
         from update_runner import apply_update, run_update
 
