@@ -8,7 +8,7 @@ Lock freerasp at the latest stable 8.2.4 within the existing `^8.2.2` constraint
 
 ## Repository context
 
-Owners: `pubspec.lock` (the freerasp entry from the Dependabot update) and this plan. freerasp is used by `lib/src/vault_storage_impl.dart`, `lib/src/vault_storage_impl_helpers.dart` and `lib/src/mock/freerasp_mock.dart`. The Flutter workflow owns required CI; the version-tag publisher stays unchanged.
+Owners: `pubspec.lock` (the freerasp entry from the Dependabot update), the same entry in `example/pubspec.lock`, and this plan. freerasp is used by `lib/src/vault_storage_impl.dart`, `lib/src/vault_storage_impl_helpers.dart` and `lib/src/mock/freerasp_mock.dart`. The Flutter workflow owns required CI; the version-tag publisher stays unchanged.
 
 ## Decisions + authorization
 
@@ -18,7 +18,7 @@ Authority: The user approved fixing and merging the open Dependabot updates. Thi
 
 ## Acceptance + steps
 
-- [ ] Rebase the Dependabot update onto current main; the lockfile resolves freerasp 8.2.4 under `--enforce-lockfile`.
+- [ ] Rebase the Dependabot update onto current main; both package and example lockfiles resolve freerasp 8.2.4 under `--enforce-lockfile`.
 - [ ] Pass package and example analysis, tests, coverage, performance, dependency, security and workflow checks in the native gate.
 - [ ] Pass the full PANA score in CI, including WASM compatibility.
 - [ ] Review the public diff; keep package publication contents and the existing version.
@@ -31,7 +31,7 @@ Execution: One coordinator rebases the update, adds this plan, runs the native g
 
 ## Risks + recovery
 
-freerasp 8.2.4 is a patch release of the threat-detection plugin; a behavior change could affect security callbacks. The existing package tests cover the freerasp integration through its mock, and CI runs them. Revert the lockfile entry to 8.2.2 if a regression appears.
+freerasp 8.2.4 is a patch release of the threat-detection plugin; a behavior change could affect security callbacks. The existing package tests cover the freerasp integration through its mock, and CI runs them. Revert both lockfile entries to 8.2.2 if a regression appears.
 
 ## ux_reference
 
