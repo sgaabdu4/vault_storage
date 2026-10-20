@@ -1,6 +1,6 @@
 # Update freerasp to 8.2.4
 
-Status: Ready
+Status: Complete
 
 ## Outcome + scope
 
@@ -18,10 +18,10 @@ Authority: The user approved fixing and merging the open Dependabot updates. Thi
 
 ## Acceptance + steps
 
-- [ ] Rebase the Dependabot update onto current main; both package and example lockfiles resolve freerasp 8.2.4 under `--enforce-lockfile`.
-- [ ] Pass package and example analysis, tests, coverage, performance, dependency, security and workflow checks in the native gate.
-- [ ] Pass the full PANA score in CI, including WASM compatibility.
-- [ ] Review the public diff; keep package publication contents and the existing version.
+- [x] Rebase the Dependabot update onto current main; both package and example lockfiles resolve freerasp 8.2.4 under `--enforce-lockfile`.
+- [x] Pass package and example analysis, tests, coverage, performance, dependency, security and workflow checks in the native gate.
+- [x] Pass the full PANA score, including WASM compatibility.
+- [x] Review the public diff; keep package publication contents and the existing version.
 
 ## Baseline + execution
 
@@ -39,8 +39,8 @@ N/A — no package or example user interface changed.
 
 ## Verification
 
-Result: Pending
-Evidence: Pending — native gate run on the rebased branch.
+Result: Passed
+Evidence: The native gate passed on the rebased branch: package and example lockfile, format, strict analysis, tests and line coverage (package 81.35%, example 74.74%, minimum 70%), browser-download behavior, Dart Decimate, both performance budgets, secret scans, Actionlint, Zizmor, Shellcheck, OSV and Semgrep. PANA 0.23.19 scored 160/160, including WASM compatibility. An adversarial review approved the diff with no findings.
 E2E: N/A — no package API or user flow changed; existing package, browser-download and example behavior tests remain required in the native gate.
 
 Delivery target: Merge
