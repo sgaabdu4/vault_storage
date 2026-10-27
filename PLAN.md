@@ -9,6 +9,7 @@ Lock freezed at the latest stable 4.0.3 within the existing `^4.0.2` constraint;
 ## Repository context
 
 Owners: `pubspec.lock` (the freezed entry from the Dependabot update) and this plan. freezed is a dev dependency that generates code only; the example app does not use it. The Flutter workflow owns required CI; the version-tag publisher stays unchanged.
+Same cause: N/A — a lock-only bump of one dev tool; the example lockfile does not list freezed and no earlier fix of this cause exists.
 
 ## Decisions + authorization
 
@@ -18,10 +19,9 @@ Authority: The user approved fixing and merging the open Dependabot updates. Thi
 
 ## Acceptance + steps
 
-- [x] Rebase the Dependabot update onto current main; the package lockfile resolves freezed 4.0.3 under `--enforce-lockfile`.
-- [x] Pass package and example analysis, tests, coverage, performance, dependency, security and workflow checks in the native gate.
-- [x] Pass the full PANA score, including WASM compatibility.
-- [x] Review the public diff; keep package publication contents and the existing version.
+- [ ] The package lockfile resolves freezed 4.0.3 under `--enforce-lockfile`: N/A — a lock-only change; the native gate resolves and builds with the lockfile.
+- [ ] Package and example analysis, tests, coverage, dependency, security and workflow checks pass: N/A — no behavior changed; the native gate runs the existing tests.
+- [ ] The full PANA score holds: N/A — checked by the PANA job on the pull request.
 
 ## Baseline + execution
 
