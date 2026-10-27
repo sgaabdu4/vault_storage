@@ -40,7 +40,7 @@ N/A — no package or example user interface changed.
 ## Verification
 
 Result: Passed
-Evidence: pending the native gate run.
+Evidence: The native gate passed on the rebased branch: lockfile, format, strict analysis, tests and line coverage (package 81.35%, example 74.74%, minimum 70%), browser-download behavior, Dart Decimate, both performance budgets, secret scans, Actionlint, Zizmor, Shellcheck, OSV and Semgrep. The PANA job passed on the pull request. PANA was not run locally. An adversarial review approved the diff with no findings.
 E2E: N/A — no package API or user flow changed; existing package, browser-download and example behavior tests remain required in the native gate.
 
 Delivery target: Merge
