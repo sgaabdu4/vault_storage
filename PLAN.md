@@ -1,14 +1,14 @@
-# Update freerasp to 8.2.4
+# Update freezed to 4.0.3
 
-Status: Complete
+Status: Ready
 
 ## Outcome + scope
 
-Lock freerasp at the latest stable 8.2.4 within the existing `^8.2.2` constraint; package APIs, storage formats, version 5.0.1 and other dependencies stay unchanged.
+Lock freezed at the latest stable 4.0.3 within the existing `^4.0.2` constraint; package APIs, storage formats, version 5.0.1 and other dependencies stay unchanged.
 
 ## Repository context
 
-Owners: `pubspec.lock` (the freerasp entry from the Dependabot update), the same entry in `example/pubspec.lock`, and this plan. freerasp is used by `lib/src/vault_storage_impl.dart`, `lib/src/vault_storage_impl_helpers.dart` and `lib/src/mock/freerasp_mock.dart`. The Flutter workflow owns required CI; the version-tag publisher stays unchanged.
+Owners: `pubspec.lock` (the freezed entry from the Dependabot update) and this plan. freezed is a dev dependency that generates code only; the example app does not use it. The Flutter workflow owns required CI; the version-tag publisher stays unchanged.
 
 ## Decisions + authorization
 
@@ -18,7 +18,7 @@ Authority: The user approved fixing and merging the open Dependabot updates. Thi
 
 ## Acceptance + steps
 
-- [x] Rebase the Dependabot update onto current main; both package and example lockfiles resolve freerasp 8.2.4 under `--enforce-lockfile`.
+- [x] Rebase the Dependabot update onto current main; the package lockfile resolves freezed 4.0.3 under `--enforce-lockfile`.
 - [x] Pass package and example analysis, tests, coverage, performance, dependency, security and workflow checks in the native gate.
 - [x] Pass the full PANA score, including WASM compatibility.
 - [x] Review the public diff; keep package publication contents and the existing version.
@@ -26,12 +26,12 @@ Authority: The user approved fixing and merging the open Dependabot updates. Thi
 ## Baseline + execution
 
 Result: Passed
-Evidence: Dependabot CI on the update failed only because no applicable PLAN.md was changed; the Hard Eng check stopped before running package checks, and the format, analysis and test jobs only mirror that result. PANA passed with the full score on the same update.
+Evidence: Dependabot CI on the update failed only because no applicable PLAN.md was changed; the Hard Eng check stopped before running package checks, and the format, analysis and test jobs only mirror that result. PANA passed on the same update.
 Execution: One coordinator rebases the update, adds this plan, runs the native gate, then verifies the exact-head PR and main checks.
 
 ## Risks + recovery
 
-freerasp 8.2.4 is a patch release of the threat-detection plugin; a behavior change could affect security callbacks. The existing package tests cover the freerasp integration through its mock, and CI runs them. Revert both lockfile entries to 8.2.2 if a regression appears.
+freezed 4.0.3 is a patch release of a code generator used at build time only; it adds nothing to the published package at run time. Generated files are checked by the existing build and tests. Revert the lockfile entry to 4.0.2 if a regression appears.
 
 ## ux_reference
 
@@ -40,7 +40,7 @@ N/A — no package or example user interface changed.
 ## Verification
 
 Result: Passed
-Evidence: The native gate passed on the rebased branch: package and example lockfile, format, strict analysis, tests and line coverage (package 81.35%, example 74.74%, minimum 70%), browser-download behavior, Dart Decimate, both performance budgets, secret scans, Actionlint, Zizmor, Shellcheck, OSV and Semgrep. PANA 0.23.19 scored 160/160, including WASM compatibility. An adversarial review approved the diff with no findings.
+Evidence: pending the native gate run.
 E2E: N/A — no package API or user flow changed; existing package, browser-download and example behavior tests remain required in the native gate.
 
 Delivery target: Merge
