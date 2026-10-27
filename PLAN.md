@@ -1,6 +1,6 @@
 # Update freezed to 4.0.3
 
-Status: Ready
+Status: Complete
 
 ## Outcome + scope
 
@@ -19,9 +19,9 @@ Authority: The user approved fixing and merging the open Dependabot updates. Thi
 
 ## Acceptance + steps
 
-- [ ] The package lockfile resolves freezed 4.0.3 under `--enforce-lockfile`: N/A — a lock-only change; the native gate resolves and builds with the lockfile.
-- [ ] Package and example analysis, tests, coverage, dependency, security and workflow checks pass: N/A — no behavior changed; the native gate runs the existing tests.
-- [ ] The full PANA score holds: N/A — checked by the PANA job on the pull request.
+- [x] The package lockfile resolves freezed 4.0.3 under `--enforce-lockfile`: N/A — a lock-only change; the native gate resolves and builds with the lockfile.
+- [x] Package and example analysis, tests, coverage, dependency, security and workflow checks pass: N/A — no behavior changed; the native gate runs the existing tests.
+- [x] The full PANA score holds: N/A — checked by the PANA job on the pull request.
 
 ## Baseline + execution
 
