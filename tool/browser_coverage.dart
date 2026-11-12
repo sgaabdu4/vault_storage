@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'browser_coverage_mapping.dart';
 
+final _devToolsPattern = RegExp(r'DevTools listening on (ws://\S+)');
+
 Future<void> main() async {
   final base = File('coverage/lcov.base.info');
   if (base.existsSync()) base.deleteSync();
@@ -62,7 +64,7 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
   final errors = chrome.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((
     line,
   ) {
-    final match = RegExp(r'DevTools listening on (ws://\S+)').firstMatch(line);
+    final match = _devToolsPattern.firstMatch(line);
     if (match != null && !endpoint.isCompleted) endpoint.complete(Uri.parse(match[1]!));
   });
   final logs = chrome.stdout.drain<void>();

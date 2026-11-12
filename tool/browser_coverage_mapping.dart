@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:source_maps/source_maps.dart';
 
+final _newline = RegExp('\n');
+
 /// Map Chrome's measured ranges through the compiler's original Dart locations.
 Future<void> writeDartCoverage(File javascript, List<Object?> functions, File output) async {
   final mapping = parse(await File('${javascript.path}.map').readAsString()) as SingleMapping;
   final text = await javascript.readAsString();
-  final lineOffsets = [0, ...RegExp('\n').allMatches(text).map((match) => match.end)];
+  final lineOffsets = [0, ..._newline.allMatches(text).map((match) => match.end)];
   final source = File('lib/src/storage/web_download_helper.dart').absolute.uri;
   final mapUri = File('${javascript.path}.map').absolute.uri;
   final sourceIds = <int>{
