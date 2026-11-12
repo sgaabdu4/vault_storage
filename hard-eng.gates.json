@@ -267,6 +267,17 @@
       }
     },
     {
+      "name": "freshness",
+      "role": "freshness",
+      "parallel": true,
+      "command": ["flutter", "pub", "outdated", "--json"],
+      "report": {
+        "type": "freshness",
+        "path": "coverage/freshness-dart.json",
+        "stdout": true
+      }
+    },
+    {
       "name": "security",
       "role": "security",
       "parallel": true,
