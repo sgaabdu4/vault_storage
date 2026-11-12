@@ -15,7 +15,7 @@ Future<void> main() async {
     'compile',
     'js',
     '-O0',
-    'tool/browser_download_case.dart',
+    'test/browser/browser_download_case.dart',
     '-o',
     'coverage/browser-case.js',
   ]);

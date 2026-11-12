@@ -22,13 +22,12 @@
             "--output=none",
             "--set-exit-if-changed",
             "lib",
-            "test",
-            "tool"
+            "test"
           ]
         },
         {
           "name": "browser-download-coverage",
-          "command": ["dart", "run", "tool/browser_coverage.dart"]
+          "command": ["dart", "run", "test/browser/browser_coverage.dart"]
         },
         {
           "name": "dart-test",

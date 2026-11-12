@@ -24,4 +24,4 @@
 
 ## Verification
 
-Native Flutter tests cover storage and the example. `dart run tool/browser_coverage.dart` checks browser downloads in isolated headless Chrome, including bytes, MIME types, filenames and cleanup. It maps measured V8 ranges through the Dart compiler source map; Flutter merges this report with native coverage using `--merge-coverage`. Chrome and `lcov` are required for this check.
+Native Flutter tests cover storage and the example. `dart run test/browser/browser_coverage.dart` checks browser downloads in isolated headless Chrome, including bytes, MIME types, filenames and cleanup. It maps measured V8 ranges through the Dart compiler source map; Flutter merges this report with native coverage using `--merge-coverage`. Chrome and `lcov` are required for this check.
