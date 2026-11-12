@@ -17,13 +17,13 @@ import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/storage/vault_storage_adapter_registry.dart';
+import 'package:vault_storage/src/utils/concurrency.dart';
 
 part 'vault_storage_impl_helpers.dart';
 
+const _customBoxReadConcurrency = 4;
+
 /// Simple, secure storage implementation for Flutter apps.
-///
-/// Provides key-value and file storage with automatic encryption for secure data.
-/// Uses performance-optimized search order (normal storage first, then secure storage).
 class VaultStorageImpl implements IVaultStorage {
   final FlutterSecureStorage _secureStorage;
   final Uuid _uuid;
@@ -68,10 +68,6 @@ class VaultStorageImpl implements IVaultStorage {
     if (isVaultStorageReady) return Future<void>.value();
     return _initFuture ??= _doInit();
   }
-
-  // ==========================================
-  // KEY-VALUE STORAGE
-  // ==========================================
 
   @override
   Future<T?> get<T>(String key, {bool? isSecure, String? box}) async {
@@ -124,10 +120,16 @@ class VaultStorageImpl implements IVaultStorage {
     }
 
     // Check custom boxes
-    for (final entry in customBoxes.entries) {
-      final value = await _getFromBoxBase<T>(entry.value, key);
+    final customEntries = customBoxes.entries.toList();
+    final customValues = await mapWithConcurrency(
+      customEntries,
+      _customBoxReadConcurrency,
+      (entry) => _getFromBoxBase<T>(entry.value, key),
+    );
+    for (var index = 0; index < customEntries.length; index++) {
+      final value = customValues[index];
       if (value != null) {
-        foundBoxes.add(entry.key);
+        foundBoxes.add(customEntries[index].key);
         result = value;
       }
     }
@@ -257,9 +259,11 @@ class VaultStorageImpl implements IVaultStorage {
       await Future.wait<void>([boxes[BoxType.normal]!.clear(), boxes[BoxType.secure]!.clear()]);
 
       // 2) Always clear custom boxes (they hold key-value data)
-      for (final box in customBoxes.values) {
-        await box.clear();
-      }
+      await inOrder(
+        customBoxes.values,
+        (box) => box.clear(),
+        reason: 'Custom boxes are cleared in the order they were opened',
+      );
 
       if (!includeFiles) return;
 
@@ -317,10 +321,6 @@ class VaultStorageImpl implements IVaultStorage {
     }
   }
 
-  // ==========================================
-  // FILE STORAGE
-  // ==========================================
-
   @override
   Future<void> saveSecureFile({
     required String key,
@@ -357,8 +357,7 @@ class VaultStorageImpl implements IVaultStorage {
         if (metadata != null) 'userMetadata': metadata,
       };
 
-      // Store the metadata using _putInBoxBase so it benefits from binary
-      // TypeAdapter encoding (v4.x) rather than JSON string serialisation.
+      // Store the metadata with _putInBoxBase for binary TypeAdapter encoding (v4.x).
       await _putInBoxBase(boxes[BoxType.secureFiles]!, key, toStore);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
@@ -430,8 +429,7 @@ class VaultStorageImpl implements IVaultStorage {
         if (metadata != null) 'userMetadata': metadata,
       };
 
-      // Store the metadata using _putInBoxBase so it benefits from binary
-      // TypeAdapter encoding (v4.x) rather than JSON string serialisation.
+      // Store the metadata with _putInBoxBase for binary TypeAdapter encoding (v4.x).
       await _putInBoxBase(boxes[BoxType.normalFiles]!, key, toStore);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
@@ -515,11 +513,17 @@ class VaultStorageImpl implements IVaultStorage {
         ..locations.add('secure_files')
         ..metadata = secureMetadata;
     }
-    for (final entry in customBoxes.entries) {
-      final metadata = await _getFromBoxBase<Map<String, dynamic>>(entry.value, key);
+    final customEntries = customBoxes.entries.toList();
+    final customMetadata = await mapWithConcurrency(
+      customEntries,
+      _customBoxReadConcurrency,
+      (entry) => _getFromBoxBase<Map<String, dynamic>>(entry.value, key),
+    );
+    for (var index = 0; index < customEntries.length; index++) {
+      final metadata = customMetadata[index];
       if (metadata?['isCustomBox'] == true) {
         match
-          ..locations.add(entry.key)
+          ..locations.add(customEntries[index].key)
           ..customBase64 = metadata!['base64Data'] as String;
       }
     }
@@ -538,9 +542,12 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       // Delete from all boxes
-      // Fetch metadata for normal and secure files if present
-      final normalMetadata = await getFileMetadata(key, isSecure: false);
-      final secureMetadata = await getFileMetadata(key, isSecure: true);
+      final metadata = await Future.wait([
+        getFileMetadata(key, isSecure: false),
+        getFileMetadata(key, isSecure: true),
+      ]);
+      final normalMetadata = metadata[0];
+      final secureMetadata = metadata[1];
 
       // Delete underlying file data first (avoid orphaned content/keys)
       if (normalMetadata != null) {
@@ -624,23 +631,23 @@ class VaultStorageImpl implements IVaultStorage {
 
       if (isVaultStorageReady) {
         // Close only the boxes opened by this service to avoid affecting other Hive users
-        for (final box in boxes.values) {
+        await inOrder(boxes.values, (box) async {
           try {
             await box.close();
           } catch (_) {
             // Ignore close errors during disposal
           }
-        }
+        }, reason: 'Default boxes are closed in the order they were opened');
         boxes.clear();
 
         // Close custom boxes
-        for (final box in customBoxes.values) {
+        await inOrder(customBoxes.values, (box) async {
           try {
             await box.close();
           } catch (_) {
             // Ignore close errors during disposal
           }
-        }
+        }, reason: 'Custom boxes are closed in the order they were opened');
         customBoxes.clear();
 
         isVaultStorageReady = false;
@@ -651,10 +658,6 @@ class VaultStorageImpl implements IVaultStorage {
       throw VaultStorageDisposalError('Failed to dispose vault storage', e);
     }
   }
-
-  // ==========================================
-  // PRIVATE HELPER METHODS
-  // ==========================================
 
   /// Ensure storage is initialized
   void _ensureInitialized() {
