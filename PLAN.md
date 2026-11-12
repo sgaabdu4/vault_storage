@@ -10,6 +10,7 @@ Lock freerasp 8.3.0, hive_ce 2.23.3, web 1.1.2 and build_runner 2.17.1 (the late
 
 Owners: `pubspec.yaml` and both lockfiles (dependencies), `hard-eng.gates.json` (the check list) and this plan. The three runtime updates fit inside the existing constraints. build_runner 2.17.1 needs a raised dev constraint and moves build and source_gen with it. Loops in `lib/src` move to one internal helper file, `lib/src/utils/concurrency.dart`: independent reads use `mapWithConcurrency` (results keep input order); writes, closes and box opens keep their order through `inOrder`. `publish.yml` gets the right version comment on its pinned action. The three `tool` files only run and check the browser download test (the gate runs the driver, which compiles the case for Chrome and maps its coverage), so they are test code: they move to `test/browser`, and the gate command, the format paths, the design note and the test import follow. The Flutter workflow owns required CI; the version-tag publisher stays unchanged.
 Same cause: N/A — the freshness check is new here and no earlier fix of this cause exists.
+Single source: `lib/src/utils/concurrency.dart` owns bounded reads (`mapWithConcurrency`) and ordered steps (`inOrder`). Searched `lib`, `test/browser` and `example/lib` for awaits in loops with the Semgrep speed rules: no other copy and no loop is left. The browser harness has one owner, `test/browser`; the gate command, format paths and design note point there.
 
 ## Decisions + authorization
 
@@ -44,6 +45,8 @@ N/A — no package or example user interface changed.
 Result: Passed
 Evidence: The native gate passed on the repaired branch: lockfile, format, strict analysis, tests and line coverage (package 81.94%, example 74.74%, minimum 70%), browser-download behavior, Dart Decimate, both performance budgets, secret scans, Actionlint, Zizmor, Shellcheck, OSV, freshness and Semgrep. PANA was not run locally; the PANA job runs on the pull request.
 E2E: N/A — no package API or user flow changed; existing package, browser-download and example behavior tests remain required in the native gate.
+
+Retro: The speed-rule findings and the comment-block findings were old code that no earlier check run had scanned: HE-HOT-PATH and HE-COMMENT-LINES, both enforced by the native gate. The missing freshness check and the outdated packages: the freshness check now in `hard-eng.gates.json`. The pin comment: the Zizmor check. Code outside the listed sources: the sources check of the gate. No Hard Eng fault.
 
 Delivery target: Merge
 Delivery: Pending — verify the scoped branch, required checks at its exact head, merge, and verify main CI.
