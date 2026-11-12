@@ -291,6 +291,91 @@ void main() {
         );
       });
 
+      group('streamed web chunks', () {
+        late Map<String, dynamic> storedChunks;
+        late Map<String, dynamic> metadata;
+        final original = Uint8List.fromList(List.generate(10, (index) => index + 1));
+
+        setUp(() async {
+          storedChunks = {};
+          String? encodedKey;
+          when(() => testContext.mockUuid.v4()).thenReturn('ordered-chunks');
+          when(() => testContext.mockSecureFilesBox.put(any<String>(), any<dynamic>())).thenAnswer((
+            invocation,
+          ) async {
+            storedChunks[invocation.positionalArguments[0] as String] =
+                invocation.positionalArguments[1];
+          });
+          when(
+            () => testContext.mockSecureStorage.write(
+              key: any(named: 'key'),
+              value: any(named: 'value'),
+            ),
+          ).thenAnswer((invocation) async {
+            encodedKey = invocation.namedArguments[#value] as String?;
+          });
+          when(
+            () => testContext.mockSecureStorage.read(key: any(named: 'key')),
+          ).thenAnswer((_) async => encodedKey);
+          metadata = await fileOperations.saveSecureFileStream(
+            stream: Stream.value(original),
+            fileExtension: 'bin',
+            isWeb: true,
+            secureStorage: testContext.mockSecureStorage,
+            uuid: testContext.mockUuid,
+            getBox: testContext.getBox,
+            chunkSize: 2,
+          );
+        });
+
+        test('joins chunks in index order when earlier chunks load last', () async {
+          expect(metadata['chunkCount'], 5);
+          when(() => testContext.mockSecureFilesBox.get(any<String>())).thenAnswer((
+            invocation,
+          ) async {
+            final name = invocation.positionalArguments[0] as String;
+            final index = int.parse(name.split(':c:').last);
+            await Future<void>.delayed(Duration(milliseconds: (5 - index) * 5));
+            return storedChunks[name];
+          });
+
+          expect(
+            await fileOperations.getSecureFile(
+              fileMetadata: metadata,
+              isWeb: true,
+              secureStorage: testContext.mockSecureStorage,
+              getBox: testContext.getBox,
+            ),
+            original,
+          );
+        });
+
+        test('names the missing chunk when one chunk is not stored', () async {
+          when(() => testContext.mockSecureFilesBox.get(any<String>())).thenAnswer((
+            invocation,
+          ) async {
+            final name = invocation.positionalArguments[0] as String;
+            return name.endsWith(':c:3') ? null : storedChunks[name];
+          });
+
+          await expectLater(
+            fileOperations.getSecureFile(
+              fileMetadata: metadata,
+              isWeb: true,
+              secureStorage: testContext.mockSecureStorage,
+              getBox: testContext.getBox,
+            ),
+            throwsA(
+              isA<FileNotFoundError>().having(
+                (e) => e.toString(),
+                'message',
+                contains('Hive secure files chunk 3'),
+              ),
+            ),
+          );
+        });
+      });
+
       test('should retrieve secure file successfully on native platforms', () async {
         // Arrange
         const testFileId = 'test-file-id';
@@ -310,9 +395,6 @@ void main() {
           () => testContext.mockSecureStorage.read(key: secureKeyName),
         ).thenAnswer((_) async => base64Encode(testKey));
 
-        // Act & Assert
-        // Note: This test would need more complex mocking for the file system
-        // and encryption/decryption processes. For now, we test the error case.
         expect(
           () => fileOperations.getSecureFile(
             fileMetadata: fileMetadata,
@@ -345,8 +427,6 @@ void main() {
           () => testContext.mockSecureStorage.read(key: secureKeyName),
         ).thenAnswer((_) async => 'dGVzdEtleQ=='); // base64 encoded test key
 
-        // Act & Assert
-        // Note: This test would need more complex mocking for the encryption/decryption
         expect(
           () => fileOperations.getSecureFile(
             fileMetadata: fileMetadata,
@@ -718,10 +798,6 @@ void main() {
 
     group('MIME type detection', () {
       test('should return correct MIME types for common file extensions', () {
-        // Note: This tests the private _getMimeTypeFromExtension method indirectly
-        // through the file operations that use it. In a real test, you might want to
-        // make this method visible for testing or test it through the public API.
-
         // For now, we can verify the behavior through file operations
         expect(true, isTrue); // Placeholder - would need access to private method
       });

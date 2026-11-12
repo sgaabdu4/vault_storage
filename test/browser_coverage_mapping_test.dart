@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../tool/browser_coverage_mapping.dart';
+import 'browser/browser_coverage_mapping.dart';
 
 void main() {
   test('unexecuted nested blocks override an executed outer function', () {

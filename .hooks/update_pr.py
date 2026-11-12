@@ -2,15 +2,16 @@
 
 import fcntl
 import json
-import re
 import shlex
 import subprocess
 from pathlib import Path
 
-from gate_config import JsonValue
+from gate_config import SOURCE_FILE, JsonValue
 from review_bypass import author_only_review_block
 from shipping import ShippingError, gh, load_policy
+from stale_updates import registered_worktrees
 from update_runner import (
+    REPAIR_SUBJECT,
     UPDATE_BRANCH,
     UPDATE_COMMAND,
     branch_current,
@@ -20,7 +21,6 @@ from update_runner import (
     last_result,
     lock_file,
     locked_update,
-    registered_worktrees,
     revision_at,
     update_base,
     update_running,
@@ -44,7 +44,6 @@ MERGE_METHODS = (
     ("squashMergeAllowed", "--squash"),
     ("mergeCommitAllowed", "--merge"),
 )
-GENERATED = re.compile(r"Update Hard Eng to [0-9a-f]+|Install Hard Eng")
 REPAIR_TITLE = "Repair the Hard Eng installation"
 
 
@@ -81,12 +80,32 @@ def open_pull(root: Path) -> dict[str, JsonValue] | None:
     return next((row for row in rows if row.get("isCrossRepository") is False), None)
 
 
+def run_key(entry: dict[str, JsonValue]) -> tuple[JsonValue, JsonValue]:
+    return entry.get("workflowName"), entry.get("name")
+
+
+def judged_runs(entries: list[dict[str, JsonValue]]) -> list[dict[str, JsonValue]]:
+    """A cancelled run of a workflow check gives no verdict; another run of that check on this head commit gives it."""
+    judged = {
+        run_key(entry)
+        for entry in entries
+        if entry.get("workflowName")
+        and entry.get("conclusion") not in {"CANCELLED", *SKIPPED}
+    }
+    return [
+        entry
+        for entry in entries
+        if entry.get("conclusion") != "CANCELLED" or run_key(entry) not in judged
+    ]
+
+
 def check_state(pull: dict[str, JsonValue], required: list[str] | None = None) -> str:
     rollup = pull.get("statusCheckRollup")
     entries: list[dict[str, JsonValue]] = []
     for item in rollup if isinstance(rollup, list) else []:
         if isinstance(item, dict):
             entries.append(item)
+    entries = judged_runs(entries)
     if any((e.get("conclusion") or e.get("state")) in FAILED for e in entries):
         return "failing"
     named = entries
@@ -208,6 +227,15 @@ def git_lines(root: Path, *args: str) -> list[str] | None:
     return done.stdout.splitlines() if done.returncode == 0 else None
 
 
+def generated_commits(lines: list[str]) -> list[tuple[str, list[str]]]:
+    """Each commit's subject and changed files from one `git log --name-only` listing."""
+    commits = []
+    for chunk in "\n".join(lines).split("\x01")[1:]:
+        header, _, names = chunk.partition("\n")
+        commits.append((header.partition("\x1f")[2], names.splitlines()))
+    return commits
+
+
 def replaceable_remote(root: Path, base: str) -> str | None:
     """The remote update tip to lease against, or None after refusing to overwrite someone's fix."""
     tracking = f"+refs/heads/{UPDATE_BRANCH}:refs/remotes/origin/{UPDATE_BRANCH}"
@@ -229,16 +257,20 @@ def replaceable_remote(root: Path, base: str) -> str | None:
         is not None
     ):
         return tip[0]
-    subjects = git_lines(
+    commits = git_lines(
         root,
         "log",
-        "--format=%s",
+        "--format=%x01%H%x1f%s",
+        "--name-only",
         "--cherry-pick",
         "--right-only",
         "--no-merges",
         f"origin/{base}...{remote}",
     )
-    if subjects is not None and all(GENERATED.fullmatch(s) for s in subjects):
+    if commits is not None and all(
+        SOURCE_FILE in files or subject == REPAIR_SUBJECT
+        for subject, files in generated_commits(commits)
+    ):
         from update import revision_follows
 
         theirs = revision_at(root, remote)
@@ -322,7 +354,10 @@ def publish(root: Path, merge: bool = True) -> int:
             and not branch_current(root, tip)
         )
     ):
-        print(locked_update(root))
+        outcome = locked_update(root)
+        print(outcome)
+        if outcome.startswith("Hard Eng update failed"):
+            return 1
         revision = revision_at(root, f"refs/heads/{UPDATE_BRANCH}")
         if revision is not None and not (
             unfinished_update(root, tip) or branch_current(root, tip)
@@ -335,7 +370,7 @@ def publish(root: Path, merge: bool = True) -> int:
     # A merged repair is neither built on the current base nor still open.
     repair = (
         revision == current
-        and "Install Hard Eng" in (subjects or [])
+        and REPAIR_SUBJECT in (subjects or [])
         and not landed(root, tip, branch)
         and (
             git_lines(root, "merge-base", "--is-ancestor", tip, branch) is not None
@@ -351,11 +386,17 @@ def publish(root: Path, merge: bool = True) -> int:
     if lease is None:
         return 1
     expected = f"--force-with-lease=refs/heads/{UPDATE_BRANCH}:{lease}"
-    subprocess.run(
-        ["git", "push", expected, "origin", UPDATE_BRANCH],
-        cwd=root,
-        check=True,
+    pushed = subprocess.run(
+        ["git", "push", expected, "origin", UPDATE_BRANCH], cwd=root, check=False
     )
+    if pushed.returncode:
+        print(
+            f"The push of {UPDATE_BRANCH} failed; the lines above give the reason. "
+            "When the pre-push check refused it, the new release found a fault in "
+            f"this project: fix it on the branch {UPDATE_BRANCH} in its own "
+            f"worktree, as its own commit, then run `{UPDATE_COMMAND}` again."
+        )
+        return 1
     title = REPAIR_TITLE if repair else f"Update Hard Eng to {revision[:12]}"
     pull = open_pull(root)
     if pull is None:

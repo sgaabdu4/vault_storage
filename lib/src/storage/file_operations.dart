@@ -18,19 +18,16 @@ import 'package:vault_storage/src/mock/path_provider_mock.dart'
 import 'package:vault_storage/src/storage/encryption_helpers.dart';
 import 'package:vault_storage/src/storage/web_download_helper.dart'
     if (dart.library.io) 'package:vault_storage/src/mock/web_download_stub.dart';
+import 'package:vault_storage/src/utils/concurrency.dart';
+
+const _webChunkConcurrency = 4;
 
 /// Handles file operations for both secure and normal files
-///
-/// This class is responsible for saving, retrieving, and deleting files,
-/// with platform-specific implementations for web and native platforms.
 class FileOperations implements IFileOperations {
   /// Creates a new [FileOperations] instance
   FileOperations();
 
   /// Save a secure (encrypted) file
-  ///
-  /// Returns metadata needed to retrieve the file later.
-  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Map<String, dynamic>> saveSecureFile({
     required Uint8List fileBytes,
@@ -233,10 +230,6 @@ class FileOperations implements IFileOperations {
   }
 
   /// Retrieve a secure (encrypted) file using its metadata
-  ///
-  /// Returns the decrypted file contents as a byte array.
-  /// On web platforms, also triggers an automatic download.
-  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Uint8List> getSecureFile({
     required Map<String, dynamic> fileMetadata,
@@ -312,23 +305,26 @@ class FileOperations implements IFileOperations {
     final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
     final chunks = (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final output = BytesBuilder(copy: false);
-    for (var index = 0; index < chunkCount; index++) {
-      final stored = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(
-        '$fileId:c:$index',
-      );
-      if (stored == null) {
-        throw FileNotFoundError(fileId, 'Hive secure files chunk $index');
-      }
-      output.add(
-        await _decryptChunk(
+    final plainChunks = await mapWithConcurrency(
+      List<int>.generate(chunkCount, (index) => index),
+      _webChunkConcurrency,
+      (index) async {
+        final stored = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(
+          '$fileId:c:$index',
+        );
+        if (stored == null) {
+          throw FileNotFoundError(fileId, 'Hive secure files chunk $index');
+        }
+        return _decryptChunk(
           encryptedBytes: stored is Uint8List
               ? stored
               : await (stored as String).decodeBase64Safely(context: 'encrypted chunk'),
           keyBytes: keyBytes,
           metadata: chunks[index],
-        ),
-      );
-    }
+        );
+      },
+    );
+    plainChunks.forEach(output.add);
     return output.takeBytes();
   }
 
@@ -420,7 +416,6 @@ class FileOperations implements IFileOperations {
   }
 
   /// Delete a secure file and its associated encryption key
-  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<void> deleteSecureFile({
     required Map<String, dynamic> fileMetadata,
@@ -463,9 +458,6 @@ class FileOperations implements IFileOperations {
   }
 
   /// Save a normal (unencrypted) file
-  ///
-  /// Returns metadata needed to retrieve the file later.
-  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Map<String, dynamic>> saveNormalFile({
     required Uint8List fileBytes,
@@ -498,10 +490,6 @@ class FileOperations implements IFileOperations {
   }
 
   /// Retrieve a normal (unencrypted) file using its metadata
-  ///
-  /// Returns the file contents as a byte array.
-  /// On web platforms, also triggers an automatic download.
-  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<Uint8List> getNormalFile({
     required Map<String, dynamic> fileMetadata,
@@ -538,7 +526,6 @@ class FileOperations implements IFileOperations {
   }
 
   /// Delete a normal file
-  /// Throws [VaultStorageError] if the operation fails.
   @override
   Future<void> deleteNormalFile({
     required Map<String, dynamic> fileMetadata,

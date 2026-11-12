@@ -83,14 +83,10 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     }
 
     // Fallback for unexpected format or raw primitive values
-    // Handle type coercion for primitives that may have been stored directly
     return _coerceToType<T>(stored);
   }
 
   /// Coerces a value to the expected type T
-  ///
-  /// Handles backward compatibility for values that may be stored as different types.
-  /// Throws VaultStorageReadError on type mismatch to allow graceful error handling.
   T _coerceToType<T>(Object? value) {
     // If value is already the correct type, return it
     if (value is T) return value;
@@ -141,9 +137,6 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   }
 
   /// Registers Hive TypeAdapters for vault_storage types.
-  ///
-  /// Guards each registration with [isAdapterRegistered] so it is safe to call
-  /// multiple times (e.g., in tests that re-initialise storage).
   void _registerAdapters() {
     VaultStorageAdapterRegistry.ensureRegistered();
   }
@@ -158,9 +151,6 @@ extension VaultStorageImplSupport on VaultStorageImpl {
 
       try {
         // Route through _getFromBoxBase to handle all storage formats uniformly:
-        //   v2.x  → plain JSON string
-        //   v3.x  → Map-wrapped StoredValue
-        //   v4.x  → TypeAdapter StoredValue
         final result = await _getFromBoxBase<Map<String, dynamic>>(box, key);
         if (result == null) return null;
         return <String, dynamic>{...result, 'isSecure': isSecureFile};
@@ -187,7 +177,6 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   }
 
   /// Clear all files (underlying content + metadata) within a specific files box.
-  /// Best-effort: continues on per-item failures. Throws if box.clear() fails.
   @visibleForTesting
   Future<void> clearAllFilesInBox(BoxType boxType, {required bool isSecure}) async {
     final box = boxes[boxType];
@@ -196,10 +185,10 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     // Get all keys (both Box and LazyBox expose keys)
     final keyIterable = box.keys;
 
-    for (final key in keyIterable.whereType<String>()) {
+    await inOrder(keyIterable.whereType<String>(), (key) async {
       try {
         final metadata = await getFileMetadata(key, isSecure: isSecure);
-        if (metadata == null) continue;
+        if (metadata == null) return;
 
         // Delete underlying file
         if (isSecure) {
@@ -219,19 +208,12 @@ extension VaultStorageImplSupport on VaultStorageImpl {
       } catch (_) {
         // Ignore per-file errors; final clear() will drop metadata
       }
-    }
+    }, reason: 'Files are deleted one at a time in key order, then the box is cleared');
 
     await box.clear();
   }
 
-  // ==========================================
-  // SECURITY METHODS (Android/iOS only)
-  // ==========================================
-
   /// Initialize FreeRASP protection with the provided configuration
-  ///
-  /// This method is only called on Android and iOS platforms.
-  /// On other platforms, security initialization is skipped automatically.
   Future<void> _initializeRaspProtection({
     String? packageName, // Keep internal param name for FreeRASP API
     List<String>? signingCertHashes, // Keep internal param name for FreeRASP API
@@ -549,7 +531,6 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   }
 
   /// Custom compaction strategy - more aggressive for storage service
-  /// 10% deletion ratio threshold (vs default 15%), 30 deleted entries minimum (vs 60)
   bool _vaultCompactionStrategy(int entries, int deletedEntries) {
     if (entries == 0) return false;
     const deletedRatio = 0.10;
@@ -593,7 +574,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     try {
       VaultStorageImpl.validateCustomBoxConfigs(configs);
 
-      for (final config in configs) {
+      await inOrder(configs, (config) async {
         final cipher = config.encrypted ? HiveAesCipher(encryptionKey) : null;
 
         if (config.lazy) {
@@ -609,7 +590,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
             compactionStrategy: _vaultCompactionStrategy,
           );
         }
-      }
+      }, reason: 'Boxes are opened in config order because it sets the lookup order');
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageInitializationError('Failed to open custom boxes', e);

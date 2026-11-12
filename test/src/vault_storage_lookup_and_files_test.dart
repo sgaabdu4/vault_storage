@@ -48,6 +48,33 @@ void main() {
       );
     });
 
+    test('lists ambiguous boxes in opening order and reads a lone custom hit', () async {
+      final firstBox = MockBox<dynamic>();
+      final secondBox = MockBox<dynamic>();
+      testContext.vaultStorage.customBoxes['box_a'] = firstBox;
+      testContext.vaultStorage.customBoxes['box_b'] = secondBox;
+      final wrapped = const StoredValue('custom_val', StorageStrategy.native).toHiveMap();
+      when(() => testContext.mockNormalBox.containsKey('shared')).thenReturn(false);
+      when(() => testContext.mockSecureBox.containsKey('shared')).thenReturn(false);
+      when(() => firstBox.containsKey('shared')).thenReturn(false);
+      when(() => secondBox.containsKey('shared')).thenReturn(true);
+      when(() => secondBox.get('shared')).thenReturn(wrapped);
+
+      expect(await testContext.vaultStorage.get<String>('shared'), 'custom_val');
+
+      when(() => firstBox.containsKey('shared')).thenReturn(true);
+      when(() => firstBox.get('shared')).thenReturn(wrapped);
+      expect(
+        () => testContext.vaultStorage.get<String>('shared'),
+        throwsA(
+          isA<AmbiguousKeyError>().having((e) => e.foundInBoxes, 'foundInBoxes', [
+            'box_a',
+            'box_b',
+          ]),
+        ),
+      );
+    });
+
     test('should throw AmbiguousKeyError when key in default box and custom box', () async {
       final mockCustomBox = MockBox<dynamic>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
