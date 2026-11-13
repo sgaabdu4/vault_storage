@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vault_storage/vault_storage.dart';
 
@@ -429,9 +429,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: appSupportDir.path));
                   if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('Path copied to clipboard!')));
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('Path copied to clipboard!')));
                   }
                 },
                 child: const Text('Copy Path'),

@@ -63,7 +63,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          flutter-version: "3.47.5"
+          flutter-version: "3.50.0"
           cache: true
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -128,7 +128,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          flutter-version: "3.47.5"
+          flutter-version: "3.50.0"
           cache: true
 
       - name: Cache Flutter dependencies
@@ -149,7 +149,13 @@ jobs:
 
       - name: Run PANA analysis and check score
         run: |
-          RESULT=$(dart pub global run pana . --json)
+          RAW=$(dart pub global run pana . --json)
+          RESULT=$(printf '%s\n' "$RAW" | sed -n '/^{$/,$p')
+          if ! echo "$RESULT" | jq -e '.scores' > /dev/null; then
+            echo "❌ PANA output has no JSON score. First lines of the raw output:"
+            printf '%s\n' "$RAW" | head -n 20
+            exit 1
+          fi
           SCORE=$(echo "$RESULT" | jq '.scores.grantedPoints')
           TOTAL=$(echo "$RESULT" | jq '.scores.maxPoints')
           echo "PANA Score: $SCORE/$TOTAL"
