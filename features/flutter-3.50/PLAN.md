@@ -45,6 +45,7 @@ N/A — import move in the example app only; no rendered interface change was de
 Result: Passed
 Evidence: `python3 .hooks/hard-eng.py check --plan-stage Complete --base origin/main` with Flutter 3.50.0 first on PATH exits 0.
 E2E: N/A — no user journey changes; the package and example tests cover the behavior.
+Retro: None — only the plan format checks refused the first plan text; the plan was fixed.
 
 Delivery target: Merge
 Delivery: Pending — PR merged into main with every required check passing.
