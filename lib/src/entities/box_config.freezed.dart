@@ -221,7 +221,7 @@ return $default(_that.name,_that.encrypted,_that.lazy);case _:
 
 class _BoxConfig implements BoxConfig {
   const _BoxConfig({required this.name, this.encrypted = false, this.lazy = false});
-
+  
 
 /// The unique name of the box.
 @override final  String name;
