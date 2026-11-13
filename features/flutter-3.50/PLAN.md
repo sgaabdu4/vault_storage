@@ -20,11 +20,11 @@ Authority: The owner approved the move of this project to Flutter 3.50.0 on 2026
 
 ## Acceptance + steps
 
-- [x] Analyzer reports no issue with Flutter 3.50.0 -> `dart analyze --fatal-infos .` in the package root, which includes the example.
+- [x] Analyzer reports no issue with Flutter 3.50.0 -> `dart analyze --fatal-infos .` in the package root, which includes the example. N/A — no test can prove an analyzer result; the strict-types-lint gate runs it.
 - [x] The example still shows its storage location -> `example/test/storage_demo_test.dart::storage location displays the directory and copies its path`.
 - [x] The example round-trips values and files through the public storage API -> `example/test/storage_demo_test.dart::$kind values can be saved, retrieved and deleted`.
 - [x] The library behaves as before -> `test/vault_storage_test.dart::should create instance without security config` and the rest of `flutter test`.
-- [x] Generated code is stable -> `dart run build_runner build` leaves `git status` clean.
+- [x] Generated code is stable -> `dart run build_runner build` leaves `git status` clean. N/A — no test can prove generator output; the check compares the tree.
 
 ## Baseline + execution
 
