@@ -429,9 +429,8 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: appSupportDir.path));
                   if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('Path copied to clipboard!')));
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('Path copied to clipboard!')));
                   }
                 },
                 child: const Text('Copy Path'),
