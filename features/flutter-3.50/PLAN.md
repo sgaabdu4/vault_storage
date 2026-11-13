@@ -4,7 +4,7 @@ Status: Complete
 
 ## Outcome + scope
 
-The package and its example are analyzed, tested and checked with Flutter 3.50.0 and Dart 3.14.0, and the workflows use that release. Non-goals: a package version change, a change of the lowest supported Flutter and Dart versions, and any change of library code.
+The package and its example are analyzed, tested and checked with Flutter 3.50.0 and Dart 3.14.0, and the workflows use that release. Only the example now needs Dart 3.13 and Flutter 3.47.0, because `material_ui` 1.11.0 requires them. Non-goals: a package version change, a change of the lowest Flutter and Dart versions of the package (it keeps Dart 3.10 and Flutter 3.38), and any change of library code.
 
 ## Repository context
 
