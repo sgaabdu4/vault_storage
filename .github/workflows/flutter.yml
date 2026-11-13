@@ -149,7 +149,13 @@ jobs:
 
       - name: Run PANA analysis and check score
         run: |
-          RESULT=$(dart pub global run pana . --json)
+          RAW=$(dart pub global run pana . --json)
+          RESULT=$(printf '%s\n' "$RAW" | sed -n '/^{$/,$p')
+          if ! echo "$RESULT" | jq -e '.scores' > /dev/null; then
+            echo "❌ PANA output has no JSON score. First lines of the raw output:"
+            printf '%s\n' "$RAW" | head -n 20
+            exit 1
+          fi
           SCORE=$(echo "$RESULT" | jq '.scores.grantedPoints')
           TOTAL=$(echo "$RESULT" | jq '.scores.maxPoints')
           echo "PANA Score: $SCORE/$TOTAL"
