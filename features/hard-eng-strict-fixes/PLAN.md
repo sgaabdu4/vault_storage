@@ -21,8 +21,8 @@ Authority: The owner asked for every project to pass the strict rules (2026-11-1
 ## Acceptance + steps
 
 - [ ] No `// ignore` stays in tests -> `test/src/vault_storage_security_validation_test.dart::AmbiguousKeyError should store key and foundInBoxes`, runs and passes without the ignore.
-- [ ] No narration comment block stays in lib, test or release.sh -> `python3 .hooks/hard-eng.py check` reports no HE-COMMENT-LINES finding.
-- [ ] Both unnamed Markdown files have a reader -> `python3 .hooks/hard-eng.py check` reports no HE-NAMED-MARKDOWN finding.
+- [ ] No narration comment block stays in lib, test or release.sh -> `python3 .hooks/hard-eng.py check` reports no comment-block finding.
+- [ ] Both unnamed Markdown files have a reader -> `python3 .hooks/hard-eng.py check` reports no unnamed-Markdown finding.
 - [ ] The library behaves as before -> `flutter test` in the package root passes with every test kept.
 
 ## Baseline + execution
