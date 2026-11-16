@@ -1,0 +1,1 @@
+enum SectionKind { value, file }

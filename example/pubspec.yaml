@@ -27,5 +27,4 @@ dev_dependencies:
   hive_ce_flutter: ">=2.3.4 <2.4.0" # 2.4.0 imports dart:io via material_ui, breaking web/WASM.
 
 flutter:
-  generate: true
   uses-material-design: true

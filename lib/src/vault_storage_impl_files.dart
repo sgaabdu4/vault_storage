@@ -102,8 +102,10 @@ extension VaultStorageFiles on VaultStorageImpl {
   }
 
   Future<Uint8List?> _findFileContent(String key) async {
-    final normal = await getFileMetadata(key, isSecure: false);
-    final secure = await getFileMetadata(key, isSecure: true);
+    final (normal, secure) = await (
+      getFileMetadata(key, isSecure: false),
+      getFileMetadata(key, isSecure: true),
+    ).wait;
     final customEntries = customBoxes.entries.toList();
     final customMetadata = await mapWithConcurrency(
       customEntries,

@@ -11,8 +11,7 @@ import 'package:example/demo/dialogs/security_alert_dialog.dart';
 import 'package:example/demo/dialogs/storage_location_dialog.dart';
 import 'package:example/demo/operation_message.dart';
 import 'package:example/demo/sections/clear_section.dart';
-import 'package:example/demo/sections/file_section.dart';
-import 'package:example/demo/sections/value_section.dart';
+import 'package:example/demo/sections/storage_section.dart';
 import 'package:example/demo/storage_initialization.dart';
 import 'package:example/demo/storage_kind.dart';
 import 'package:example/design/spacing.dart';
@@ -290,13 +289,15 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     final String? fileKey = _fileKey;
     final bool ready = _isInitialized;
     final List<Widget> rows = [
-      ValueSection(
+      StorageSection(
+        kind: .value,
         enabled: ready,
         onSave: _saveValue,
         onGet: (isSecure) => _getValue(isSecure: isSecure),
       ),
       const SizedBox(height: Spacing.lg),
-      FileSection(
+      StorageSection(
+        kind: .file,
         enabled: ready,
         onSave: _saveFile,
         onGet: (isSecure) => _getFile(isSecure: isSecure),

@@ -5,7 +5,7 @@ extension VaultStorageInitialization on VaultStorageImpl {
     try {
       final config = _securityConfig;
       if (config != null && config.enableRaspProtection) {
-        await _startRaspProtection(config);
+        await startRaspProtection(config);
       }
 
       await Hive.initFlutter(_storageDirectory);

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:cupertino_ui/cupertino_ui.dart' show GlobalCupertinoLocalizations;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:cupertino_ui/cupertino_ui.dart' show GlobalCupertinoLocalizations;
 import 'package:flutter_localizations/flutter_localizations.dart' show GlobalWidgetsLocalizations;
 import 'package:intl/intl.dart' as intl;
 import 'package:material_ui/material_ui.dart' show GlobalMaterialLocalizations;

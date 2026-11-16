@@ -20,6 +20,7 @@ import 'package:vault_storage/src/storage/file_download.dart';
 import 'package:vault_storage/src/storage/file_metadata_keys.dart';
 import 'package:vault_storage/src/storage/file_ref.dart';
 import 'package:vault_storage/src/storage/secure_chunks.dart';
+import 'package:vault_storage/src/storage/secure_target.dart';
 
 const _defaultChunkSize = 2 << 20;
 const _secureBoxLocation = 'Hive secure files box';
@@ -42,7 +43,7 @@ class FileOperations implements IFileOperations {
       final secretKey = await encryptionAlgorithm.newSecretKey();
       final keyBytes = await secretKey.extractBytes();
 
-      final SecretBox secretBox = await compute(
+      final SecretBox sealedBox = await compute(
         encryptInIsolate,
         EncryptRequest(fileBytes: fileBytes, keyBytes: keyBytes),
       );
@@ -56,12 +57,12 @@ class FileOperations implements IFileOperations {
           fileId: fileId,
           useWeb: useWeb,
           getBox: services.getBox,
-        ).lazyBox(.secureFiles).put(fileId, Uint8List.fromList(secretBox.cipherText));
+        ).lazyBox(.secureFiles).put(fileId, Uint8List.fromList(sealedBox.cipherText));
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
         filePath = '${dir.path}/$fileId.$fileExtension.enc';
-        await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
+        await File(filePath).writeAsBytes(sealedBox.cipherText, flush: true);
       }
 
       await services.secureStorage.write(
@@ -74,8 +75,8 @@ class FileOperations implements IFileOperations {
         FileMetadataKeys.fileId: fileId,
         FileMetadataKeys.filePath: filePath,
         FileMetadataKeys.secureKeyName: secureKeyName,
-        FileMetadataKeys.nonce: await secretBox.nonce.encodeBase64Safely(context: 'nonce'),
-        FileMetadataKeys.mac: await secretBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
+        FileMetadataKeys.nonce: await sealedBox.nonce.encodeBase64Safely(context: 'nonce'),
+        FileMetadataKeys.mac: await sealedBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
         FileMetadataKeys.extension: fileExtension,
       };
     } catch (e, stackTrace) {
@@ -140,10 +141,12 @@ class FileOperations implements IFileOperations {
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
-      final fileId = fileMetadata.getRequiredString(FileMetadataKeys.fileId);
-      final secureKeyName = fileMetadata.getRequiredString(FileMetadataKeys.secureKeyName);
-      final useWeb = isWeb ?? kIsWeb;
-      final file = FileRef(fileId: fileId, useWeb: useWeb, getBox: getBox);
+      final SecureTarget(:file, :secureKeyName, :useWeb) = SecureTarget.of(
+        fileMetadata,
+        isWeb,
+        getBox,
+      );
+      final fileId = file.fileId;
       final decryptedBytes = fileMetadata[FileMetadataKeys.streaming] == true
           ? await _readStreamingSecureFile(fileMetadata, file, secureStorage, secureKeyName)
           : await _readSingleSecureFile(fileMetadata, file, secureStorage, secureKeyName);
@@ -214,10 +217,11 @@ class FileOperations implements IFileOperations {
     required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
-      final fileId = fileMetadata.getRequiredString(FileMetadataKeys.fileId);
-      final secureKeyName = fileMetadata.getRequiredString(FileMetadataKeys.secureKeyName);
-      final useWeb = isWeb ?? kIsWeb;
-      final file = FileRef(fileId: fileId, useWeb: useWeb, getBox: getBox);
+      final SecureTarget(:file, :secureKeyName, :useWeb) = SecureTarget.of(
+        fileMetadata,
+        isWeb,
+        getBox,
+      );
       if (fileMetadata[FileMetadataKeys.streaming] == true && useWeb) {
         await SecureChunks.deleteWeb(fileMetadata, file);
       } else {

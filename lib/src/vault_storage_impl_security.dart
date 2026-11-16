@@ -60,7 +60,8 @@ extension VaultStorageSecurity on VaultStorageImpl {
     );
   }
 
-  ThreatCallback _threatCallback() {
+  @visibleForTesting
+  ThreatCallback threatCallback() {
     return ThreatCallback(
       onPrivilegedAccess: () => _handleThreat(.jailbreak, 'Jailbreak/Root detected'),
       onAppIntegrity: () => _handleThreat(.tampering, 'App tampering detected'),
@@ -82,7 +83,8 @@ extension VaultStorageSecurity on VaultStorageImpl {
   }
 
   /// Initialize FreeRASP protection when the platform supports it
-  Future<void> _startRaspProtection(VaultSecurityConfig config) async {
+  @visibleForTesting
+  Future<void> startRaspProtection(VaultSecurityConfig config) async {
     final enableLogging = config.enableLogging;
     if (!_isSecuritySupportedOnCurrentPlatform()) {
       if (enableLogging) debugPrint('$_raspUnsupportedMessage ${defaultTargetPlatform.name}');
@@ -91,7 +93,7 @@ extension VaultStorageSecurity on VaultStorageImpl {
 
     if (enableLogging) debugPrint('VaultStorage: Initializing RASP protection...');
 
-    Talsec.instance.attachListener(_threatCallback());
+    Talsec.instance.attachListener(threatCallback());
     await Talsec.instance.start(_talsecConfig(config));
 
     if (enableLogging) debugPrint('VaultStorage: RASP protection initialized successfully');
