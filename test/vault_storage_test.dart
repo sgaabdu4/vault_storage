@@ -80,7 +80,7 @@ void main() {
         expect(config.enableRaspProtection, isFalse);
         expect(config.isProd, isTrue);
         expect(config.watcherMail, isNull);
-        expect(config.threatCallbacks, isNull);
+        expect(config.threatCallbacks, isEmpty);
         expect(config.blockOnJailbreak, isTrue);
         expect(config.blockOnDebug, isFalse);
         expect(config.blockOnTampering, isTrue);
@@ -140,8 +140,8 @@ void main() {
         );
 
         // Simulate calling the callbacks
-        config.threatCallbacks?[SecurityThreat.jailbreak]?.call();
-        config.threatCallbacks?[SecurityThreat.tampering]?.call();
+        config.threatCallbacks[SecurityThreat.jailbreak]?.call();
+        config.threatCallbacks[SecurityThreat.tampering]?.call();
 
         expect(jailbreakCallbackCalled, isTrue);
         expect(tamperingCallbackCalled, isTrue);

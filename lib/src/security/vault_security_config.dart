@@ -16,7 +16,7 @@ class VaultSecurityConfig {
   final String? androidPackageName;
 
   /// Android signing certificate hashes in Base64 format
-  final List<String>? androidSigningCertHashes;
+  final List<String> androidSigningCertHashes;
 
   /// iOS bundle identifier (e.g., 'com.example.app')
   final String? iosBundleId;
@@ -25,7 +25,7 @@ class VaultSecurityConfig {
   final String? iosTeamId;
 
   /// Custom callbacks for different security threats
-  final Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks;
+  final Map<SecurityThreat, SecurityThreatCallback> threatCallbacks;
 
   /// Whether to block vault operations when jailbreak is detected
   final bool blockOnJailbreak;
@@ -53,10 +53,10 @@ class VaultSecurityConfig {
     this.isProd = true,
     this.watcherMail,
     this.androidPackageName,
-    this.androidSigningCertHashes,
+    this.androidSigningCertHashes = const [],
     this.iosBundleId,
     this.iosTeamId,
-    this.threatCallbacks,
+    this.threatCallbacks = const {},
     this.blockOnJailbreak = true,
     this.blockOnDebug = false,
     this.blockOnTampering = true,
@@ -70,10 +70,10 @@ class VaultSecurityConfig {
   static VaultSecurityConfig development({
     String? watcherMail,
     String? androidPackageName,
-    List<String>? androidSigningCertHashes,
+    List<String> androidSigningCertHashes = const [],
     String? iosBundleId,
     String? iosTeamId,
-    Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks,
+    Map<SecurityThreat, SecurityThreatCallback> threatCallbacks = const {},
   }) {
     return VaultSecurityConfig(
       enableRaspProtection: true,
@@ -95,10 +95,10 @@ class VaultSecurityConfig {
   static VaultSecurityConfig production({
     required String watcherMail,
     String? androidPackageName, // Required for Android
-    List<String>? androidSigningCertHashes, // Required for Android
+    List<String> androidSigningCertHashes = const [], // Required for Android
     String? iosBundleId, // Required for iOS
     String? iosTeamId, // Required for iOS
-    Map<SecurityThreat, SecurityThreatCallback>? threatCallbacks,
+    Map<SecurityThreat, SecurityThreatCallback> threatCallbacks = const {},
   }) {
     return VaultSecurityConfig(
       enableRaspProtection: true,

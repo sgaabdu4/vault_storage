@@ -127,7 +127,7 @@ extension VaultStorageSecurity on VaultStorageImpl {
     final environmentThreat = _environmentThreat(threat);
     if (environmentThreat != null) isSecureEnvironment = false;
 
-    threatCallbacks?[threat]?.call();
+    threatCallbacks[threat]?.call();
 
     if (environmentThreat != null && _blocksThreat(threat, config)) throw environmentThreat;
   }
