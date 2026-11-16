@@ -285,7 +285,7 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^4.0.2 # Replace with the latest version
+  vault_storage: ^6.0.0 # Replace with the latest version
 ```
 
 Then run:
@@ -909,10 +909,14 @@ V3.0 reads Lists and Maps 20-50x faster:
 Defaults suit most workloads. Override if needed:
 
 ```dart
-// Optional: customize performance thresholds at startup
-VaultStorageConfig.jsonIsolateThreshold = 15000; // chars
-VaultStorageConfig.base64IsolateThreshold = 100000; // bytes  
-VaultStorageConfig.secureFileStreamingThresholdBytes = 1 * 1024 * 1024; // 1MB
+// Optional: customize performance thresholds when creating the storage
+final storage = VaultStorage.create(
+  config: const VaultStorageConfig(
+    jsonIsolateThreshold: 15000, // chars
+    base64IsolateThreshold: 100000, // bytes
+    secureFileStreamingThresholdBytes: 1 * 1024 * 1024, // 1MB
+  ),
+);
 ```
 
 ### Background Processing

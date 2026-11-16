@@ -8,6 +8,7 @@ analyzer:
   - '**/*.g.dart'
   - '**/*.freezed.dart'
   - '**/*.gr.dart'
+  - '**/*.arb'
   - build/**
 plugins:
   flutter_skill_lints: ^0.14.0

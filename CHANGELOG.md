@@ -1,3 +1,76 @@
+## [6.0.0] - 2026-11-16
+### Breaking changes
+- Removed the seven deprecated error aliases from `lib/src/errors/storage_error.dart`.
+- `VaultStorageConfig` is now an immutable value passed to `VaultStorage.create(config: ...)`. The five global setters are gone.
+- `VaultSecurityConfig.androidSigningCertHashes` and `threatCallbacks` are no longer nullable. Both default to an empty collection.
+- `IVaultStorage` is now an `abstract interface class`. Implementing it still works. Extending it from another library does not.
+
+### Migrating from 5.x
+Error aliases. Each alias had a `Vault` named replacement:
+
+| Old | New |
+| --- | --- |
+| `StorageError` | `VaultStorageError` |
+| `StorageInitializationError` | `VaultStorageInitializationError` |
+| `StorageReadError` | `VaultStorageReadError` |
+| `StorageWriteError` | `VaultStorageWriteError` |
+| `StorageDeleteError` | `VaultStorageDeleteError` |
+| `StorageDisposalError` | `VaultStorageDisposalError` |
+| `StorageSerializationError` | `VaultStorageSerializationError` |
+
+Performance thresholds. Old form:
+
+```dart
+VaultStorageConfig.jsonIsolateThreshold = 15000;
+VaultStorageConfig.base64IsolateThreshold = 100000;
+VaultStorageConfig.secureFileStreamingThresholdBytes = 1024 * 1024;
+final storage = VaultStorage.create();
+```
+
+New form:
+
+```dart
+final storage = VaultStorage.create(
+  config: const VaultStorageConfig(
+    jsonIsolateThreshold: 15000,
+    base64IsolateThreshold: 100000,
+    secureFileStreamingThresholdBytes: 1024 * 1024,
+  ),
+);
+```
+
+Security config. Old form read the fields as nullable:
+
+```dart
+final hashes = config.androidSigningCertHashes ?? const [];
+config.threatCallbacks?[SecurityThreat.jailbreak]?.call();
+```
+
+New form:
+
+```dart
+final hashes = config.androidSigningCertHashes;
+config.threatCallbacks[SecurityThreat.jailbreak]?.call();
+```
+
+Passing `null` for either argument no longer compiles. Omit the argument to get the empty default.
+
+Interface. Old form:
+
+```dart
+class MyStorage extends IVaultStorage { /* ... */ }
+```
+
+New form:
+
+```dart
+class MyStorage implements IVaultStorage { /* ... */ }
+```
+
+### Maintenance
+- Enforced the Flutter skill lint set in the package and the example, covered the RASP start and threat handling with tests, and moved example text to generated localizations.
+- Measured the performance tests in processor time instead of wall time.
+
 ## [5.0.1] - 2026-09-23
 ### Dependencies
 - Updated `flutter_secure_storage` to 11.2.0, `freerasp` to 8.2.2, and `hive_ce` to 2.20.0.
