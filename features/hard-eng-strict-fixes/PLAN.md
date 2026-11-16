@@ -51,7 +51,7 @@ N/A — no rendered interface changes.
 Result: Pending
 Evidence: Run 1, own hooks, Flutter 3.50.0: every gate passes except the analyzer gates (flutter_skill_lints findings) and the 8 MiB timing test, which took 5.2 to 8.9 s on a busy machine (the base branch took 5.17 s). Run 2, develop hooks: same, plus dart-decimate reading the starter pubspec in the develop .agents folder. Run 3, dart-decimate 0.0.76 by hand: both packages pass at CRAP 30. Final proof runs: Pending.
 E2E: N/A — no user journey changes; the package and example tests cover the behavior.
-Real service: N/A — the change calls no outside service; the package tests use fakes for secure storage and the example runs offline.
+Real service: N/A — the package calls no outside service; it stores data on the device only.
 Retro: Pending
 
 Delivery target: Merge
