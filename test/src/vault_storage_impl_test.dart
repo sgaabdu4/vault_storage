@@ -65,7 +65,7 @@ void main() {
         verifyNever(() => testContext.mockSecureStorage.read(key: any(named: 'key')));
       });
 
-      test('should throw StorageInitializationError when initialization fails', () async {
+      test('should throw VaultStorageInitializationError when initialization fails', () async {
         // Arrange
         final vaultStorage = testContext.createStorage();
 
@@ -74,7 +74,7 @@ void main() {
         ).thenThrow(Exception('Secure storage failed'));
 
         // Act & Assert
-        expect(() => vaultStorage.init(), throwsA(isA<StorageInitializationError>()));
+        expect(() => vaultStorage.init(), throwsA(isA<VaultStorageInitializationError>()));
       });
     });
 
@@ -127,7 +127,7 @@ void main() {
         ).called(1);
       });
 
-      test('should throw StorageInitializationError when key creation fails', () async {
+      test('should throw VaultStorageInitializationError when key creation fails', () async {
         // Arrange
         when(
           () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),
@@ -136,7 +136,7 @@ void main() {
         // Act & Assert
         expect(
           () => testContext.vaultStorage.getOrCreateSecureKey(),
-          throwsA(isA<StorageInitializationError>()),
+          throwsA(isA<VaultStorageInitializationError>()),
         );
       });
     });
@@ -214,18 +214,18 @@ void main() {
         expect(result, isNull);
       });
 
-      test('should throw StorageInitializationError when not initialized', () async {
+      test('should throw VaultStorageInitializationError when not initialized', () async {
         // Arrange
         testContext.vaultStorage.isVaultStorageReady = false;
 
         // Act & Assert
         expect(
           () => testContext.vaultStorage.get<String>('test_key'),
-          throwsA(isA<StorageInitializationError>()),
+          throwsA(isA<VaultStorageInitializationError>()),
         );
       });
 
-      test('should throw StorageReadError when reading fails', () async {
+      test('should throw VaultStorageReadError when reading fails', () async {
         // Arrange
         const key = 'test_key';
 
@@ -234,7 +234,10 @@ void main() {
         ).thenThrow(Exception('Database error'));
 
         // Act & Assert
-        expect(() => testContext.vaultStorage.get<String>(key), throwsA(isA<StorageReadError>()));
+        expect(
+          () => testContext.vaultStorage.get<String>(key),
+          throwsA(isA<VaultStorageReadError>()),
+        );
       });
     });
 
@@ -277,7 +280,7 @@ void main() {
         verify(() => testContext.mockNormalBox.delete(key)).called(1);
       });
 
-      test('should throw StorageWriteError when save fails', () async {
+      test('should throw VaultStorageWriteError when save fails', () async {
         // Arrange
         const key = 'test_key';
         const value = 'test_value';
@@ -289,7 +292,7 @@ void main() {
         // Act & Assert
         expect(
           () => testContext.vaultStorage.saveSecure(key: key, value: value),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
@@ -311,7 +314,7 @@ void main() {
         verify(() => testContext.mockNormalBox.put(key, any<Object?>())).called(1);
       });
 
-      test('should throw StorageWriteError when save fails', () async {
+      test('should throw VaultStorageWriteError when save fails', () async {
         // Arrange
         const key = 'test_key';
         const value = 'test_value';
@@ -323,7 +326,7 @@ void main() {
         // Act & Assert
         expect(
           () => testContext.vaultStorage.saveNormal(key: key, value: value),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
@@ -362,7 +365,7 @@ void main() {
         verifyNever(() => testContext.mockSecureBox.delete(any<String>()));
       });
 
-      test('should throw StorageDeleteError when deletion fails', () async {
+      test('should throw VaultStorageDeleteError when deletion fails', () async {
         // Arrange
         const key = 'test_key';
 
@@ -371,7 +374,7 @@ void main() {
         when(() => testContext.mockNormalBox.delete(key)).thenThrow(Exception('Database error'));
 
         // Act & Assert
-        expect(() => testContext.vaultStorage.delete(key), throwsA(isA<StorageDeleteError>()));
+        expect(() => testContext.vaultStorage.delete(key), throwsA(isA<VaultStorageDeleteError>()));
       });
     });
   });
@@ -443,7 +446,10 @@ void main() {
       testContext.vaultStorage.isVaultStorageReady = false;
 
       // Act & Assert
-      expect(() => testContext.vaultStorage.keys(), throwsA(isA<StorageInitializationError>()));
+      expect(
+        () => testContext.vaultStorage.keys(),
+        throwsA(isA<VaultStorageInitializationError>()),
+      );
     });
   });
 

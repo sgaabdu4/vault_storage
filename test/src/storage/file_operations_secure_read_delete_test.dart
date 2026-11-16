@@ -186,7 +186,7 @@ void main() {
             secureStorage: testContext.mockSecureStorage,
             getBox: testContext.getBox,
           ),
-          throwsA(isA<StorageReadError>()),
+          throwsA(isA<VaultStorageReadError>()),
         );
       });
 
@@ -218,7 +218,7 @@ void main() {
             secureStorage: testContext.mockSecureStorage,
             getBox: testContext.getBox,
           ),
-          throwsA(isA<StorageReadError>()),
+          throwsA(isA<VaultStorageReadError>()),
         );
       });
 
@@ -355,7 +355,7 @@ void main() {
         verify(() => testContext.mockSecureStorage.delete(key: secureKeyName)).called(1);
       });
 
-      test('should throw StorageDeleteError when deletion fails', () async {
+      test('should throw VaultStorageDeleteError when deletion fails', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -374,7 +374,7 @@ void main() {
             secureStorage: testContext.mockSecureStorage,
             getBox: testContext.getBox,
           ),
-          throwsA(isA<StorageDeleteError>()),
+          throwsA(isA<VaultStorageDeleteError>()),
         );
       });
     });

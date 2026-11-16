@@ -114,7 +114,7 @@ void main() {
         verify(() => mockBox.put(testFileId, any<Object?>())).called(1);
       });
 
-      test('should throw StorageWriteError when encryption fails', () async {
+      test('should throw VaultStorageWriteError when encryption fails', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
@@ -130,13 +130,13 @@ void main() {
               services: testContext.fileServices(isWeb: false),
             ),
           ),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
 
     group('saveSecureFileStream (streaming)', () {
-      test('should throw StorageWriteError when chunkSize is zero', () async {
+      test('should throw VaultStorageWriteError when chunkSize is zero', () async {
         // Arrange
         final stream = Stream<List<int>>.fromIterable([
           Uint8List.fromList([1, 2, 3]),
@@ -154,7 +154,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               contains('Chunk size must be positive'),
@@ -163,7 +163,7 @@ void main() {
         );
       });
 
-      test('should throw StorageWriteError when chunkSize is negative', () async {
+      test('should throw VaultStorageWriteError when chunkSize is negative', () async {
         // Arrange
         final stream = Stream<List<int>>.fromIterable([
           Uint8List.fromList([1, 2, 3]),
@@ -181,7 +181,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               contains('Chunk size must be positive'),

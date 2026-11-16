@@ -85,7 +85,7 @@ void main() {
         verify(() => mockBox.put(testFileId, any<Object?>())).called(1);
       });
 
-      test('should throw StorageWriteError when save fails', () async {
+      test('should throw VaultStorageWriteError when save fails', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
@@ -101,7 +101,7 @@ void main() {
               services: testContext.fileServices(isWeb: false),
             ),
           ),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
@@ -210,7 +210,7 @@ void main() {
         verify(() => mockBox.delete(testFileId)).called(1);
       });
 
-      test('should throw StorageDeleteError when deletion fails', () async {
+      test('should throw VaultStorageDeleteError when deletion fails', () async {
         // Arrange
         const testFileId = 'test-file-id';
         final mockBox = testContext.mockNormalFilesBox;
@@ -226,7 +226,7 @@ void main() {
             isWeb: true,
             getBox: testContext.getBox,
           ),
-          throwsA(isA<StorageDeleteError>()),
+          throwsA(isA<VaultStorageDeleteError>()),
         );
       });
     });
@@ -239,7 +239,7 @@ void main() {
     });
 
     group('Error handling', () {
-      test('should preserve original StorageError types', () async {
+      test('should preserve original VaultStorageError types', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
@@ -265,7 +265,7 @@ void main() {
         );
       });
 
-      test('should wrap non-StorageError exceptions appropriately', () async {
+      test('should wrap non-VaultStorageError exceptions appropriately', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
 
@@ -280,14 +280,14 @@ void main() {
               services: testContext.fileServices(isWeb: false),
             ),
           ),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
 
-      test('saveSecureFile should rethrow StorageError without wrapping', () async {
+      test('saveSecureFile should rethrow VaultStorageError without wrapping', () async {
         when(
           () => testContext.mockUuid.v4(),
-        ).thenThrow(const StorageWriteError('pre-existing error'));
+        ).thenThrow(const VaultStorageWriteError('pre-existing error'));
 
         expect(
           () => fileOperations.saveSecureFile(
@@ -298,7 +298,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               equals('pre-existing error'),
@@ -307,10 +307,10 @@ void main() {
         );
       });
 
-      test('saveSecureFileStream should rethrow StorageError without wrapping', () async {
+      test('saveSecureFileStream should rethrow VaultStorageError without wrapping', () async {
         when(
           () => testContext.mockUuid.v4(),
-        ).thenThrow(const StorageWriteError('stream pre-existing error'));
+        ).thenThrow(const VaultStorageWriteError('stream pre-existing error'));
 
         expect(
           () => fileOperations.saveSecureFileStream(
@@ -321,7 +321,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               equals('stream pre-existing error'),
@@ -330,10 +330,10 @@ void main() {
         );
       });
 
-      test('saveNormalFile should rethrow StorageError without wrapping', () async {
+      test('saveNormalFile should rethrow VaultStorageError without wrapping', () async {
         when(
           () => testContext.mockUuid.v4(),
-        ).thenThrow(const StorageWriteError('normal pre-existing error'));
+        ).thenThrow(const VaultStorageWriteError('normal pre-existing error'));
 
         expect(
           () => fileOperations.saveNormalFile(
@@ -344,7 +344,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               equals('normal pre-existing error'),

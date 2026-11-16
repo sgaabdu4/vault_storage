@@ -220,26 +220,26 @@ void main() {
       testContext.tearDownCommon();
     });
 
-    test('should rethrow StorageInitializationError without wrapping', () async {
+    test('should rethrow VaultStorageInitializationError without wrapping', () async {
       final storage = testContext.createStorage();
 
-      // Make getOrCreateSecureKey throw StorageInitializationError
+      // Make getOrCreateSecureKey throw VaultStorageInitializationError
       when(
         () => testContext.mockSecureStorage.read(key: any(named: 'key')),
-      ).thenThrow(const StorageInitializationError('Key storage failure'));
+      ).thenThrow(const VaultStorageInitializationError('Key storage failure'));
 
       try {
         await storage.init();
-        fail('Expected StorageInitializationError');
-      } on StorageInitializationError catch (e) {
+        fail('Expected VaultStorageInitializationError');
+      } on VaultStorageInitializationError catch (e) {
         // Should be the original error, not double-wrapped
         expect(e.message, equals('Failed to get/create secure key'));
-        // originalException should be the actual exception, not another StorageInitializationError
-        expect(e.originalException, isA<StorageInitializationError>());
+        // originalException should be the actual exception, not another VaultStorageInitializationError
+        expect(e.originalException, isA<VaultStorageInitializationError>());
       }
     });
 
-    test('should wrap non-StorageError in StorageInitializationError', () async {
+    test('should wrap non-VaultStorageError in VaultStorageInitializationError', () async {
       final storage = testContext.createStorage();
 
       // Make getOrCreateSecureKey throw a generic exception
@@ -249,22 +249,22 @@ void main() {
 
       try {
         await storage.init();
-        fail('Expected StorageInitializationError');
-      } on StorageInitializationError catch (e) {
+        fail('Expected VaultStorageInitializationError');
+      } on VaultStorageInitializationError catch (e) {
         expect(e.message, equals('Failed to get/create secure key'));
       }
     });
   });
 
   group('Custom box duplicate name detection', () {
-    test('should throw StorageInitializationError for duplicate box names', () {
+    test('should throw VaultStorageInitializationError for duplicate box names', () {
       expect(
         () => VaultStorageImpl.validateCustomBoxConfigs(const [
           BoxConfig(name: 'my_box'),
           BoxConfig(name: 'my_box', encrypted: true),
         ]),
         throwsA(
-          isA<StorageInitializationError>().having(
+          isA<VaultStorageInitializationError>().having(
             (e) => e.message,
             'message',
             allOf(contains('Duplicate custom box name'), contains('my_box')),
@@ -273,11 +273,11 @@ void main() {
       );
     });
 
-    test('should throw StorageInitializationError for reserved box names', () {
+    test('should throw VaultStorageInitializationError for reserved box names', () {
       expect(
         () => VaultStorageImpl.validateCustomBoxConfigs(const [BoxConfig(name: 'secure_box')]),
         throwsA(
-          isA<StorageInitializationError>().having(
+          isA<VaultStorageInitializationError>().having(
             (e) => e.message,
             'message',
             contains('conflicts with a reserved box name'),

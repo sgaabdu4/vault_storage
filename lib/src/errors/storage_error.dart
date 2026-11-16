@@ -78,33 +78,3 @@ class AmbiguousKeyError extends VaultStorageError {
   /// Creates a new [AmbiguousKeyError].
   const AmbiguousKeyError(this.key, this.foundInBoxes, super.message, [super.originalException]);
 }
-
-// ---------------------------------------------------------------------------
-
-/// Use [VaultStorageError] instead.
-@Deprecated('Use VaultStorageError instead. Will be removed in v4.0.0.')
-typedef StorageError = VaultStorageError;
-
-/// Use [VaultStorageInitializationError] instead.
-@Deprecated('Use VaultStorageInitializationError instead. Will be removed in v4.0.0.')
-typedef StorageInitializationError = VaultStorageInitializationError;
-
-/// Use [VaultStorageReadError] instead.
-@Deprecated('Use VaultStorageReadError instead. Will be removed in v4.0.0.')
-typedef StorageReadError = VaultStorageReadError;
-
-/// Use [VaultStorageWriteError] instead.
-@Deprecated('Use VaultStorageWriteError instead. Will be removed in v4.0.0.')
-typedef StorageWriteError = VaultStorageWriteError;
-
-/// Use [VaultStorageDeleteError] instead.
-@Deprecated('Use VaultStorageDeleteError instead. Will be removed in v4.0.0.')
-typedef StorageDeleteError = VaultStorageDeleteError;
-
-/// Use [VaultStorageDisposalError] instead.
-@Deprecated('Use VaultStorageDisposalError instead. Will be removed in v4.0.0.')
-typedef StorageDisposalError = VaultStorageDisposalError;
-
-/// Use [VaultStorageSerializationError] instead.
-@Deprecated('Use VaultStorageSerializationError instead. Will be removed in v4.0.0.')
-typedef StorageSerializationError = VaultStorageSerializationError;

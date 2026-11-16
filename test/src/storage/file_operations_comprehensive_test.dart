@@ -102,7 +102,7 @@ void main() {
               services: testContext.fileServices(isWeb: true),
             ),
           ),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
@@ -434,24 +434,27 @@ void main() {
     });
 
     group('Error handling and edge cases', () {
-      test('should wrap non-StorageError exceptions appropriately in saveNormalFile', () async {
-        // Arrange
-        final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
+      test(
+        'should wrap non-VaultStorageError exceptions appropriately in saveNormalFile',
+        () async {
+          // Arrange
+          final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
 
-        when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
+          when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
 
-        // Act & Assert
-        expect(
-          () => fileOperations.saveNormalFile(
-            NormalFileRequest(
-              fileBytes: fileBytes,
-              fileExtension: 'txt',
-              services: testContext.fileServices(isWeb: false),
+          // Act & Assert
+          expect(
+            () => fileOperations.saveNormalFile(
+              NormalFileRequest(
+                fileBytes: fileBytes,
+                fileExtension: 'txt',
+                services: testContext.fileServices(isWeb: false),
+              ),
             ),
-          ),
-          throwsA(isA<StorageWriteError>()),
-        );
-      });
+            throwsA(isA<VaultStorageWriteError>()),
+          );
+        },
+      );
 
       test('should handle storage operation failures gracefully', () async {
         // Arrange
@@ -470,11 +473,11 @@ void main() {
             isWeb: true,
             getBox: testContext.getBox,
           ),
-          throwsA(isA<StorageDeleteError>()),
+          throwsA(isA<VaultStorageDeleteError>()),
         );
       });
 
-      test('should preserve original StorageError types', () async {
+      test('should preserve original VaultStorageError types', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';

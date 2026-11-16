@@ -139,13 +139,13 @@ void main() {
       testContext.tearDownCommon();
     });
 
-    test('should wrap errors in StorageReadError', () async {
+    test('should wrap errors in VaultStorageReadError', () async {
       when(() => testContext.mockNormalBox.keys).thenThrow(Exception('corrupted'));
 
       expect(
         () => testContext.vaultStorage.keys(),
         throwsA(
-          isA<StorageReadError>().having(
+          isA<VaultStorageReadError>().having(
             (e) => e.message,
             'message',
             equals('Failed to list keys'),
@@ -296,7 +296,7 @@ void main() {
         verify(() => testContext.mockSecureFilesBox.put(key, any<Object?>())).called(1);
       });
 
-      test('should throw StorageWriteError when file save fails', () async {
+      test('should throw VaultStorageWriteError when file save fails', () async {
         // Arrange
         const key = 'test_file';
         final content = Uint8List.fromList([1, 2, 3, 4, 5]);
@@ -308,7 +308,7 @@ void main() {
         // Act & Assert
         expect(
           () => testContext.vaultStorage.saveSecureFile(key: key, fileBytes: content),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
@@ -392,7 +392,7 @@ void main() {
         expect(result, isNull);
       });
 
-      test('should throw StorageReadError when file retrieval fails', () async {
+      test('should throw VaultStorageReadError when file retrieval fails', () async {
         // Arrange
         const key = 'test_file';
         const jsonMetadata = '{"fileId":"test-id","isSecure":true}';
@@ -411,7 +411,7 @@ void main() {
         // Act & Assert
         expect(
           () => testContext.vaultStorage.getFile(key, isSecure: true),
-          throwsA(isA<StorageReadError>()),
+          throwsA(isA<VaultStorageReadError>()),
         );
       });
     });
@@ -460,7 +460,7 @@ void main() {
         verify(() => testContext.mockSecureFilesBox.delete(key)).called(1);
       });
 
-      test('should throw StorageDeleteError when deletion fails', () async {
+      test('should throw VaultStorageDeleteError when deletion fails', () async {
         // Arrange
         const key = 'test_file';
 
@@ -485,7 +485,10 @@ void main() {
         ).thenThrow(Exception('Database error'));
 
         // Act & Assert
-        expect(() => testContext.vaultStorage.deleteFile(key), throwsA(isA<StorageDeleteError>()));
+        expect(
+          () => testContext.vaultStorage.deleteFile(key),
+          throwsA(isA<VaultStorageDeleteError>()),
+        );
       });
     });
   });

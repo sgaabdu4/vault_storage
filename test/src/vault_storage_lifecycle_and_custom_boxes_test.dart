@@ -80,7 +80,7 @@ void main() {
     });
   });
 
-  group('clearNormal/clearSecure rethrow StorageError', () {
+  group('clearNormal/clearSecure rethrow VaultStorageError', () {
     late TestContext testContext;
 
     setUpAll(() {
@@ -96,39 +96,39 @@ void main() {
       testContext.tearDownCommon();
     });
 
-    test('clearNormal should rethrow StorageError without wrapping', () async {
+    test('clearNormal should rethrow VaultStorageError without wrapping', () async {
       when(
         () => testContext.mockNormalBox.clear(),
-      ).thenThrow(const StorageDeleteError('inner error'));
+      ).thenThrow(const VaultStorageDeleteError('inner error'));
 
       expect(
         () => testContext.vaultStorage.clearNormal(),
         throwsA(
-          isA<StorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
+          isA<VaultStorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
         ),
       );
     });
 
-    test('clearSecure should rethrow StorageError without wrapping', () async {
+    test('clearSecure should rethrow VaultStorageError without wrapping', () async {
       when(
         () => testContext.mockSecureBox.clear(),
-      ).thenThrow(const StorageDeleteError('inner error'));
+      ).thenThrow(const VaultStorageDeleteError('inner error'));
 
       expect(
         () => testContext.vaultStorage.clearSecure(),
         throwsA(
-          isA<StorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
+          isA<VaultStorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
         ),
       );
     });
 
-    test('clearNormal should wrap non-StorageError in StorageDeleteError', () async {
+    test('clearNormal should wrap non-VaultStorageError in VaultStorageDeleteError', () async {
       when(() => testContext.mockNormalBox.clear()).thenThrow(Exception('unexpected'));
 
       expect(
         () => testContext.vaultStorage.clearNormal(),
         throwsA(
-          isA<StorageDeleteError>().having(
+          isA<VaultStorageDeleteError>().having(
             (e) => e.message,
             'message',
             equals('Failed to clear normal storage'),
@@ -288,7 +288,7 @@ void main() {
       expect(result, isNull);
     });
 
-    test('getFile from custom box throws StorageReadError for invalid metadata', () async {
+    test('getFile from custom box throws VaultStorageReadError for invalid metadata', () async {
       when(() => mockCustomBox.containsKey('bad')).thenReturn(true);
       // Return data without 'isCustomBox: true' (plain JSON string, legacy format)
       when(() => mockCustomBox.get('bad')).thenReturn('{"someField":"data"}');
@@ -296,7 +296,7 @@ void main() {
       expect(
         () => testContext.vaultStorage.getFile('bad', box: 'tenant'),
         throwsA(
-          isA<StorageReadError>().having(
+          isA<VaultStorageReadError>().having(
             (e) => e.message,
             'message',
             contains('Invalid custom box file metadata'),
@@ -367,7 +367,7 @@ void main() {
       testContext.tearDownCommon();
     });
 
-    test('should throw StorageReadError for incompatible type', () async {
+    test('should throw VaultStorageReadError for incompatible type', () async {
       // Store a bool value directly in normal box
       when(() => testContext.mockNormalBox.containsKey('typed')).thenReturn(true);
       when(() => testContext.mockNormalBox.get('typed')).thenReturn(true);
@@ -375,7 +375,11 @@ void main() {
       expect(
         () => testContext.vaultStorage.get<List<int>>('typed', isSecure: false),
         throwsA(
-          isA<StorageReadError>().having((e) => e.message, 'message', contains('Type mismatch')),
+          isA<VaultStorageReadError>().having(
+            (e) => e.message,
+            'message',
+            contains('Type mismatch'),
+          ),
         ),
       );
     });
