@@ -213,31 +213,31 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     await box.clear();
   }
 
-  /// Initialize FreeRASP protection with the provided configuration
-  Future<void> _initializeRaspProtection({
-    String? packageName, // Keep internal param name for FreeRASP API
-    List<String>? signingCertHashes, // Keep internal param name for FreeRASP API
-    String? bundleId, // Keep internal param name for FreeRASP API
-    String? teamId, // Keep internal param name for FreeRASP API
-  }) async {
-    final config = _securityConfig!;
-
-    if (config.enableLogging) {
-      debugPrint('VaultStorage: Initializing RASP protection...');
-    }
-
-    final talsecConfig = TalsecConfig(
+  /// Builds the FreeRASP configuration from the security settings
+  @visibleForTesting
+  TalsecConfig talsecConfigFor({
+    String? packageName,
+    List<String>? signingCertHashes,
+    String? bundleId,
+    String? teamId,
+  }) {
+    return TalsecConfig(
       androidConfig: AndroidConfig(
         packageName: packageName ?? 'your.package.name',
         certificateHashes: signingCertHashes ?? [],
         supportedAlternativeStores: ['com.android.vending'], // Google Play Store
       ),
-      iosConfig: IOSConfig(appBundleIds: bundleId != null ? [bundleId] : [], appTeamId: teamId ?? ''),
-      watcherMail: config.watcherMail ?? '',
-      isProd: config.isProd,
+      iosConfig: IOSConfig(
+        appBundleIds: bundleId != null ? [bundleId] : [],
+        appTeamId: teamId ?? '',
+      ),
+      watcherMail: _securityConfig?.watcherMail ?? '',
+      isProd: _securityConfig?.isProd ?? false,
     );
+  }
 
-    final threatCallback = ThreatCallback(
+  ThreatCallback _threatCallback() {
+    return ThreatCallback(
       onPrivilegedAccess: () => _handleJailbreakDetection(),
       onAppIntegrity: () => _handleTamperingDetection(),
       onDebug: () => _handleDebugDetection(),
@@ -254,11 +254,31 @@ extension VaultStorageImplSupport on VaultStorageImpl {
       onMultiInstance: () => _handleMultiInstanceDetection(),
       onAutomation: () => _handleAutomationDetection(),
     );
+  }
 
-    Talsec.instance.attachListener(threatCallback);
-    await Talsec.instance.start(talsecConfig);
+  /// Initialize FreeRASP protection with the provided configuration
+  Future<void> _initializeRaspProtection({
+    String? packageName,
+    List<String>? signingCertHashes,
+    String? bundleId,
+    String? teamId,
+  }) async {
+    final enableLogging = _securityConfig?.enableLogging ?? false;
+    if (enableLogging) {
+      debugPrint('VaultStorage: Initializing RASP protection...');
+    }
 
-    if (config.enableLogging) {
+    Talsec.instance.attachListener(_threatCallback());
+    await Talsec.instance.start(
+      talsecConfigFor(
+        packageName: packageName,
+        signingCertHashes: signingCertHashes,
+        bundleId: bundleId,
+        teamId: teamId,
+      ),
+    );
+
+    if (enableLogging) {
       debugPrint('VaultStorage: RASP protection initialized successfully');
     }
   }
