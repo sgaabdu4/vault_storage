@@ -9,5 +9,8 @@
       "lib/src/entities:lib/src/storage",
       "lib/src/entities:lib/src/vault_storage_impl.dart"
     ]
+  },
+  "health": {
+    "max_crap": 30
   }
 }

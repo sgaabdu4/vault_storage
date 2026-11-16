@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,6 +10,17 @@ import 'package:vault_storage/vault_storage.dart';
 void main() {
   runApp(const MyApp());
 }
+
+@visibleForTesting
+String initializationFailure(Object error) => switch (error) {
+  JailbreakDetectedException() =>
+    'Security Warning: Jailbreak detected - app may have limited functionality',
+  TamperingDetectedException() =>
+    'Security Error: App tampering detected - please reinstall from official source',
+  SecurityThreatException(:final threatType, :final message) =>
+    'Security threat detected: $threatType - $message',
+  _ => 'Initialization Error: $error',
+};
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -60,29 +72,11 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       if (_securityThreats.isNotEmpty && mounted) {
         _showSecurityDialog();
       }
-    } on JailbreakDetectedException {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Security Warning: Jailbreak detected - app may have limited functionality';
-        _isInitialized = false;
-      });
-    } on TamperingDetectedException {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage =
-            'Security Error: App tampering detected - please reinstall from official source';
-        _isInitialized = false;
-      });
-    } on SecurityThreatException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Security threat detected: ${e.threatType} - ${e.message}';
-        _isInitialized = false;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Initialization Error: $e';
+        _errorMessage = initializationFailure(e);
+        _isInitialized = false;
       });
     }
   }

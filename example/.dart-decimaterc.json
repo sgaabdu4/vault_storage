@@ -1,5 +1,10 @@
 {
   "boundaries": {
-    "rules": ["lib:../lib/src"]
+    "rules": [
+      "lib:../lib/src"
+    ]
+  },
+  "health": {
+    "max_crap": 30
   }
 }
