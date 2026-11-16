@@ -252,7 +252,7 @@ class JsonSafe {
     if (value is num) return value.toInt();
     if (value is String) {
       try {
-        return int.parse(value);
+        return .parse(value);
       } catch (e) {
         throw VaultStorageSerializationError(
           'Type mismatch: Cannot parse "$value" as int. '
@@ -268,7 +268,7 @@ class JsonSafe {
     if (value is num) return value.toDouble();
     if (value is String) {
       try {
-        return double.parse(value);
+        return .parse(value);
       } catch (e) {
         throw VaultStorageSerializationError(
           'Type mismatch: Cannot parse "$value" as double. '

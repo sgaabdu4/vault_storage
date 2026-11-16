@@ -64,7 +64,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
 
     // v4.x format: TypeAdapter-deserialized StoredValue
     if (stored is StoredValue) {
-      if (stored.strategy == StorageStrategy.native) return _coerceToType<T>(stored.value);
+      if (stored.strategy == .native) return _coerceToType<T>(stored.value);
       return (stored.value as String).decodeJsonSafely<T>();
     }
 
@@ -72,7 +72,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     if (stored is Map && StoredValue.isWrapped(stored)) {
       final wrapper = StoredValue.fromHiveMap(stored);
 
-      if (wrapper.strategy == StorageStrategy.native) {
+      if (wrapper.strategy == .native) {
         // Native storage - may need type coercion for primitives
         return _coerceToType<T>(wrapper.value);
       } else {
@@ -128,7 +128,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   Future<void> _putInBoxBase<T>(BoxBase<dynamic> box, String key, T value) async {
     final strategy = StorageStrategyHelper.determineStrategy(value);
 
-    final toStore = strategy == StorageStrategy.native
+    final toStore = strategy == .native
         ? StoredValue(value, strategy)
         : StoredValue(await value.encodeJsonSafely(), strategy);
 
@@ -162,12 +162,11 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     }
 
     // If isSecure specified, check only that box
-    if (isSecure == false) return getFromFileBox(BoxType.normalFiles, false);
-    if (isSecure == true) return getFromFileBox(BoxType.secureFiles, true);
+    if (isSecure == false) return getFromFileBox(.normalFiles, false);
+    if (isSecure == true) return getFromFileBox(.secureFiles, true);
 
     // Otherwise, check both (normal first, then secure)
-    return await getFromFileBox(BoxType.normalFiles, false) ??
-        await getFromFileBox(BoxType.secureFiles, true);
+    return await getFromFileBox(.normalFiles, false) ?? await getFromFileBox(.secureFiles, true);
   }
 
   /// Get a box from storage - returns the box directly
@@ -285,8 +284,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
 
   /// Check if FreeRASP security features are supported on the current platform
   bool _isSecuritySupportedOnCurrentPlatform() {
-    return defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
+    return defaultTargetPlatform == .android || defaultTargetPlatform == .iOS;
   }
 
   /// Validate that the environment is secure for vault operations

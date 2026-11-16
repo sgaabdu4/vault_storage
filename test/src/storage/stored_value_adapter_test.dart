@@ -18,7 +18,7 @@ void main() {
     });
 
     test('should round-trip a native string value', () {
-      const original = StoredValue('hello', StorageStrategy.native);
+      const original = StoredValue('hello', .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -27,7 +27,7 @@ void main() {
     });
 
     test('should round-trip a native int value', () {
-      const original = StoredValue(42, StorageStrategy.native);
+      const original = StoredValue(42, .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -36,7 +36,7 @@ void main() {
     });
 
     test('should round-trip a native double value', () {
-      const original = StoredValue(3.14, StorageStrategy.native);
+      const original = StoredValue(3.14, .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('should round-trip a native bool value', () {
-      const original = StoredValue(true, StorageStrategy.native);
+      const original = StoredValue(true, .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -54,7 +54,7 @@ void main() {
     });
 
     test('should round-trip a native list value', () {
-      const original = StoredValue([1, 2, 3], StorageStrategy.native);
+      const original = StoredValue([1, 2, 3], .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -63,7 +63,7 @@ void main() {
     });
 
     test('should round-trip a native map value', () {
-      const original = StoredValue({'key': 'value', 'count': 5}, StorageStrategy.native);
+      const original = StoredValue({'key': 'value', 'count': 5}, .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -72,7 +72,7 @@ void main() {
     });
 
     test('should round-trip a json strategy value', () {
-      const original = StoredValue('{"name":"test"}', StorageStrategy.json);
+      const original = StoredValue('{"name":"test"}', .json);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -82,7 +82,7 @@ void main() {
 
     test('should round-trip a Uint8List value', () {
       final data = Uint8List.fromList([10, 20, 30, 40]);
-      final original = StoredValue(data, StorageStrategy.native);
+      final original = StoredValue(data, .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -91,7 +91,7 @@ void main() {
     });
 
     test('should round-trip a null value', () {
-      const original = StoredValue(null, StorageStrategy.native);
+      const original = StoredValue(null, .native);
       final bytes = _serializeAdapter(adapter, original);
       final restored = _deserializeAdapter(adapter, bytes);
 
@@ -101,13 +101,13 @@ void main() {
 
     test('strategy index 0 maps to native', () {
       // Write with native strategy, verify readByte returns 0
-      const original = StoredValue('x', StorageStrategy.native);
+      const original = StoredValue('x', .native);
       final encoded = _serializeAdapter(adapter, original);
       expect(encoded.strategyIndex, equals(0));
     });
 
     test('strategy index 1 maps to json', () {
-      const original = StoredValue('x', StorageStrategy.json);
+      const original = StoredValue('x', .json);
       final encoded = _serializeAdapter(adapter, original);
       expect(encoded.strategyIndex, equals(1));
     });

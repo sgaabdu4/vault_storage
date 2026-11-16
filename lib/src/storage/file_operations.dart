@@ -52,7 +52,7 @@ class FileOperations implements IFileOperations {
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
         // WEB: Store encrypted bytes directly as Uint8List — no base64 overhead.
-        await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
+        await (getBox(.secureFiles) as LazyBox<dynamic>).put(
           fileId,
           Uint8List.fromList(secretBox.cipherText),
         );
@@ -200,7 +200,7 @@ class FileOperations implements IFileOperations {
       EncryptRequest(fileBytes: bytes, keyBytes: keyBytes),
     );
     if (useWeb) {
-      await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).put(
+      await (getBox(.secureFiles) as LazyBox<dynamic>).put(
         '$fileId:c:$chunkIndex',
         Uint8List.fromList(encryptedPayload.cipherText),
       );
@@ -309,9 +309,7 @@ class FileOperations implements IFileOperations {
       List<int>.generate(chunkCount, (index) => index),
       _webChunkConcurrency,
       (index) async {
-        final stored = await (getBox(BoxType.secureFiles) as LazyBox<dynamic>).get(
-          '$fileId:c:$index',
-        );
+        final stored = await (getBox(.secureFiles) as LazyBox<dynamic>).get('$fileId:c:$index');
         if (stored == null) {
           throw FileNotFoundError(fileId, 'Hive secure files chunk $index');
         }
@@ -392,7 +390,7 @@ class FileOperations implements IFileOperations {
       encryptedBytes: useWeb
           ? await _readWebFileBytes(
               fileId: fileId,
-              boxType: BoxType.secureFiles,
+              boxType: .secureFiles,
               location: 'Hive secure files box',
               decodeContext: 'encrypted content',
               getBox: getBox,
@@ -434,7 +432,7 @@ class FileOperations implements IFileOperations {
           fileMetadata: fileMetadata,
           fileId: fileId,
           useWeb: useWeb,
-          boxType: BoxType.secureFiles,
+          boxType: .secureFiles,
           getBox: getBox,
         );
       }
@@ -450,7 +448,7 @@ class FileOperations implements IFileOperations {
     String fileId,
     BoxBase<dynamic> Function(BoxType) getBox,
   ) async {
-    final box = getBox(BoxType.secureFiles) as LazyBox<dynamic>;
+    final box = getBox(.secureFiles) as LazyBox<dynamic>;
     final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
     await Future.wait([
       for (var index = 0; index < chunkCount; index++) box.delete('$fileId:c:$index'),
@@ -473,7 +471,7 @@ class FileOperations implements IFileOperations {
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
         // WEB: Store bytes directly as Uint8List — no base64 overhead.
-        await (getBox(BoxType.normalFiles) as LazyBox<dynamic>).put(fileId, fileBytes);
+        await (getBox(.normalFiles) as LazyBox<dynamic>).put(fileId, fileBytes);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -503,7 +501,7 @@ class FileOperations implements IFileOperations {
       final fileBytes = useWeb
           ? await _readWebFileBytes(
               fileId: fileId,
-              boxType: BoxType.normalFiles,
+              boxType: .normalFiles,
               location: 'Hive normal files box',
               decodeContext: 'normal file content',
               getBox: getBox,
@@ -538,7 +536,7 @@ class FileOperations implements IFileOperations {
         fileMetadata: fileMetadata,
         fileId: fileId,
         useWeb: isWeb ?? kIsWeb,
-        boxType: BoxType.normalFiles,
+        boxType: .normalFiles,
         getBox: getBox,
       );
     } catch (e) {

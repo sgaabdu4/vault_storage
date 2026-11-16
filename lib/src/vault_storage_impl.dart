@@ -65,7 +65,7 @@ class VaultStorageImpl implements IVaultStorage {
 
   @override
   Future<void> init() {
-    if (isVaultStorageReady) return Future<void>.value();
+    if (isVaultStorageReady) return .value();
     return _initFuture ??= _doInit();
   }
 
@@ -87,9 +87,9 @@ class VaultStorageImpl implements IVaultStorage {
       if (isSecure != null) {
         switch (isSecure) {
           case false:
-            return await getFromBox<T>(BoxType.normal, key);
+            return await getFromBox<T>(.normal, key);
           case true:
-            return await getFromBox<T>(BoxType.secure, key);
+            return await getFromBox<T>(.secure, key);
         }
       }
 
@@ -106,14 +106,14 @@ class VaultStorageImpl implements IVaultStorage {
     T? result;
 
     // Check default normal box
-    final normalValue = await getFromBox<T>(BoxType.normal, key);
+    final normalValue = await getFromBox<T>(.normal, key);
     if (normalValue != null) {
       foundBoxes.add('normal');
       result = normalValue;
     }
 
     // Check default secure box
-    final secureValue = await getFromBox<T>(BoxType.secure, key);
+    final secureValue = await getFromBox<T>(.secure, key);
     if (secureValue != null) {
       foundBoxes.add('secure');
       result = secureValue;
@@ -164,7 +164,7 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       // Default: use secure box
-      await setInBox(BoxType.secure, key, value);
+      await setInBox(.secure, key, value);
 
       // Optional: Remove from normal box if it exists there
       final normalBox = boxes[BoxType.normal];
@@ -193,7 +193,7 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       // Default: use normal box
-      await setInBox(BoxType.normal, key, value);
+      await setInBox(.normal, key, value);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageWriteError('Failed to set normal "$key"', e);
@@ -211,7 +211,7 @@ class VaultStorageImpl implements IVaultStorage {
         return;
       }
 
-      await _deleteKeyFromBoxes(key, [BoxType.normal, BoxType.secure]);
+      await _deleteKeyFromBoxes(key, [.normal, .secure]);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageDeleteError('Failed to delete "$key"', e);
@@ -225,7 +225,7 @@ class VaultStorageImpl implements IVaultStorage {
     try {
       await boxes[BoxType.normal]!.clear();
       if (includeFiles) {
-        await clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
+        await clearAllFilesInBox(.normalFiles, isSecure: false);
       }
     } catch (e) {
       if (e is VaultStorageError) rethrow;
@@ -241,7 +241,7 @@ class VaultStorageImpl implements IVaultStorage {
     try {
       await boxes[BoxType.secure]!.clear();
       if (includeFiles) {
-        await clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
+        await clearAllFilesInBox(.secureFiles, isSecure: true);
       }
     } catch (e) {
       if (e is VaultStorageError) rethrow;
@@ -268,8 +268,8 @@ class VaultStorageImpl implements IVaultStorage {
       if (!includeFiles) return;
 
       // 3) For files, delete underlying file content first, then clear metadata boxes
-      await clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
-      await clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
+      await clearAllFilesInBox(.normalFiles, isSecure: false);
+      await clearAllFilesInBox(.secureFiles, isSecure: true);
 
       // 4) Delete the master encryption key since we're doing a complete wipe
       await _secureStorage.delete(key: StorageKeys.secureKey);
@@ -296,17 +296,17 @@ class VaultStorageImpl implements IVaultStorage {
 
       switch (isSecure) {
         case true:
-          collect(BoxType.secure);
-          if (includeFiles) collect(BoxType.secureFiles);
+          collect(.secure);
+          if (includeFiles) collect(.secureFiles);
         case false:
-          collect(BoxType.normal);
-          if (includeFiles) collect(BoxType.normalFiles);
+          collect(.normal);
+          if (includeFiles) collect(.normalFiles);
         case null:
-          collect(BoxType.normal);
-          collect(BoxType.secure);
+          collect(.normal);
+          collect(.secure);
           if (includeFiles) {
-            collect(BoxType.normalFiles);
-            collect(BoxType.secureFiles);
+            collect(.normalFiles);
+            collect(.secureFiles);
           }
       }
 
@@ -372,7 +372,7 @@ class VaultStorageImpl implements IVaultStorage {
 
     return shouldStream
         ? await _fileOperations.saveSecureFileStream(
-            stream: Stream<List<int>>.value(fileBytes),
+            stream: .value(fileBytes),
             fileExtension: ext,
             isWeb: kIsWeb,
             secureStorage: _secureStorage,
@@ -567,7 +567,7 @@ class VaultStorageImpl implements IVaultStorage {
         );
       }
 
-      await _deleteKeyFromBoxes(key, [BoxType.normalFiles, BoxType.secureFiles]);
+      await _deleteKeyFromBoxes(key, [.normalFiles, .secureFiles]);
     } catch (e) {
       if (e is VaultStorageError) rethrow;
       throw VaultStorageDeleteError('Failed to delete file "$key"', e);

@@ -23,13 +23,13 @@ class TestContext {
   // Get box function for FileOperations testing
   BoxBase<dynamic> getBox(BoxType type) {
     switch (type) {
-      case BoxType.secure:
+      case .secure:
         return mockSecureBox;
-      case BoxType.normal:
+      case .normal:
         return mockNormalBox;
-      case BoxType.secureFiles:
+      case .secureFiles:
         return mockSecureFilesBox;
-      case BoxType.normalFiles:
+      case .normalFiles:
         return mockNormalFilesBox;
     }
   }
@@ -52,10 +52,10 @@ class TestContext {
     );
 
     vaultStorage.boxes.addAll({
-      BoxType.secure: mockSecureBox,
-      BoxType.normal: mockNormalBox,
-      BoxType.secureFiles: mockSecureFilesBox,
-      BoxType.normalFiles: mockNormalFilesBox,
+      .secure: mockSecureBox,
+      .normal: mockNormalBox,
+      .secureFiles: mockSecureFilesBox,
+      .normalFiles: mockNormalFilesBox,
     });
     vaultStorage.isVaultStorageReady = true;
 

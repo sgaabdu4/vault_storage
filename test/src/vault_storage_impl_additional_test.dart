@@ -177,7 +177,7 @@ void main() {
         expect(
           () => testContext.vaultStorage.saveNormalFile(
             key: 'file',
-            fileBytes: Uint8List.fromList([1, 2, 3]),
+            fileBytes: .fromList([1, 2, 3]),
             originalFileName: 'test.txt',
             box: 'nonexistent',
           ),

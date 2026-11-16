@@ -637,7 +637,7 @@ void main() {
           when(() => testContext.mockNormalBox.get(key)).thenReturn(jsonValue);
 
           // Act
-          final result = await testContext.vaultStorage.getFromBox<String>(BoxType.normal, key);
+          final result = await testContext.vaultStorage.getFromBox<String>(.normal, key);
 
           // Assert
           expect(result, equals(value));
@@ -650,7 +650,7 @@ void main() {
           when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(false);
 
           // Act
-          final result = await testContext.vaultStorage.getFromBox<String>(BoxType.normal, key);
+          final result = await testContext.vaultStorage.getFromBox<String>(.normal, key);
 
           // Assert
           expect(result, isNull);
@@ -668,7 +668,7 @@ void main() {
           ).thenAnswer((_) async {});
 
           // Act
-          await testContext.vaultStorage.setInBox(BoxType.normal, key, value);
+          await testContext.vaultStorage.setInBox(.normal, key, value);
 
           // Assert
           verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(1);
@@ -683,7 +683,7 @@ void main() {
 
           // Act & Assert
           expect(
-            () => testContext.vaultStorage.setInBox(BoxType.normal, key, value),
+            () => testContext.vaultStorage.setInBox(.normal, key, value),
             throwsA(isA<StorageInitializationError>()),
           );
         });
@@ -726,8 +726,8 @@ void main() {
       group('getInternalBox', () {
         test('should return the correct box for given type', () {
           // Act
-          final normalBox = testContext.vaultStorage.getInternalBox(BoxType.normal);
-          final secureBox = testContext.vaultStorage.getInternalBox(BoxType.secure);
+          final normalBox = testContext.vaultStorage.getInternalBox(.normal);
+          final secureBox = testContext.vaultStorage.getInternalBox(.secure);
 
           // Assert
           expect(normalBox, equals(testContext.mockNormalBox));

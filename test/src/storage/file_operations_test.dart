@@ -197,8 +197,8 @@ void main() {
       test('should save streaming secure file successfully on web', () async {
         // Arrange
         final parts = [
-          Uint8List.fromList(List.generate(1024, (i) => i % 256)),
-          Uint8List.fromList(List.generate(2048, (i) => (i + 1) % 256)),
+          Uint8List.fromList(.generate(1024, (i) => i % 256)),
+          Uint8List.fromList(.generate(2048, (i) => (i + 1) % 256)),
         ];
         final stream = Stream<List<int>>.fromIterable(parts);
         const fileExtension = 'bin';
@@ -270,7 +270,7 @@ void main() {
 
         final original = Uint8List.fromList([1, 2, 3, 4, 5, 6, 7]);
         final metadata = await fileOperations.saveSecureFileStream(
-          stream: Stream.value(original),
+          stream: .value(original),
           fileExtension: 'bin',
           isWeb: true,
           secureStorage: testContext.mockSecureStorage,
@@ -294,7 +294,7 @@ void main() {
       group('streamed web chunks', () {
         late Map<String, dynamic> storedChunks;
         late Map<String, dynamic> metadata;
-        final original = Uint8List.fromList(List.generate(10, (index) => index + 1));
+        final original = Uint8List.fromList(.generate(10, (index) => index + 1));
 
         setUp(() async {
           storedChunks = {};
@@ -318,7 +318,7 @@ void main() {
             () => testContext.mockSecureStorage.read(key: any(named: 'key')),
           ).thenAnswer((_) async => encodedKey);
           metadata = await fileOperations.saveSecureFileStream(
-            stream: Stream.value(original),
+            stream: .value(original),
             fileExtension: 'bin',
             isWeb: true,
             secureStorage: testContext.mockSecureStorage,
@@ -380,7 +380,7 @@ void main() {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';
-        final testKey = Uint8List.fromList(List.generate(32, (i) => i));
+        final testKey = Uint8List.fromList(.generate(32, (i) => i));
 
         final fileMetadata = {
           'fileId': testFileId,
@@ -856,7 +856,7 @@ void main() {
 
         expect(
           () => fileOperations.saveSecureFile(
-            fileBytes: Uint8List.fromList([1, 2, 3]),
+            fileBytes: .fromList([1, 2, 3]),
             fileExtension: 'bin',
             isWeb: false,
             secureStorage: testContext.mockSecureStorage,
@@ -880,7 +880,7 @@ void main() {
 
         expect(
           () => fileOperations.saveSecureFileStream(
-            stream: Stream<List<int>>.value([1, 2, 3]),
+            stream: .value([1, 2, 3]),
             fileExtension: 'bin',
             isWeb: false,
             secureStorage: testContext.mockSecureStorage,
@@ -904,7 +904,7 @@ void main() {
 
         expect(
           () => fileOperations.saveNormalFile(
-            fileBytes: Uint8List.fromList([1, 2, 3]),
+            fileBytes: .fromList([1, 2, 3]),
             fileExtension: 'bin',
             isWeb: false,
             uuid: testContext.mockUuid,

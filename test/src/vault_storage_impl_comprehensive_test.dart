@@ -568,7 +568,7 @@ void main() {
         when(() => testContext.mockNormalBox.get(key)).thenReturn(jsonValue);
 
         // Act
-        final result = await testContext.vaultStorage.getFromBox<String>(BoxType.normal, key);
+        final result = await testContext.vaultStorage.getFromBox<String>(.normal, key);
 
         // Assert
         expect(result, equals(value));
@@ -581,7 +581,7 @@ void main() {
         when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(false);
 
         // Act
-        final result = await testContext.vaultStorage.getFromBox<String>(BoxType.normal, key);
+        final result = await testContext.vaultStorage.getFromBox<String>(.normal, key);
 
         // Assert
         expect(result, isNull);
@@ -597,7 +597,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         // Act
-        await testContext.vaultStorage.setInBox(BoxType.normal, key, value);
+        await testContext.vaultStorage.setInBox(.normal, key, value);
 
         // Assert
         verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(1);
@@ -612,15 +612,15 @@ void main() {
 
         // Act & Assert
         expect(
-          () => testContext.vaultStorage.setInBox(BoxType.normal, key, value),
+          () => testContext.vaultStorage.setInBox(.normal, key, value),
           throwsA(isA<StorageInitializationError>()),
         );
       });
 
       test('should return the correct box for given type', () {
         // Act
-        final normalBox = testContext.vaultStorage.getInternalBox(BoxType.normal);
-        final secureBox = testContext.vaultStorage.getInternalBox(BoxType.secure);
+        final normalBox = testContext.vaultStorage.getInternalBox(.normal);
+        final secureBox = testContext.vaultStorage.getInternalBox(.secure);
 
         // Assert
         expect(normalBox, equals(testContext.mockNormalBox));
@@ -728,9 +728,7 @@ void main() {
         const key = 'new_v4';
         when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
         // v4.x returns StoredValue objects directly (deserialized by TypeAdapter)
-        when(
-          () => testContext.mockNormalBox.get(key),
-        ).thenReturn(const StoredValue(42, StorageStrategy.native));
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(const StoredValue(42, .native));
 
         final result = await testContext.vaultStorage.get<int>(key, isSecure: false);
         expect(result, equals(42));
@@ -741,7 +739,7 @@ void main() {
         when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
         when(
           () => testContext.mockNormalBox.get(key),
-        ).thenReturn(const StoredValue('{"items":[1,2]}', StorageStrategy.json));
+        ).thenReturn(const StoredValue('{"items":[1,2]}', .json));
 
         final result = await testContext.vaultStorage.get<Map<String, dynamic>>(
           key,
@@ -770,7 +768,7 @@ void main() {
         when(() => testContext.mockNormalBox.containsKey('k_v4')).thenReturn(true);
         when(
           () => testContext.mockNormalBox.get('k_v4'),
-        ).thenReturn(const StoredValue('new_string', StorageStrategy.native));
+        ).thenReturn(const StoredValue('new_string', .native));
 
         // All three should be readable
         expect(await testContext.vaultStorage.get<String>('k_v2', isSecure: false), 'old_string');
@@ -783,9 +781,7 @@ void main() {
         when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
         // Hive deserializes Maps as Map<dynamic, dynamic> after TypeAdapter round-trip
         final hiveMap = <dynamic, dynamic>{'name': 'test', 'count': 5};
-        when(
-          () => testContext.mockNormalBox.get(key),
-        ).thenReturn(StoredValue(hiveMap, StorageStrategy.native));
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(StoredValue(hiveMap, .native));
 
         final result = await testContext.vaultStorage.get<Map<String, dynamic>>(
           key,

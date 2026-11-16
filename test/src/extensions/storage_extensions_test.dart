@@ -89,7 +89,7 @@ void main() {
 
       test('should encode large bytes using isolate', () async {
         // Create large data (> base64IsolateThreshold)
-        final largeData = Uint8List.fromList(List.generate(60000, (i) => i % 256));
+        final largeData = Uint8List.fromList(.generate(60000, (i) => i % 256));
         final result = await largeData.encodeBase64Safely(context: 'large encode test');
 
         expect(result, isA<String>());
@@ -438,7 +438,7 @@ void main() {
         // Set very low threshold to force isolate usage
         VaultStorageConfig.base64IsolateThreshold = 10;
 
-        final data = Uint8List.fromList(List.generate(20, (i) => i));
+        final data = Uint8List.fromList(.generate(20, (i) => i));
         final encoded = await data.encodeBase64Safely(context: 'threshold test');
         expect(encoded, isA<String>());
 

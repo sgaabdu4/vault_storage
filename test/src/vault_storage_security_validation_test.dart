@@ -44,7 +44,7 @@ void main() {
 
     group('clearSecure blocks on insecure environment', () {
       test('should throw SecurityThreatException when blockOnJailbreak is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
@@ -53,7 +53,7 @@ void main() {
       });
 
       test('should throw SecurityThreatException when blockOnDebug is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(
           const VaultSecurityConfig(
@@ -69,7 +69,7 @@ void main() {
       });
 
       test('should throw SecurityThreatException when blockOnEmulator is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        debugDefaultTargetPlatformOverride = .iOS;
 
         final storage = createStorageWithSecurity(
           const VaultSecurityConfig(
@@ -85,7 +85,7 @@ void main() {
       });
 
       test('should proceed when no blocking flags are set', () async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(
           const VaultSecurityConfig(
@@ -107,7 +107,7 @@ void main() {
 
     group('clearAll blocks on insecure environment', () {
       test('should throw SecurityThreatException when blockOnTampering is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
@@ -116,7 +116,7 @@ void main() {
       });
 
       test('should throw SecurityThreatException when blockOnHooks is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        debugDefaultTargetPlatformOverride = .iOS;
 
         final storage = createStorageWithSecurity(
           const VaultSecurityConfig(blockOnJailbreak: false, blockOnTampering: false),
@@ -129,7 +129,7 @@ void main() {
 
     group('saveSecure blocks on insecure environment', () {
       test('should throw SecurityThreatException when blockOnUnofficialStore is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(
           const VaultSecurityConfig(
@@ -150,13 +150,13 @@ void main() {
 
     group('saveSecureFile blocks on insecure environment', () {
       test('should throw SecurityThreatException when environment insecure', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         expect(
-          () => storage.saveSecureFile(key: 'file', fileBytes: Uint8List.fromList([1, 2, 3])),
+          () => storage.saveSecureFile(key: 'file', fileBytes: .fromList([1, 2, 3])),
           throwsA(isA<SecurityThreatException>()),
         );
       });
@@ -177,7 +177,7 @@ void main() {
 
       test('should skip validation on non-mobile platforms', () async {
         // Tests run on macOS by default, so _isSecuritySupportedOnCurrentPlatform = false
-        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        debugDefaultTargetPlatformOverride = .macOS;
 
         final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
@@ -191,7 +191,7 @@ void main() {
       });
 
       test('should skip validation when environment is secure', () async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
         final storage = createStorageWithSecurity(const VaultSecurityConfig());
         storage.isSecureEnvironment = true; // Secure environment
@@ -654,7 +654,7 @@ void main() {
 
       await testContext.vaultStorage.saveSecureFile(
         key: 'myfile',
-        fileBytes: Uint8List.fromList([1, 2, 3]),
+        fileBytes: .fromList([1, 2, 3]),
         originalFileName: 'test.png',
         metadata: {'author': 'tester'},
         box: 'tenant',
@@ -671,7 +671,7 @@ void main() {
       expect(
         () => testContext.vaultStorage.saveSecureFile(
           key: 'myfile',
-          fileBytes: Uint8List.fromList([1, 2, 3]),
+          fileBytes: .fromList([1, 2, 3]),
           box: 'unknown_box',
         ),
         throwsA(isA<BoxNotFoundError>()),
@@ -684,7 +684,7 @@ void main() {
 
       await testContext.vaultStorage.saveNormalFile(
         key: 'myfile',
-        fileBytes: Uint8List.fromList([4, 5, 6]),
+        fileBytes: .fromList([4, 5, 6]),
         originalFileName: 'data.bin',
         metadata: {'category': 'docs'},
         box: 'tenant',
@@ -701,7 +701,7 @@ void main() {
       expect(
         () => testContext.vaultStorage.saveNormalFile(
           key: 'myfile',
-          fileBytes: Uint8List.fromList([1, 2, 3]),
+          fileBytes: .fromList([1, 2, 3]),
           box: 'unknown_box',
         ),
         throwsA(isA<BoxNotFoundError>()),

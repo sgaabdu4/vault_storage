@@ -45,7 +45,7 @@ void main() {
 
     test('should verify StoredValue wrapper is used correctly', () {
       final testValue = [1, 2, 3];
-      final wrapped = StoredValue(testValue, StorageStrategy.native);
+      final wrapped = StoredValue(testValue, .native);
       final hiveMap = wrapped.toHiveMap();
 
       expect(hiveMap, isA<Map<String, dynamic>>());

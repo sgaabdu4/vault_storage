@@ -82,29 +82,27 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   }
 
   IVaultStorage _createStorage() => VaultStorage.create(
-    securityConfig: VaultSecurityConfig.production(
+    securityConfig: .production(
       watcherMail: 'security@example.com',
       iosBundleId: 'com.example.storageService.example',
       iosTeamId: 'YOUR_TEAM_ID',
       threatCallbacks: {
-        SecurityThreat.jailbreak: () =>
+        .jailbreak: () =>
             _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
-        SecurityThreat.tampering: () =>
+        .tampering: () =>
             _securityThreats.add('App tampering detected - app integrity compromised'),
-        SecurityThreat.debugging: () => _securityThreats.add('Debug environment detected'),
-        SecurityThreat.emulator: () => _securityThreats.add('Running on emulator/simulator'),
-        SecurityThreat.hooks: () =>
-            _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
-        SecurityThreat.unofficialStore: () =>
-            _securityThreats.add('App installed from unofficial store'),
-        SecurityThreat.screenshot: () => _securityThreats.add('Screen capture detected'),
-        SecurityThreat.screenRecording: () => _securityThreats.add('Screen recording detected'),
-        SecurityThreat.systemVPN: () => _securityThreats.add('System VPN detected'),
-        SecurityThreat.passcode: () => _securityThreats.add('Device passcode not set'),
-        SecurityThreat.secureHardware: () => _securityThreats.add('Secure hardware not available'),
-        SecurityThreat.developerMode: () => _securityThreats.add('Developer mode enabled'),
-        SecurityThreat.adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
-        SecurityThreat.multiInstance: () => _securityThreats.add('Multiple app instances detected'),
+        .debugging: () => _securityThreats.add('Debug environment detected'),
+        .emulator: () => _securityThreats.add('Running on emulator/simulator'),
+        .hooks: () => _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
+        .unofficialStore: () => _securityThreats.add('App installed from unofficial store'),
+        .screenshot: () => _securityThreats.add('Screen capture detected'),
+        .screenRecording: () => _securityThreats.add('Screen recording detected'),
+        .systemVPN: () => _securityThreats.add('System VPN detected'),
+        .passcode: () => _securityThreats.add('Device passcode not set'),
+        .secureHardware: () => _securityThreats.add('Secure hardware not available'),
+        .developerMode: () => _securityThreats.add('Developer mode enabled'),
+        .adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
+        .multiInstance: () => _securityThreats.add('Multiple app instances detected'),
       },
     ),
   );
@@ -117,10 +115,10 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       builder: (context) => AlertDialog.adaptive(
         title: const Text('Security Alert'),
         content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: .min,
+          crossAxisAlignment: .start,
           children: [
-            const Text('Security issues detected:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Security issues detected:', style: TextStyle(fontWeight: .bold)),
             const SizedBox(height: 8),
             ..._securityThreats.map(
               (threat) => Padding(
@@ -188,7 +186,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       builder: (context) => AlertDialog(
         title: Text(title),
         content: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: .min,
           children: [
             TextField(
               controller: keyController,
@@ -219,7 +217,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
         builder: (context, setState) => AlertDialog(
           title: Text(title),
           content: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: .min,
             children: [
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
@@ -243,7 +241,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                     : null,
               ),
               const SizedBox(height: 16),
-              const Text('OR', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('OR', style: TextStyle(fontWeight: .bold)),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
@@ -515,7 +513,7 @@ Try saving a secure value first.
     return Scaffold(
       appBar: AppBar(title: const Text('Vault Storage Demo')),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: .stretch,
         children: [
           if (!_isInitialized) const _StorageInitialization(),
           _OperationMessage(result: _operationResult, error: _errorMessage),

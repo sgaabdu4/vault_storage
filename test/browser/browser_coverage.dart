@@ -26,7 +26,7 @@ Future<void> main() async {
       request.response.headers.contentType = ContentType('application', 'javascript');
       request.response.write(await javascript.readAsString());
     } else {
-      request.response.headers.contentType = ContentType.html;
+      request.response.headers.contentType = .html;
       request.response.write('<!doctype html><body><script src="/case.js"></script></body>');
     }
     await request.response.close();
@@ -65,7 +65,7 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
     line,
   ) {
     final match = _devToolsPattern.firstMatch(line);
-    if (match != null && !endpoint.isCompleted) endpoint.complete(Uri.parse(match[1]!));
+    if (match != null && !endpoint.isCompleted) endpoint.complete(.parse(match[1]!));
   });
   final logs = chrome.stdout.drain<void>();
   DevTools? tools;
@@ -87,7 +87,7 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
     await chrome.exitCode.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-        chrome.kill(ProcessSignal.sigkill);
+        chrome.kill(.sigkill);
         return -1;
       },
     );
@@ -99,7 +99,7 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
 Future<DevTools> connectPage(int port) async {
   final client = HttpClient();
   try {
-    final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json/list'));
+    final request = await client.getUrl(.parse('http://127.0.0.1:$port/json/list'));
     final response = await request.close();
     final pages = jsonDecode(await utf8.decoder.bind(response).join()) as List<Object?>;
     final page = pages.cast<Map<String, Object?>>().firstWhere((value) => value['type'] == 'page');

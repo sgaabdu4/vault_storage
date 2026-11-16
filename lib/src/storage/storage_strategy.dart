@@ -50,7 +50,7 @@ class StorageStrategyHelper {
   /// Determines the optimal storage strategy for a given value
   static StorageStrategy determineStrategy(Object? value) {
     // Check if it's natively storable by Hive (includes primitives)
-    return _isNativelyStorable(value) ? StorageStrategy.native : StorageStrategy.json;
+    return _isNativelyStorable(value) ? .native : .json;
   }
 
   /// Checks if a value can be stored natively by Hive without JSON encoding

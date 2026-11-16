@@ -83,8 +83,8 @@ void main() {
 
         final config = VaultSecurityConfig(
           threatCallbacks: {
-            SecurityThreat.jailbreak: () => jailbreakCallbackCalled = true,
-            SecurityThreat.tampering: () => tamperingCallbackCalled = true,
+            .jailbreak: () => jailbreakCallbackCalled = true,
+            .tampering: () => tamperingCallbackCalled = true,
           },
         );
 

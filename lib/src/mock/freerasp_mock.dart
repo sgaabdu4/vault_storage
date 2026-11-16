@@ -180,7 +180,7 @@ class ThreatCallback {
 /// Mock Talsec instance
 class Talsec {
   /// Mock singleton instance
-  static const Talsec instance = Talsec._();
+  static const Talsec instance = ._();
 
   const Talsec._();
 

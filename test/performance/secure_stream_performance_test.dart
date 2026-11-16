@@ -34,11 +34,11 @@ void main() {
     when(
       () => context.mockSecureStorage.read(key: any(named: 'key')),
     ).thenAnswer((_) async => encryptionKey);
-    final bytes = Uint8List.fromList(List<int>.generate(8 * 1024 * 1024, (index) => index % 251));
+    final bytes = Uint8List.fromList(.generate(8 * 1024 * 1024, (index) => index % 251));
     final operations = FileOperations();
     final timer = Stopwatch()..start();
     final metadata = await operations.saveSecureFileStream(
-      stream: Stream<List<int>>.value(bytes),
+      stream: .value(bytes),
       fileExtension: 'bin',
       isWeb: false,
       secureStorage: context.mockSecureStorage,

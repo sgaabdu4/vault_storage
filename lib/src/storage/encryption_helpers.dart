@@ -21,5 +21,5 @@ Future<Uint8List> decryptInIsolate(DecryptRequest request) async {
     mac: Mac(request.macBytes),
   );
   final decryptedData = await encryptionAlgorithm.decrypt(secretBox, secretKey: secretKey);
-  return Uint8List.fromList(decryptedData);
+  return .fromList(decryptedData);
 }

@@ -27,7 +27,7 @@ void main() {
       ) async {
         running++;
         peak = running > peak ? running : peak;
-        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(.zero);
         running--;
         return value * 2;
       });

@@ -16,10 +16,10 @@ void main() {
   late DemoPicker picker;
 
   setUp(() async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    debugDefaultTargetPlatformOverride = .linux;
     directory = await Directory.systemTemp.createTemp('vault-demo-test-');
     FlutterSecureStorage.setMockInitialValues({});
-    originalPicker = FilePickerPlatform.instance;
+    originalPicker = .instance;
     picker = DemoPicker();
     FilePickerPlatform.instance = picker;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -181,7 +181,7 @@ class DemoPicker extends FilePickerPlatform {
   Future<List<PlatformFile>> pickFiles({
     String? dialogTitle,
     String? initialDirectory,
-    FileType type = FileType.any,
+    FileType type = .any,
     List<String>? allowedExtensions,
     void Function(FilePickerStatus)? onFileLoading,
     int compressionQuality = 0,

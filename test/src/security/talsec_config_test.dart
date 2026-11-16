@@ -57,7 +57,7 @@ void main() {
   });
 
   test('talsecConfigFor fills placeholders when no identifiers are given', () {
-    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    debugDefaultTargetPlatformOverride = .macOS;
 
     final config = storageWith(null).talsecConfigFor();
 

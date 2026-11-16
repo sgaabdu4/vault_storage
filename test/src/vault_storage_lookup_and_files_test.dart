@@ -29,8 +29,8 @@ void main() {
 
     test('should throw AmbiguousKeyError when key found in both default boxes', () async {
       // Key exists in both normal AND secure boxes (stored as native StoredValue)
-      final normalWrapped = const StoredValue('normal_val', StorageStrategy.native).toHiveMap();
-      final secureWrapped = const StoredValue('secure_val', StorageStrategy.native).toHiveMap();
+      final normalWrapped = const StoredValue('normal_val', .native).toHiveMap();
+      final secureWrapped = const StoredValue('secure_val', .native).toHiveMap();
       when(() => testContext.mockNormalBox.containsKey('shared')).thenReturn(true);
       when(() => testContext.mockNormalBox.get('shared')).thenReturn(normalWrapped);
       when(() => testContext.mockSecureBox.containsKey('shared')).thenReturn(true);
@@ -53,7 +53,7 @@ void main() {
       final secondBox = MockBox<dynamic>();
       testContext.vaultStorage.customBoxes['box_a'] = firstBox;
       testContext.vaultStorage.customBoxes['box_b'] = secondBox;
-      final wrapped = const StoredValue('custom_val', StorageStrategy.native).toHiveMap();
+      final wrapped = const StoredValue('custom_val', .native).toHiveMap();
       when(() => testContext.mockNormalBox.containsKey('shared')).thenReturn(false);
       when(() => testContext.mockSecureBox.containsKey('shared')).thenReturn(false);
       when(() => firstBox.containsKey('shared')).thenReturn(false);
@@ -79,8 +79,8 @@ void main() {
       final mockCustomBox = MockBox<dynamic>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
-      final normalWrapped = const StoredValue('normal_val', StorageStrategy.native).toHiveMap();
-      final customWrapped = const StoredValue('custom_val', StorageStrategy.native).toHiveMap();
+      final normalWrapped = const StoredValue('normal_val', .native).toHiveMap();
+      final customWrapped = const StoredValue('custom_val', .native).toHiveMap();
       when(() => testContext.mockNormalBox.containsKey('shared')).thenReturn(true);
       when(() => testContext.mockNormalBox.get('shared')).thenReturn(normalWrapped);
       when(() => testContext.mockSecureBox.containsKey('shared')).thenReturn(false);
@@ -141,7 +141,7 @@ void main() {
 
       await testContext.vaultStorage.saveSecureFile(
         key: 'big_file',
-        fileBytes: Uint8List.fromList([1, 2, 3]),
+        fileBytes: .fromList([1, 2, 3]),
       );
 
       verify(
@@ -175,7 +175,7 @@ void main() {
 
       await testContext.vaultStorage.saveSecureFile(
         key: 'with_meta',
-        fileBytes: Uint8List.fromList([1, 2]),
+        fileBytes: .fromList([1, 2]),
         metadata: {'author': 'test'},
       );
 
@@ -222,7 +222,7 @@ void main() {
 
       await testContext.vaultStorage.saveNormalFile(
         key: 'doc',
-        fileBytes: Uint8List.fromList([10, 20]),
+        fileBytes: .fromList([10, 20]),
         metadata: {'category': 'reports'},
       );
 
@@ -399,7 +399,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      await testContext.vaultStorage.clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
+      await testContext.vaultStorage.clearAllFilesInBox(.normalFiles, isSecure: false);
 
       verify(
         () => testContext.mockFileOperations.deleteNormalFile(
@@ -430,7 +430,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      await testContext.vaultStorage.clearAllFilesInBox(BoxType.secureFiles, isSecure: true);
+      await testContext.vaultStorage.clearAllFilesInBox(.secureFiles, isSecure: true);
 
       verify(
         () => testContext.mockFileOperations.deleteSecureFile(
@@ -467,7 +467,7 @@ void main() {
       });
 
       // Should not throw despite first file failing
-      await testContext.vaultStorage.clearAllFilesInBox(BoxType.normalFiles, isSecure: false);
+      await testContext.vaultStorage.clearAllFilesInBox(.normalFiles, isSecure: false);
 
       verify(() => testContext.mockNormalFilesBox.clear()).called(1);
     });
@@ -557,10 +557,7 @@ void main() {
 
     test('should decode JSON-strategy wrapped values', () async {
       // Create a StoredValue map with JSON strategy containing a JSON-encoded map
-      final wrappedValue = const StoredValue(
-        '{"name":"test","count":42}',
-        StorageStrategy.json,
-      ).toHiveMap();
+      final wrappedValue = const StoredValue('{"name":"test","count":42}', .json).toHiveMap();
 
       when(() => testContext.mockNormalBox.containsKey('json_val')).thenReturn(true);
       when(() => testContext.mockNormalBox.get('json_val')).thenReturn(wrappedValue);
