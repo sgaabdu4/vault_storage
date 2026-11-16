@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:vault_storage/src/constants/config.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';

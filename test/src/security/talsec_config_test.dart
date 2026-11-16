@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import '../../mocks.dart';
@@ -11,6 +9,7 @@ import '../../test_context.dart';
 
 void main() {
   late TestContext testContext;
+  late VaultStorageImpl storage;
 
   setUpAll(() {
     MocksHelper.registerFallbackValues();
@@ -19,6 +18,10 @@ void main() {
   setUp(() {
     testContext = TestContext();
     testContext.setUpCommon();
+    storage = VaultStorageImpl(
+      secureStorage: testContext.mockSecureStorage,
+      uuid: testContext.mockUuid,
+    );
   });
 
   tearDown(() {
@@ -26,46 +29,39 @@ void main() {
     testContext.tearDownCommon();
   });
 
-  VaultStorageImpl storageWith(VaultSecurityConfig? config) {
-    return VaultStorageImpl(
-      secureStorage: testContext.mockSecureStorage,
-      uuid: testContext.mockUuid,
-      securityConfig: config,
-    );
-  }
+  test('androidConfigFor passes the given package name and certificate hashes', () {
+    final certificateHash = base64Encode(List<int>.filled(32, 0));
 
-  test('talsecConfigFor passes the given identifiers and the security settings', () {
-    final certificateHash = base64Encode(Uint8List(32));
-    final storage = storageWith(
-      const VaultSecurityConfig(isProd: true, watcherMail: 'security@example.com'),
-    );
-
-    final config = storage.talsecConfigFor(
+    final config = storage.androidConfigFor(
       packageName: 'com.example.app',
       signingCertHashes: [certificateHash],
-      bundleId: 'com.example.ios',
-      teamId: 'TEAM',
     );
 
-    expect(config.androidConfig?.packageName, 'com.example.app');
-    expect(config.androidConfig?.certificateHashes, [certificateHash]);
-    expect(config.androidConfig?.supportedAlternativeStores, ['com.android.vending']);
-    expect(config.iosConfig?.appBundleIds, ['com.example.ios']);
-    expect(config.iosConfig?.appTeamId, 'TEAM');
-    expect(config.watcherMail, 'security@example.com');
-    expect(config.isProd, isTrue);
+    expect(config.packageName, 'com.example.app');
+    expect(config.certificateHashes, [certificateHash]);
+    expect(config.supportedAlternativeStores, ['com.android.vending']);
   });
 
-  test('talsecConfigFor fills placeholders when no identifiers are given', () {
-    debugDefaultTargetPlatformOverride = .macOS;
+  test('androidConfigFor fills the placeholder package name when none is given', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
 
-    final config = storageWith(null).talsecConfigFor();
+    final config = storage.androidConfigFor();
 
-    expect(config.androidConfig?.packageName, 'your.package.name');
-    expect(config.androidConfig?.certificateHashes, isEmpty);
-    expect(config.iosConfig?.appBundleIds, isEmpty);
-    expect(config.iosConfig?.appTeamId, isEmpty);
-    expect(config.watcherMail, isEmpty);
-    expect(config.isProd, isFalse);
+    expect(config.packageName, 'your.package.name');
+    expect(config.certificateHashes, isEmpty);
+  });
+
+  test('iosConfigFor passes the given bundle id and team id', () {
+    final config = storage.iosConfigFor(bundleId: 'com.example.ios', teamId: 'TEAM');
+
+    expect(config.appBundleIds, ['com.example.ios']);
+    expect(config.appTeamId, 'TEAM');
+  });
+
+  test('iosConfigFor leaves the bundle ids and team id empty when none are given', () {
+    final config = storage.iosConfigFor();
+
+    expect(config.appBundleIds, isEmpty);
+    expect(config.appTeamId, isEmpty);
   });
 }

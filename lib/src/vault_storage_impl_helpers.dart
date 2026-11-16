@@ -212,24 +212,34 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     await box.clear();
   }
 
-  /// Builds the FreeRASP configuration from the security settings
+  /// Builds the FreeRASP Android configuration
   @visibleForTesting
-  TalsecConfig talsecConfigFor({
+  AndroidConfig androidConfigFor({String? packageName, List<String>? signingCertHashes}) {
+    return AndroidConfig(
+      packageName: packageName ?? 'your.package.name',
+      certificateHashes: signingCertHashes ?? [],
+      supportedAlternativeStores: ['com.android.vending'], // Google Play Store
+    );
+  }
+
+  /// Builds the FreeRASP iOS configuration
+  @visibleForTesting
+  IOSConfig iosConfigFor({String? bundleId, String? teamId}) {
+    return IOSConfig(appBundleIds: bundleId != null ? [bundleId] : [], appTeamId: teamId ?? '');
+  }
+
+  TalsecConfig _talsecConfig({
     String? packageName,
     List<String>? signingCertHashes,
     String? bundleId,
     String? teamId,
   }) {
     return TalsecConfig(
-      androidConfig: AndroidConfig(
-        packageName: packageName ?? 'your.package.name',
-        certificateHashes: signingCertHashes ?? [],
-        supportedAlternativeStores: ['com.android.vending'], // Google Play Store
+      androidConfig: androidConfigFor(
+        packageName: packageName,
+        signingCertHashes: signingCertHashes,
       ),
-      iosConfig: IOSConfig(
-        appBundleIds: bundleId != null ? [bundleId] : [],
-        appTeamId: teamId ?? '',
-      ),
+      iosConfig: iosConfigFor(bundleId: bundleId, teamId: teamId),
       watcherMail: _securityConfig?.watcherMail ?? '',
       isProd: _securityConfig?.isProd ?? false,
     );
@@ -269,7 +279,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
 
     Talsec.instance.attachListener(_threatCallback());
     await Talsec.instance.start(
-      talsecConfigFor(
+      _talsecConfig(
         packageName: packageName,
         signingCertHashes: signingCertHashes,
         bundleId: bundleId,
