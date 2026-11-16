@@ -523,7 +523,7 @@ abstract class AppLocalizations {
   /// No description provided for @storageKeyFileKeyName.
   ///
   /// In en, this message translates to:
-  /// **'The key \'\'hive_encryption_key\'\' is stored inside this file.'**
+  /// **'The key \'hive_encryption_key\' is stored inside this file.'**
   String get storageKeyFileKeyName;
 
   /// No description provided for @storageKeyFileCreatedLater.

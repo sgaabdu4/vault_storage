@@ -256,8 +256,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This file holds your encryption key, encrypted with Windows DPAPI.';
 
   @override
-  String get storageKeyFileKeyName =>
-      'The key \'\'hive_encryption_key\'\' is stored inside this file.';
+  String get storageKeyFileKeyName => 'The key \'hive_encryption_key\' is stored inside this file.';
 
   @override
   String get storageKeyFileCreatedLater => 'The file is created when you first save secure data.';
