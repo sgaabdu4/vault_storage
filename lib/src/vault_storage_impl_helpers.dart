@@ -229,10 +229,10 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     final talsecConfig = TalsecConfig(
       androidConfig: AndroidConfig(
         packageName: packageName ?? 'your.package.name',
-        signingCertHashes: signingCertHashes ?? [],
-        supportedStores: ['com.android.vending'], // Google Play Store
+        certificateHashes: signingCertHashes ?? [],
+        supportedAlternativeStores: ['com.android.vending'], // Google Play Store
       ),
-      iosConfig: IOSConfig(bundleIds: bundleId != null ? [bundleId] : [], teamId: teamId ?? ''),
+      iosConfig: IOSConfig(appBundleIds: bundleId != null ? [bundleId] : [], appTeamId: teamId ?? ''),
       watcherMail: config.watcherMail ?? '',
       isProd: config.isProd,
     );
@@ -250,7 +250,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
       onPasscode: () => _handlePasscodeDetection(),
       onSecureHardwareNotAvailable: () => _handleSecureHardwareDetection(),
       onDevMode: () => _handleDeveloperModeDetection(),
-      onADBEnabled: () => _handleADBDetection(),
+      onAdbEnabled: () => _handleADBDetection(),
       onMultiInstance: () => _handleMultiInstanceDetection(),
       onAutomation: () => _handleAutomationDetection(),
     );

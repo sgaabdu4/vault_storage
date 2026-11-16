@@ -28,10 +28,10 @@ void main() {
     const config = security.TalsecConfig(
       androidConfig: security.AndroidConfig(
         packageName: 'com.example.test',
-        signingCertHashes: [],
-        supportedStores: [],
+        certificateHashes: [],
+        supportedAlternativeStores: [],
       ),
-      iosConfig: security.IOSConfig(bundleIds: ['com.example.test'], teamId: 'EXAMPLE'),
+      iosConfig: security.IOSConfig(appBundleIds: ['com.example.test'], appTeamId: 'EXAMPLE'),
       watcherMail: 'security@example.com',
       isProd: false,
     );

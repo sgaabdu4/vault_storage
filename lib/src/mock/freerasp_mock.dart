@@ -28,30 +28,30 @@ class AndroidConfig {
   /// Creates a mock AndroidConfig
   const AndroidConfig({
     required this.packageName,
-    required this.signingCertHashes,
-    required this.supportedStores,
+    required this.certificateHashes,
+    required this.supportedAlternativeStores,
   });
 
   /// Package name
   final String packageName;
 
   /// Signing certificate hashes
-  final List<String> signingCertHashes;
+  final List<String> certificateHashes;
 
   /// Supported stores
-  final List<String> supportedStores;
+  final List<String> supportedAlternativeStores;
 }
 
 /// Mock iOS configuration
 class IOSConfig {
   /// Creates a mock IOSConfig
-  const IOSConfig({required this.bundleIds, required this.teamId});
+  const IOSConfig({required this.appBundleIds, required this.appTeamId});
 
   /// Bundle IDs
-  final List<String> bundleIds;
+  final List<String> appBundleIds;
 
   /// Team ID
-  final String teamId;
+  final String appTeamId;
 }
 
 /// Mock threat callback
@@ -70,7 +70,7 @@ class ThreatCallback {
     this.onPasscode,
     this.onSecureHardwareNotAvailable,
     this.onDevMode,
-    this.onADBEnabled,
+    this.onAdbEnabled,
     this.onMultiInstance,
     this.onJailbreak,
     this.onDebuggerAttached,
@@ -126,7 +126,7 @@ class ThreatCallback {
   final void Function()? onDevMode;
 
   /// ADB enabled callback
-  final void Function()? onADBEnabled;
+  final void Function()? onAdbEnabled;
 
   /// Multi instance callback
   final void Function()? onMultiInstance;
