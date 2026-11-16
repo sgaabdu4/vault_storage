@@ -77,9 +77,12 @@ class FileOperations implements IFileOperations {
         'mac': await secretBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
         'extension': fileExtension, // Store the original extension
       };
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to save secure file', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to save secure file', e),
+        stackTrace,
+      );
     }
   }
 
@@ -129,9 +132,12 @@ class FileOperations implements IFileOperations {
         'chunkSize': size,
         'chunks': stored.chunks,
       };
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to save secure file (stream)', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to save secure file (stream)', e),
+        stackTrace,
+      );
     }
   }
 
@@ -271,8 +277,8 @@ class FileOperations implements IFileOperations {
       return decryptedBytes;
     } on VaultStorageError {
       rethrow;
-    } catch (e) {
-      throw VaultStorageReadError('Failed to read secure file', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(VaultStorageReadError('Failed to read secure file', e), stackTrace);
     }
   }
 
@@ -437,9 +443,12 @@ class FileOperations implements IFileOperations {
         );
       }
       await secureStorage.delete(key: secureKeyName);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to delete secure file', e);
+      Error.throwWithStackTrace(
+        VaultStorageDeleteError('Failed to delete secure file', e),
+        stackTrace,
+      );
     }
   }
 
@@ -481,9 +490,12 @@ class FileOperations implements IFileOperations {
 
       // Return metadata
       return {'fileId': fileId, 'filePath': filePath, 'extension': fileExtension};
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to save normal file', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to save normal file', e),
+        stackTrace,
+      );
     }
   }
 
@@ -517,9 +529,12 @@ class FileOperations implements IFileOperations {
         );
       }
       return fileBytes;
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageReadError('Failed to retrieve normal file', e);
+      Error.throwWithStackTrace(
+        VaultStorageReadError('Failed to retrieve normal file', e),
+        stackTrace,
+      );
     }
   }
 
@@ -539,9 +554,12 @@ class FileOperations implements IFileOperations {
         boxType: .normalFiles,
         getBox: getBox,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to delete normal file', e);
+      Error.throwWithStackTrace(
+        VaultStorageDeleteError('Failed to delete normal file', e),
+        stackTrace,
+      );
     }
   }
 

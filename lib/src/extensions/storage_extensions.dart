@@ -30,8 +30,11 @@ Uint8List _decodeBase64InIsolate(_Base64DecodeRequest request) {
       // Fallback to standard base64 if base64Url fails
       return base64.decode(request.data);
     }
-  } catch (e) {
-    throw Exception('Base64 decode failed in isolate for ${request.context}: $e');
+  } catch (e, stackTrace) {
+    Error.throwWithStackTrace(
+      Exception('Base64 decode failed in isolate for ${request.context}: $e'),
+      stackTrace,
+    );
   }
 }
 
@@ -39,8 +42,11 @@ Uint8List _decodeBase64InIsolate(_Base64DecodeRequest request) {
 String _encodeBase64InIsolate(_Base64EncodeRequest request) {
   try {
     return base64Url.encode(request.data);
-  } catch (e) {
-    throw Exception('Base64 encode failed in isolate for ${request.context}: $e');
+  } catch (e, stackTrace) {
+    Error.throwWithStackTrace(
+      Exception('Base64 encode failed in isolate for ${request.context}: $e'),
+      stackTrace,
+    );
   }
 }
 
@@ -62,8 +68,8 @@ extension Base64DecodingExtension on String {
         // Fallback to standard base64 if base64Url fails
         return base64.decode(this);
       }
-    } catch (e) {
-      throw Base64DecodeError(context, e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(Base64DecodeError(context, e), stackTrace);
     }
   }
 
@@ -76,8 +82,8 @@ extension Base64DecodingExtension on String {
         // Fallback to standard base64 if base64Url fails
         return base64.decode(this);
       }
-    } catch (e) {
-      throw Base64DecodeError(context, e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(Base64DecodeError(context, e), stackTrace);
     }
   }
 }
@@ -98,8 +104,8 @@ extension Base64EncodingExtension on List<int> {
 
       // Small data - encode synchronously for better performance
       return base64Url.encode(this);
-    } catch (e) {
-      throw Base64EncodeError(context, e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(Base64EncodeError(context, e), stackTrace);
     }
   }
 
@@ -107,8 +113,8 @@ extension Base64EncodingExtension on List<int> {
   String encodeBase64SafelySync({required String context}) {
     try {
       return base64Url.encode(this);
-    } catch (e) {
-      throw Base64EncodeError(context, e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(Base64EncodeError(context, e), stackTrace);
     }
   }
 
@@ -187,8 +193,11 @@ class JsonSafe {
 
       // Complex types (Map, List, custom objects) - use JSON
       return await _encodeComplex(value);
-    } catch (e) {
-      throw VaultStorageSerializationError('Failed to encode object', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(
+        VaultStorageSerializationError('Failed to encode object', e),
+        stackTrace,
+      );
     }
   }
 
@@ -232,8 +241,11 @@ class JsonSafe {
 
       // Legacy v2.x compatibility: Handle type coercion for primitives
       return _coerceType<T>(decoded);
-    } catch (e) {
-      throw VaultStorageSerializationError('Failed to decode value', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(
+        VaultStorageSerializationError('Failed to decode value', e),
+        stackTrace,
+      );
     }
   }
 
@@ -253,11 +265,14 @@ class JsonSafe {
     if (value is String) {
       try {
         return .parse(value);
-      } catch (e) {
-        throw VaultStorageSerializationError(
-          'Type mismatch: Cannot parse "$value" as int. '
-          'Consider clearing corrupted data.',
-          e,
+      } catch (e, stackTrace) {
+        Error.throwWithStackTrace(
+          VaultStorageSerializationError(
+            'Type mismatch: Cannot parse "$value" as int. '
+            'Consider clearing corrupted data.',
+            e,
+          ),
+          stackTrace,
         );
       }
     }
@@ -269,11 +284,14 @@ class JsonSafe {
     if (value is String) {
       try {
         return .parse(value);
-      } catch (e) {
-        throw VaultStorageSerializationError(
-          'Type mismatch: Cannot parse "$value" as double. '
-          'Consider clearing corrupted data.',
-          e,
+      } catch (e, stackTrace) {
+        Error.throwWithStackTrace(
+          VaultStorageSerializationError(
+            'Type mismatch: Cannot parse "$value" as double. '
+            'Consider clearing corrupted data.',
+            e,
+          ),
+          stackTrace,
         );
       }
     }
@@ -328,8 +346,11 @@ extension JsonEncodingExtension on Object? {
 String _encodeInIsolate(Object? value) {
   try {
     return json.encode(value);
-  } catch (e) {
-    throw VaultStorageSerializationError('Failed to encode object to JSON', e);
+  } catch (e, stackTrace) {
+    Error.throwWithStackTrace(
+      VaultStorageSerializationError('Failed to encode object to JSON', e),
+      stackTrace,
+    );
   }
 }
 
@@ -337,7 +358,10 @@ String _encodeInIsolate(Object? value) {
 Object? _decodeInIsolate(String jsonString) {
   try {
     return json.decode(jsonString);
-  } catch (e) {
-    throw VaultStorageSerializationError('Failed to decode JSON string', e);
+  } catch (e, stackTrace) {
+    Error.throwWithStackTrace(
+      VaultStorageSerializationError('Failed to decode JSON string', e),
+      stackTrace,
+    );
   }
 }

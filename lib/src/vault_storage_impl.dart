@@ -94,9 +94,9 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       return await _findStoredValue<T>(key);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageReadError('Failed to get "$key"', e);
+      Error.throwWithStackTrace(VaultStorageReadError('Failed to get "$key"', e), stackTrace);
     }
   }
 
@@ -171,9 +171,12 @@ class VaultStorageImpl implements IVaultStorage {
       if (normalBox?.containsKey(key) == true) {
         await normalBox!.delete(key);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to set secure "$key"', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to set secure "$key"', e),
+        stackTrace,
+      );
     }
   }
 
@@ -194,9 +197,12 @@ class VaultStorageImpl implements IVaultStorage {
 
       // Default: use normal box
       await setInBox(.normal, key, value);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to set normal "$key"', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to set normal "$key"', e),
+        stackTrace,
+      );
     }
   }
 
@@ -212,9 +218,9 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       await _deleteKeyFromBoxes(key, [.normal, .secure]);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to delete "$key"', e);
+      Error.throwWithStackTrace(VaultStorageDeleteError('Failed to delete "$key"', e), stackTrace);
     }
   }
 
@@ -227,9 +233,12 @@ class VaultStorageImpl implements IVaultStorage {
       if (includeFiles) {
         await clearAllFilesInBox(.normalFiles, isSecure: false);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to clear normal storage', e);
+      Error.throwWithStackTrace(
+        VaultStorageDeleteError('Failed to clear normal storage', e),
+        stackTrace,
+      );
     }
   }
 
@@ -243,9 +252,12 @@ class VaultStorageImpl implements IVaultStorage {
       if (includeFiles) {
         await clearAllFilesInBox(.secureFiles, isSecure: true);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to clear secure storage', e);
+      Error.throwWithStackTrace(
+        VaultStorageDeleteError('Failed to clear secure storage', e),
+        stackTrace,
+      );
     }
   }
 
@@ -273,9 +285,12 @@ class VaultStorageImpl implements IVaultStorage {
 
       // 4) Delete the master encryption key since we're doing a complete wipe
       await _secureStorage.delete(key: StorageKeys.secureKey);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to clear all storage', e);
+      Error.throwWithStackTrace(
+        VaultStorageDeleteError('Failed to clear all storage', e),
+        stackTrace,
+      );
     }
   }
 
@@ -316,8 +331,8 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       return result.toList(growable: false)..sort();
-    } catch (e) {
-      throw VaultStorageReadError('Failed to list keys', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(VaultStorageReadError('Failed to list keys', e), stackTrace);
     }
   }
 
@@ -359,9 +374,12 @@ class VaultStorageImpl implements IVaultStorage {
 
       // Store the metadata with _putInBoxBase for binary TypeAdapter encoding (v4.x).
       await _putInBoxBase(boxes[BoxType.secureFiles]!, key, toStore);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to save secure file "$key"', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to save secure file "$key"', e),
+        stackTrace,
+      );
     }
   }
 
@@ -431,9 +449,12 @@ class VaultStorageImpl implements IVaultStorage {
 
       // Store the metadata with _putInBoxBase for binary TypeAdapter encoding (v4.x).
       await _putInBoxBase(boxes[BoxType.normalFiles]!, key, toStore);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageWriteError('Failed to save normal file "$key"', e);
+      Error.throwWithStackTrace(
+        VaultStorageWriteError('Failed to save normal file "$key"', e),
+        stackTrace,
+      );
     }
   }
 
@@ -464,9 +485,9 @@ class VaultStorageImpl implements IVaultStorage {
       if (match.customBase64 != null) return await _decodeCustomFile(match.customBase64!);
       if (match.metadata != null) return await _readFileContent(match.metadata!);
       return null;
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageReadError('Failed to get file "$key"', e);
+      Error.throwWithStackTrace(VaultStorageReadError('Failed to get file "$key"', e), stackTrace);
     }
   }
 
@@ -568,9 +589,12 @@ class VaultStorageImpl implements IVaultStorage {
       }
 
       await _deleteKeyFromBoxes(key, [.normalFiles, .secureFiles]);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageDeleteError('Failed to delete file "$key"', e);
+      Error.throwWithStackTrace(
+        VaultStorageDeleteError('Failed to delete file "$key"', e),
+        stackTrace,
+      );
     }
   }
 
@@ -654,8 +678,11 @@ class VaultStorageImpl implements IVaultStorage {
         isSecureEnvironment = true;
         _initFuture = null;
       }
-    } catch (e) {
-      throw VaultStorageDisposalError('Failed to dispose vault storage', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(
+        VaultStorageDisposalError('Failed to dispose vault storage', e),
+        stackTrace,
+      );
     }
   }
 

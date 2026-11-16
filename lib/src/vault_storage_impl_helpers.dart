@@ -35,10 +35,13 @@ extension VaultStorageImplSupport on VaultStorageImpl {
       }
 
       isVaultStorageReady = true;
-    } catch (e) {
+    } catch (e, stackTrace) {
       _initFuture = null;
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageInitializationError('Failed to initialize vault storage', e);
+      Error.throwWithStackTrace(
+        VaultStorageInitializationError('Failed to initialize vault storage', e),
+        stackTrace,
+      );
     }
   }
 
@@ -553,8 +556,11 @@ extension VaultStorageImplSupport on VaultStorageImpl {
       }
 
       return await encodedKey.decodeBase64Safely(context: 'secure storage key');
-    } catch (e) {
-      throw VaultStorageInitializationError('Failed to get/create secure key', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(
+        VaultStorageInitializationError('Failed to get/create secure key', e),
+        stackTrace,
+      );
     }
   }
 
@@ -592,8 +598,11 @@ extension VaultStorageImplSupport on VaultStorageImpl {
         StorageKeys.normalFilesBox,
         compactionStrategy: _vaultCompactionStrategy,
       );
-    } catch (e) {
-      throw VaultStorageInitializationError('Failed to open storage boxes', e);
+    } catch (e, stackTrace) {
+      Error.throwWithStackTrace(
+        VaultStorageInitializationError('Failed to open storage boxes', e),
+        stackTrace,
+      );
     }
   }
 
@@ -619,9 +628,12 @@ extension VaultStorageImplSupport on VaultStorageImpl {
           );
         }
       }, reason: 'Boxes are opened in config order because it sets the lookup order');
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
-      throw VaultStorageInitializationError('Failed to open custom boxes', e);
+      Error.throwWithStackTrace(
+        VaultStorageInitializationError('Failed to open custom boxes', e),
+        stackTrace,
+      );
     }
   }
 }
