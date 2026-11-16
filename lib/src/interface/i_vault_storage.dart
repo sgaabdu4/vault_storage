@@ -1,7 +1,7 @@
 import 'dart:typed_data' show Uint8List;
 
 /// Simple, secure storage for Flutter apps.
-abstract class IVaultStorage {
+abstract interface class IVaultStorage {
   /// Initialize storage. Call this once when your app starts.
   Future<void> init();
 
