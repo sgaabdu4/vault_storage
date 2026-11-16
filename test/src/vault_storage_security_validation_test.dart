@@ -261,8 +261,6 @@ void main() {
         await storage.init();
         fail('Expected StorageInitializationError');
       } on StorageInitializationError catch (e) {
-        // getOrCreateSecureKey wraps this in StorageInitializationError,
-        // which is then rethrown by init() without double-wrapping
         expect(e.message, equals('Failed to get/create secure key'));
       }
     });
@@ -713,7 +711,6 @@ void main() {
     test('getFile from custom box should return decoded bytes', () async {
       when(() => mockCustomBox.containsKey('myfile')).thenReturn(true);
       // For Box<dynamic>, _getFromBoxBase calls box.get(key) synchronously.
-      // Return a plain JSON string (legacy format) with the custom box structure
       when(
         () => mockCustomBox.get('myfile'),
       ).thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');
@@ -852,9 +849,8 @@ void main() {
 
   group('AmbiguousKeyError', () {
     test('should store key and foundInBoxes', () {
-      // Use non-const to ensure runtime constructor execution for coverage
-      // ignore: prefer_const_constructors
-      final error = AmbiguousKeyError('test_key', ['box1', 'box2'], 'Key found in multiple boxes');
+      final boxes = ['box1', 'box2'];
+      final error = AmbiguousKeyError('test_key', boxes, 'Key found in multiple boxes');
 
       expect(error.key, equals('test_key'));
       expect(error.foundInBoxes, equals(['box1', 'box2']));
@@ -863,8 +859,8 @@ void main() {
     });
 
     test('should format toString correctly', () {
-      // ignore: prefer_const_constructors
-      final error = AmbiguousKeyError('key', ['normal', 'secure'], 'Ambiguous key');
+      final boxes = ['normal', 'secure'];
+      final error = AmbiguousKeyError('key', boxes, 'Ambiguous key');
 
       expect(error.toString(), equals('AmbiguousKeyError: Ambiguous key'));
     });
