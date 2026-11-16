@@ -14,7 +14,7 @@ Single source: N/A — no rule, value or type changes owner.
 
 ## Decisions + authorization
 
-Blockers: The four `cfg_*` findings (strict analysis, required lints, generated exclude, canonical plugin setup) come from a fault in flutter_skill_lints 0.14.0 and clear with 0.15.0, which is not released yet. They are held and not worked around.
+Blockers: None
 Handoff: Approval
 Authority: The owner asked for every project to pass the strict rules (2026-11-16); the coordinator assigned this project.
 
@@ -25,6 +25,7 @@ Authority: The owner asked for every project to pass the strict rules (2026-11-1
 - [ ] Both unnamed Markdown files have a reader -> `python3 .hooks/hard-eng.py check` reports no unnamed-Markdown finding.
 - [x] FreeRASP 9 configuration is built correctly -> `test/src/security/talsec_config_test.dart::androidConfigFor passes the given package name and certificate hashes`.
 - [x] Example failure messages stay the same -> `example/test/initialization_failure_test.dart::a jailbreak gets its own warning`.
+- [ ] The four public API breaks ship as 6.0.0 -> `test/src/constants/vault_storage_config_test.dart::keeps every custom value`, `test/src/extensions/storage_extensions_test.dart` low threshold cases and the CHANGELOG 6.0.0 section.
 - [ ] The library behaves as before -> `flutter test` in the package root passes with every test kept.
 
 ## Baseline + execution
