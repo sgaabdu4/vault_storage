@@ -1,10 +1,10 @@
 # Make the package pass Hard Eng's strict rules
 
-Status: Draft
+Status: Ready
 
 ## Outcome + scope
 
-The package and its example pass the new Hard Eng rules for switch-offs, code comments, named Markdown files, flutter_skill_lints 0.14.0 and dart-decimate 0.0.76, with no test removed that proves behavior. Non-goals: a package version change and any change of library behavior.
+The package and its example pass the new Hard Eng rules for switch-offs, code comments, named Markdown files, flutter_skill_lints 0.14.0 and dart-decimate 0.0.76, with no test removed that proves behavior. The owner decided (2026-11-16) to ship the four public API breaks as release 6.0.0: remove the seven deprecated error aliases, make `VaultStorageConfig` an immutable value passed to `VaultStorage.create`, make the two `VaultSecurityConfig` collections non-null, and make `IVaultStorage` an `abstract interface class`. Other library behavior stays the same.
 
 ## Repository context
 
@@ -14,7 +14,7 @@ Single source: N/A — no rule, value or type changes owner.
 
 ## Decisions + authorization
 
-Blockers: The flutter_skill_lints 0.14.0 findings that remain need an owner decision. Classes that change the public API or stored types (typed errors thrown by the API, dynamic JSON values, demo-app localization) and the config rules that demand riverpod_lint, an errors section and an arb exclude are not fixed. The plan cannot be Ready until the owner decides.
+Blockers: The four `cfg_*` findings (strict analysis, required lints, generated exclude, canonical plugin setup) come from a fault in flutter_skill_lints 0.14.0 and clear with 0.15.0, which is not released yet. They are held and not worked around.
 Handoff: Approval
 Authority: The owner asked for every project to pass the strict rules (2026-11-16); the coordinator assigned this project.
 
