@@ -21,12 +21,12 @@ Authority: The owner asked for every project to pass the strict rules (2026-11-1
 ## Acceptance + steps
 
 - [ ] No `// ignore` stays in tests -> `test/src/vault_storage_security_validation_test.dart::AmbiguousKeyError should store key and foundInBoxes`, runs and passes without the ignore.
-- [ ] No narration comment block stays in lib, test or release.sh -> `python3 .hooks/hard-eng.py check` reports no comment-block finding.
-- [ ] Both unnamed Markdown files have a reader -> `python3 .hooks/hard-eng.py check` reports no unnamed-Markdown finding.
+- [ ] No narration comment block stays in lib, test or release.sh -> N/A — proved by the Hard Eng comment check in the gate, no project test fits.
+- [ ] Both unnamed Markdown files have a reader -> N/A — proved by the Hard Eng named-Markdown check in the gate, no project test fits.
 - [x] FreeRASP 9 configuration is built correctly -> `test/src/security/talsec_config_test.dart::androidConfigFor passes the given package name and certificate hashes`.
 - [x] Example failure messages stay the same -> `example/test/initialization_failure_test.dart::a jailbreak gets its own warning`.
 - [ ] The four public API breaks ship as 6.0.0 -> `test/src/constants/vault_storage_config_test.dart::keeps every custom value`, `test/src/extensions/storage_extensions_test.dart` low threshold cases and the CHANGELOG 6.0.0 section.
-- [ ] The library behaves as before -> `flutter test` in the package root passes with every test kept.
+- [ ] The library behaves as before -> N/A — proved by the full `flutter test` run in the package root and in `example`, which keep every behavior test.
 
 ## Baseline + execution
 
