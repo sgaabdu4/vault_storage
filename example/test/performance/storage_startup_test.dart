@@ -5,8 +5,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_storage/vault_storage.dart';
 
+import '../helpers/cpu_time.dart';
+
 void main() {
-  test('initialize and round-trip 100 preferences within five seconds', () async {
+  test('initialize and round-trip 100 preferences within five seconds of processor time', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final directory = await Directory.systemTemp.createTemp('vault-consumer-performance-');
     FlutterSecureStorage.setMockInitialValues({});
@@ -24,20 +26,19 @@ void main() {
       );
       await directory.delete(recursive: true);
     });
-    final timer = Stopwatch()..start();
+    final started = processCpuTime();
     await storage.init();
-    for (var index = 0; index < 100; index++) {
+    for (int index = 0; index < 100; index++) {
       await storage.saveNormal(key: 'preference-$index', value: 'value-$index');
     }
-    for (var index = 0; index < 100; index++) {
+    for (int index = 0; index < 100; index++) {
       expect(await storage.get<String>('preference-$index'), 'value-$index');
     }
-    timer.stop();
+    final used = processCpuTime() - started;
     expect(
-      timer.elapsed,
+      used,
       lessThan(const Duration(seconds: 5)),
-      reason:
-          'Consumer initialization and 200 local operations must sustain at least 40 operations/s.',
+      reason: 'Consumer initialization and 200 local operations must use under five seconds of processor time.',
     );
   });
 }

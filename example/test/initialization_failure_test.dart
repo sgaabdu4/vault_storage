@@ -1,5 +1,5 @@
+import 'package:example/initialization_failure.dart';
 import 'package:example/l10n/app_localizations_en.dart';
-import 'package:example/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_storage/vault_storage.dart';
 
