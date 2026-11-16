@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:example/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -12,14 +13,14 @@ void main() {
 }
 
 @visibleForTesting
-String initializationFailure(Object error) => switch (error) {
-  JailbreakDetectedException() =>
-    'Security Warning: Jailbreak detected - app may have limited functionality',
-  TamperingDetectedException() =>
-    'Security Error: App tampering detected - please reinstall from official source',
-  SecurityThreatException(:final threatType, :final message) =>
-    'Security threat detected: $threatType - $message',
-  _ => 'Initialization Error: $error',
+String initializationFailure(AppLocalizations l10n, Object error) => switch (error) {
+  JailbreakDetectedException() => l10n.failureJailbreak,
+  TamperingDetectedException() => l10n.failureTampering,
+  SecurityThreatException(:final threatType, :final message) => l10n.failureThreat(
+    threatType,
+    message,
+  ),
+  _ => l10n.failureInitialization('$error'),
 };
 
 class MyApp extends StatelessWidget {
@@ -28,7 +29,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Vault Storage Demo',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const VaultStorageDemo(),
     );
@@ -44,7 +47,7 @@ class VaultStorageDemo extends StatefulWidget {
 
 class _VaultStorageDemoState extends State<VaultStorageDemo> {
   // Simple list to collect security threats during initialization
-  final List<String> _securityThreats = [];
+  final List<String Function(AppLocalizations)> _securityThreats = [];
 
   // Collect all security threats first, then show one dialog
   Future<void> _checkSecurityAndInitialize() async {
@@ -75,7 +78,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = initializationFailure(e);
+        _initializationError = e;
         _isInitialized = false;
       });
     }
@@ -87,22 +90,20 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       iosBundleId: 'com.example.storageService.example',
       iosTeamId: 'YOUR_TEAM_ID',
       threatCallbacks: {
-        .jailbreak: () =>
-            _securityThreats.add('Jailbreak/Root detected - device may be compromised'),
-        .tampering: () =>
-            _securityThreats.add('App tampering detected - app integrity compromised'),
-        .debugging: () => _securityThreats.add('Debug environment detected'),
-        .emulator: () => _securityThreats.add('Running on emulator/simulator'),
-        .hooks: () => _securityThreats.add('Runtime manipulation detected (hooks/injection)'),
-        .unofficialStore: () => _securityThreats.add('App installed from unofficial store'),
-        .screenshot: () => _securityThreats.add('Screen capture detected'),
-        .screenRecording: () => _securityThreats.add('Screen recording detected'),
-        .systemVPN: () => _securityThreats.add('System VPN detected'),
-        .passcode: () => _securityThreats.add('Device passcode not set'),
-        .secureHardware: () => _securityThreats.add('Secure hardware not available'),
-        .developerMode: () => _securityThreats.add('Developer mode enabled'),
-        .adbEnabled: () => _securityThreats.add('ADB debugging enabled'),
-        .multiInstance: () => _securityThreats.add('Multiple app instances detected'),
+        .jailbreak: () => _securityThreats.add((l10n) => l10n.threatJailbreak),
+        .tampering: () => _securityThreats.add((l10n) => l10n.threatTampering),
+        .debugging: () => _securityThreats.add((l10n) => l10n.threatDebugging),
+        .emulator: () => _securityThreats.add((l10n) => l10n.threatEmulator),
+        .hooks: () => _securityThreats.add((l10n) => l10n.threatHooks),
+        .unofficialStore: () => _securityThreats.add((l10n) => l10n.threatUnofficialStore),
+        .screenshot: () => _securityThreats.add((l10n) => l10n.threatScreenshot),
+        .screenRecording: () => _securityThreats.add((l10n) => l10n.threatScreenRecording),
+        .systemVPN: () => _securityThreats.add((l10n) => l10n.threatSystemVpn),
+        .passcode: () => _securityThreats.add((l10n) => l10n.threatPasscode),
+        .secureHardware: () => _securityThreats.add((l10n) => l10n.threatSecureHardware),
+        .developerMode: () => _securityThreats.add((l10n) => l10n.threatDeveloperMode),
+        .adbEnabled: () => _securityThreats.add((l10n) => l10n.threatAdbEnabled),
+        .multiInstance: () => _securityThreats.add((l10n) => l10n.threatMultiInstance),
       },
     ),
   );
@@ -113,25 +114,34 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog.adaptive(
-        title: const Text('Security Alert'),
+        title: Text(AppLocalizations.of(context).securityAlertTitle),
         content: Column(
           mainAxisSize: .min,
           crossAxisAlignment: .start,
           children: [
-            const Text('Security issues detected:', style: TextStyle(fontWeight: .bold)),
+            Text(
+              AppLocalizations.of(context).securityIssuesDetected,
+              style: const TextStyle(fontWeight: .bold),
+            ),
             const SizedBox(height: 8),
             ..._securityThreats.map(
               (threat) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text('• $threat'),
+                child: Text(
+                  AppLocalizations.of(context)
+                      .securityThreatItem(threat(AppLocalizations.of(context))),
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            const Text('App functionality may be limited.'),
+            Text(AppLocalizations.of(context).securityFunctionalityLimited),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(AppLocalizations.of(context).ok),
+          ),
         ],
       ),
     );
@@ -141,6 +151,7 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   late final IVaultStorage vaultStorage;
   String? _operationResult;
   String? _errorMessage;
+  Object? _initializationError;
   String? _fileKey;
   bool _isInitialized = false;
   final List<String> _availableKeys = [];
@@ -159,8 +170,14 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   }
 
   List<Widget> _dialogActions<T>(BuildContext dialogContext, T Function() value) => [
-    TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-    TextButton(onPressed: () => Navigator.pop(dialogContext, value()), child: const Text('OK')),
+    TextButton(
+      onPressed: () => Navigator.pop(dialogContext),
+      child: Text(AppLocalizations.of(dialogContext).cancel),
+    ),
+    TextButton(
+      onPressed: () => Navigator.pop(dialogContext, value()),
+      child: Text(AppLocalizations.of(dialogContext).ok),
+    ),
   ];
 
   Future<String?> _getInput(String title, String label) async {
@@ -190,12 +207,12 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
           children: [
             TextField(
               controller: keyController,
-              decoration: const InputDecoration(labelText: 'Key'),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context).fieldKey),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: valueController,
-              decoration: const InputDecoration(labelText: 'Value'),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context).fieldValue),
             ),
           ],
         ),
@@ -222,15 +239,15 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
                   labelText: _availableKeys.isNotEmpty
-                      ? 'Select from available keys'
-                      : 'No keys available',
+                      ? AppLocalizations.of(context).selectFromKeys
+                      : AppLocalizations.of(context).noKeysAvailable,
                 ),
                 initialValue: selectedKey,
                 items: _availableKeys.isNotEmpty
                     ? _availableKeys
                           .map((key) => DropdownMenuItem(value: key, child: Text(key)))
                           .toList()
-                    : [const DropdownMenuItem(child: Text('No keys stored yet'))],
+                    : [DropdownMenuItem(child: Text(AppLocalizations.of(context).noKeysStored))],
                 onChanged: _availableKeys.isNotEmpty
                     ? (value) {
                         setState(() {
@@ -241,7 +258,10 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                     : null,
               ),
               const SizedBox(height: 16),
-              const Text('OR', style: TextStyle(fontWeight: .bold)),
+              Text(
+                AppLocalizations.of(context).orSeparator,
+                style: const TextStyle(fontWeight: .bold),
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
@@ -263,10 +283,11 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
   // Consolidated operations
   Future<void> _saveValue({required bool isSecure}) async {
     _clearMessages();
+    final l10n = AppLocalizations.of(context);
     try {
-      final result = await _getKeyValueInput('Enter Key and Value');
+      final result = await _getKeyValueInput(l10n.enterKeyAndValue);
       if (result == null || result['key']?.isEmpty == true || result['value']?.isEmpty == true) {
-        setState(() => _operationResult = 'Cancelled');
+        setState(() => _operationResult = l10n.cancelled);
         return;
       }
 
@@ -280,57 +301,59 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() {
-        _operationResult = '${isSecure ? 'Secure' : 'Normal'} value saved successfully!';
+        _operationResult = l10n.valueSaved(isSecure ? 'secure' : 'normal');
         if (!_availableKeys.contains(key)) _availableKeys.add(key);
       });
     } catch (e) {
-      setState(() => _errorMessage = 'Save Error: $e');
+      setState(() => _errorMessage = l10n.saveError('$e'));
     }
   }
 
   Future<void> _getValue({bool? isSecure}) async {
     _clearMessages();
+    final l10n = AppLocalizations.of(context);
     try {
-      final key = await _getKeyWithDropdown('Enter Key to Retrieve', 'Key');
+      final key = await _getKeyWithDropdown(l10n.enterKeyToRetrieve, l10n.fieldKey);
       if (key?.isEmpty ?? true) {
-        setState(() => _operationResult = 'Cancelled');
+        setState(() => _operationResult = l10n.cancelled);
         return;
       }
 
       final value = await vaultStorage.get<String>(key!, isSecure: isSecure);
       setState(() {
-        _operationResult = value != null ? 'Value: $value' : 'Key not found';
+        _operationResult = value != null ? l10n.valueFound(value) : l10n.keyNotFound;
       });
     } catch (e) {
-      setState(() => _errorMessage = 'Get Error: $e');
+      setState(() => _errorMessage = l10n.getError('$e'));
     }
   }
 
   Future<void> _saveFile({required bool isSecure}) async {
     _clearMessages();
+    final l10n = AppLocalizations.of(context);
     try {
-      setState(() => _operationResult = 'Opening file picker...');
+      setState(() => _operationResult = l10n.openingFilePicker);
 
       final List<PlatformFile> result = await FilePicker.pickFiles();
 
       if (result.isEmpty) {
-        setState(() => _operationResult = 'No file selected');
+        setState(() => _operationResult = l10n.noFileSelected);
         return;
       }
 
       final file = result.first;
       final fileName = file.name;
 
-      final fileKey = await _getInput('Enter File Key', 'File Key');
+      final fileKey = await _getInput(l10n.enterFileKey, l10n.fieldFileKey);
       if (fileKey?.isEmpty ?? true) {
-        setState(() => _operationResult = 'Cancelled');
+        setState(() => _operationResult = l10n.cancelled);
         return;
       }
 
-      setState(() => _operationResult = 'Reading file...');
+      setState(() => _operationResult = l10n.readingFile);
       final Uint8List bytes = await file.readAsBytes();
 
-      setState(() => _operationResult = 'Saving file...');
+      setState(() => _operationResult = l10n.savingFile);
 
       if (isSecure) {
         await vaultStorage.saveSecureFile(
@@ -347,21 +370,21 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       }
 
       setState(() {
-        _operationResult =
-            '${isSecure ? 'Secure' : 'Normal'} file "$fileName" saved with key "$fileKey"!';
+        _operationResult = l10n.fileSaved(isSecure ? 'secure' : 'normal', fileName, fileKey);
         _fileKey = fileKey;
         if (!_availableKeys.contains(fileKey)) _availableKeys.add(fileKey);
       });
     } catch (e) {
-      setState(() => _errorMessage = 'File Save Error: $e');
+      setState(() => _errorMessage = l10n.fileSaveError('$e'));
     }
   }
 
   Future<void> _getFile({bool? isSecure}) async {
     _clearMessages();
-    final key = await _getKeyWithDropdown('Enter File Key to Retrieve', 'File Key');
+    final l10n = AppLocalizations.of(context);
+    final key = await _getKeyWithDropdown(l10n.enterFileKeyToRetrieve, l10n.fieldFileKey);
     if (key?.isEmpty ?? true) {
-      setState(() => _operationResult = 'Cancelled');
+      setState(() => _operationResult = l10n.cancelled);
       return;
     }
 
@@ -370,51 +393,57 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       setState(() {
         if (fileBytes != null) {
           final content = String.fromCharCodes(fileBytes);
-          _operationResult = 'File content: $content';
+          _operationResult = l10n.fileContent(content);
           _fileKey = key;
         } else {
-          _operationResult = 'File not found';
+          _operationResult = l10n.fileNotFound;
         }
       });
     } catch (e) {
-      setState(() => _errorMessage = 'File Get Error: $e');
+      setState(() => _errorMessage = l10n.fileGetError('$e'));
     }
   }
 
   Future<void> _delete() async {
     _clearMessages();
-    final key = await _getKeyWithDropdown('Enter Key to Delete', 'Key');
+    final l10n = AppLocalizations.of(context);
+    final key = await _getKeyWithDropdown(l10n.enterKeyToDelete, l10n.fieldKey);
     if (key?.isEmpty ?? true) {
-      setState(() => _operationResult = 'Cancelled');
+      setState(() => _operationResult = l10n.cancelled);
       return;
     }
 
     try {
       await vaultStorage.delete(key!);
       setState(() {
-        _operationResult = 'Value deleted successfully!';
+        _operationResult = l10n.valueDeleted;
         _availableKeys.remove(key);
       });
     } catch (e) {
-      setState(() => _errorMessage = 'Delete Error: $e');
+      setState(() => _errorMessage = l10n.deleteError('$e'));
     }
   }
 
   Future<void> _showStorageLocation() async {
     _clearMessages();
+    final l10n = AppLocalizations.of(context);
     try {
       final appSupportDir = await getApplicationSupportDirectory();
       final encryptedFilePath =
           '${appSupportDir.path}${Platform.pathSeparator}flutter_secure_storage.dat';
       final fileExists = File(encryptedFilePath).existsSync();
 
-      final message = _storageLocationMessage(appSupportDir.path, fileExists);
+      final message = l10n.storageLocationMessage(
+        appSupportDir.path,
+        encryptedFilePath,
+        fileExists ? 'yes' : 'no',
+      );
 
       if (mounted) {
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Storage Location'),
+            title: Text(l10n.storageLocationTitle),
             content: SingleChildScrollView(child: SelectableText(message)),
             actions: [
               TextButton(
@@ -422,81 +451,57 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
                   await Clipboard.setData(ClipboardData(text: appSupportDir.path));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text('Path copied to clipboard!')));
+                        .showSnackBar(SnackBar(content: Text(l10n.pathCopied)));
                   }
                 },
-                child: const Text('Copy Path'),
+                child: Text(l10n.copyPath),
               ),
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.close)),
             ],
           ),
         );
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Error getting storage location: $e');
+      setState(() => _errorMessage = l10n.storageLocationError('$e'));
     }
   }
 
-  String _storageLocationMessage(String path, bool fileExists) =>
-      '''
-Storage Location Information:
-
-📁 Application Support Directory:
-$path
-
-🔐 Encrypted Key File:
-$path${Platform.pathSeparator}flutter_secure_storage.dat
-
-File exists: ${fileExists ? '✅ YES' : '❌ NO'}
-
-${fileExists ? '''
-To view in File Explorer:
-1. Press Win+R
-2. Paste: $path
-3. Look for: flutter_secure_storage.dat
-
-This file contains your encryption key encrypted with Windows DPAPI.
-The key 'hive_encryption_key' is stored inside this file.
-''' : '''
-The file will be created when you first save secure data.
-Try saving a secure value first.
-'''}
-      ''';
-
   Future<void> _clearSecureStorage() async {
     _clearMessages();
+    final l10n = AppLocalizations.of(context);
     try {
       await vaultStorage.clearSecure();
       // Refresh keys after clear
       final keys = await vaultStorage.keys();
       setState(() {
-        _operationResult = 'Secure storage cleared successfully!';
+        _operationResult = l10n.secureCleared;
         _availableKeys
           ..clear()
           ..addAll(keys);
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Clear Error: $e';
+        _errorMessage = l10n.clearError('$e');
       });
     }
   }
 
   Future<void> _clearNormalStorage() async {
     _clearMessages();
+    final l10n = AppLocalizations.of(context);
     try {
       await vaultStorage.clearNormal();
       // Refresh keys after clear
       final keys = await vaultStorage.keys();
       setState(() {
-        _operationResult = 'Normal storage cleared successfully!';
+        _operationResult = l10n.normalCleared;
         _availableKeys
           ..clear()
           ..addAll(keys);
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Clear Error: $e';
+        _errorMessage = l10n.clearError('$e');
       });
     }
   }
@@ -510,50 +515,57 @@ Try saving a secure value first.
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final initializationError = _initializationError;
     return Scaffold(
-      appBar: AppBar(title: const Text('Vault Storage Demo')),
+      appBar: AppBar(title: Text(l10n.appTitle)),
       body: Column(
         crossAxisAlignment: .stretch,
         children: [
           if (!_isInitialized) const _StorageInitialization(),
-          _OperationMessage(result: _operationResult, error: _errorMessage),
+          _OperationMessage(
+            result: _operationResult,
+            error: initializationError == null
+                ? _errorMessage
+                : initializationFailure(l10n, initializationError),
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(12.0),
               children: [
-                const Text('Key-Value Storage:'),
+                Text(l10n.sectionKeyValue),
                 const SizedBox(height: 8),
-                _buildButton('Save Secure', () => _saveValue(isSecure: true)),
-                _buildButton('Save Normal', () => _saveValue(isSecure: false)),
-                _buildButton('Get (Auto-detect)', () => _getValue()),
-                _buildButton('Get Secure', () => _getValue(isSecure: true)),
-                _buildButton('Get Normal', () => _getValue(isSecure: false)),
+                _buildButton(l10n.saveSecure, () => _saveValue(isSecure: true)),
+                _buildButton(l10n.saveNormal, () => _saveValue(isSecure: false)),
+                _buildButton(l10n.getAuto, () => _getValue()),
+                _buildButton(l10n.getSecure, () => _getValue(isSecure: true)),
+                _buildButton(l10n.getNormal, () => _getValue(isSecure: false)),
                 const SizedBox(height: 16),
-                const Text('File Storage:'),
+                Text(l10n.sectionFile),
                 const SizedBox(height: 8),
-                _buildButton('Save Secure File', () => _saveFile(isSecure: true)),
-                _buildButton('Save Normal File', () => _saveFile(isSecure: false)),
-                _buildButton('Get File', () => _getFile()),
-                _buildButton('Get Secure File', () => _getFile(isSecure: true)),
-                _buildButton('Get Normal File', () => _getFile(isSecure: false)),
+                _buildButton(l10n.saveSecureFile, () => _saveFile(isSecure: true)),
+                _buildButton(l10n.saveNormalFile, () => _saveFile(isSecure: false)),
+                _buildButton(l10n.getFile, () => _getFile()),
+                _buildButton(l10n.getSecureFile, () => _getFile(isSecure: true)),
+                _buildButton(l10n.getNormalFile, () => _getFile(isSecure: false)),
                 const SizedBox(height: 16),
-                const Text('Delete:'),
-                _buildButton('Delete Value', _delete),
+                Text(l10n.sectionDelete),
+                _buildButton(l10n.deleteValue, _delete),
                 const SizedBox(height: 16),
-                const Text('Clear Storage:'),
-                _buildButton('Clear Secure Storage', _clearSecureStorage),
-                _buildButton('Clear Normal Storage', _clearNormalStorage),
+                Text(l10n.sectionClear),
+                _buildButton(l10n.clearSecureStorage, _clearSecureStorage),
+                _buildButton(l10n.clearNormalStorage, _clearNormalStorage),
                 const SizedBox(height: 16),
-                const Text('Debug:'),
-                _buildButton('🔍 Show Storage Location', _showStorageLocation),
+                Text(l10n.sectionDebug),
+                _buildButton(l10n.showStorageLocation, _showStorageLocation),
                 if (_availableKeys.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  const Text('Available Keys:'),
-                  ..._availableKeys.map((key) => Text('• $key')),
+                  Text(l10n.sectionAvailableKeys),
+                  ..._availableKeys.map((key) => Text(l10n.availableKeyItem(key))),
                 ],
                 if (_fileKey != null) ...[
                   const SizedBox(height: 16),
-                  const Text('Current File Key:'),
+                  Text(l10n.sectionCurrentFileKey),
                   Text(_fileKey!),
                 ],
               ],
@@ -579,13 +591,13 @@ class _StorageInitialization extends StatelessWidget {
   const _StorageInitialization();
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.all(12.0),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(12.0),
     child: Row(
       children: [
-        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-        SizedBox(width: 8),
-        Text('Initializing storage...'),
+        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        const SizedBox(width: 8),
+        Text(AppLocalizations.of(context).initializingStorage),
       ],
     ),
   );

@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.3
   vault_storage:
     path: ../
   file_picker: ^13.1.0
@@ -22,4 +25,5 @@ dev_dependencies:
   hive_ce_flutter: ">=2.3.4 <2.4.0" # 2.4.0 imports dart:io via material_ui, breaking web/WASM.
 
 flutter:
+  generate: true
   uses-material-design: true
