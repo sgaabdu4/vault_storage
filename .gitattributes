@@ -2,3 +2,4 @@
 *.freezed.dart linguist-generated=true
 *.gr.dart linguist-generated=true
 lib/src/entities/box_config.freezed.dart linguist-generated=true
+example/lib/l10n/*.dart linguist-generated=true
