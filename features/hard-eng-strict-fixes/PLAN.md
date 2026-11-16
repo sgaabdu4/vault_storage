@@ -24,7 +24,7 @@ Authority: The owner asked for every project to pass the strict rules (2026-11-1
 
 ## Acceptance + steps
 
-- [x] No `// ignore` stays in tests -> `test/src/vault_storage_lifecycle_and_custom_boxes_test.dart::AmbiguousKeyError should store key and foundInBoxes`, runs and passes without the ignore.
+- [x] No `// ignore` stays in tests -> `test/src/vault_storage_lifecycle_and_custom_boxes_test.dart::should store key and foundInBoxes`, runs and passes without the ignore.
 - [x] No narration comment block stays in lib, test or release.sh -> N/A — proved by the Hard Eng comment check in the gate, no project test fits.
 - [x] Both unnamed Markdown files have a reader -> N/A — proved by the Hard Eng named-Markdown check in the gate, no project test fits.
 - [x] FreeRASP 9 configuration is built correctly -> `test/src/vault_storage_impl_test.dart::androidConfigFor passes the given package name and certificate hashes`.
