@@ -114,3 +114,7 @@ flutter test test/src/extensions/
 3. **Coverage**: Run coverage reports regularly to identify gaps
 4. **Cleanup**: Remove outdated or duplicate tests promptly
 5. **Documentation**: Update this README when changing test structure
+
+## Performance Tests
+
+The design of the list storage performance tests is in [list_storage_performance_design.md](performance/list_storage_performance_design.md).

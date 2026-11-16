@@ -986,6 +986,8 @@ To run tests:
 flutter test
 ```
 
+Planned removals of old code are tracked in [TODO.md](TODO.md).
+
 ## Dependencies
 
 - **`hive_ce_flutter`**: Local storage database
