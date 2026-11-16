@@ -7,6 +7,9 @@ class _StepFailure implements Exception {
   const _StepFailure(this.message);
 
   final String message;
+
+  @override
+  String toString() => message;
 }
 
 void main() {
@@ -26,8 +29,8 @@ void main() {
     });
 
     test('never runs more tasks at once than the limit', () async {
-      var running = 0;
-      var peak = 0;
+      int running = 0;
+      int peak = 0;
       final results = await mapWithConcurrency<int, int>(List.generate(10, (index) => index), 3, (
         value,
       ) async {
@@ -43,7 +46,7 @@ void main() {
     });
 
     test('returns an empty list for no items without calling the task', () async {
-      var calls = 0;
+      int calls = 0;
       final results = await mapWithConcurrency<int, int>(const [], 4, (value) async {
         calls++;
         return value;

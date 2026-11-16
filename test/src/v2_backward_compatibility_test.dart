@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
-import 'package:vault_storage/src/extensions/storage_extensions.dart';
+import 'package:vault_storage/src/extensions/json_safe.dart';
 
 /// Tests for v2.x backward compatibility
 void main() {

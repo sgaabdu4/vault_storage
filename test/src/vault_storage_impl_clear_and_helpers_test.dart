@@ -1,0 +1,436 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:vault_storage/src/constants/storage_keys.dart';
+import 'package:vault_storage/src/enum/box_type.dart';
+import 'package:vault_storage/src/errors/errors.dart';
+import 'package:vault_storage/src/vault_storage_impl.dart';
+
+import '../mocks.dart';
+import '../test_context.dart';
+
+void main() {
+  group('VaultStorageImpl', () {
+    late TestContext testContext;
+
+    setUpAll(() {
+      MocksHelper.registerFallbackValues();
+    });
+
+    setUp(() {
+      testContext = TestContext();
+      testContext.setUpCommon();
+    });
+
+    tearDown(() {
+      testContext.tearDownCommon();
+    });
+
+    group('clearNormal', () {
+      test('should clear normal storage successfully', () async {
+        // Arrange
+        when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
+
+        // Act
+        await testContext.vaultStorage.clearNormal();
+
+        // Assert
+        verify(() => testContext.mockNormalBox.clear()).called(1);
+      });
+
+      test('should throw StorageDeleteError when clear fails', () async {
+        // Arrange
+        when(() => testContext.mockNormalBox.clear()).thenThrow(Exception('Database error'));
+
+        // Act & Assert
+        expect(() => testContext.vaultStorage.clearNormal(), throwsA(isA<StorageDeleteError>()));
+      });
+
+      test('includeFiles=true also clears normal files', () async {
+        // Arrange
+        when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
+        when(() => testContext.mockNormalFilesBox.keys).thenReturn(<Object>['f1']);
+        when(() => testContext.mockNormalFilesBox.containsKey('f1')).thenReturn(true);
+        when(
+          () => testContext.mockNormalFilesBox.get('f1'),
+        ).thenAnswer((_) async => '{"fileId":"n1","extension":"txt"}');
+        when(
+          () => testContext.mockFileOperations.deleteNormalFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).thenAnswer((_) async {});
+        when(() => testContext.mockNormalFilesBox.clear()).thenAnswer((_) async => 0);
+
+        // Act
+        await testContext.vaultStorage.clearNormal(includeFiles: true);
+
+        // Assert
+        verify(() => testContext.mockNormalBox.clear()).called(1);
+        verify(
+          () => testContext.mockFileOperations.deleteNormalFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).called(1);
+        verify(() => testContext.mockNormalFilesBox.clear()).called(1);
+      });
+    });
+
+    group('clearSecure', () {
+      test('should clear secure storage successfully', () async {
+        // Arrange
+        when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
+
+        // Act
+        await testContext.vaultStorage.clearSecure();
+
+        // Assert
+        verify(() => testContext.mockSecureBox.clear()).called(1);
+      });
+
+      test('should throw StorageDeleteError when clear fails', () async {
+        // Arrange
+        when(() => testContext.mockSecureBox.clear()).thenThrow(Exception('Database error'));
+
+        // Act & Assert
+        expect(() => testContext.vaultStorage.clearSecure(), throwsA(isA<StorageDeleteError>()));
+      });
+
+      test('includeFiles=true also clears secure files', () async {
+        // Arrange
+        when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
+        when(() => testContext.mockSecureFilesBox.keys).thenReturn(<Object>['fs1']);
+        when(() => testContext.mockSecureFilesBox.containsKey('fs1')).thenReturn(true);
+        when(() => testContext.mockSecureFilesBox.get('fs1')).thenAnswer(
+          (_) async => '{"fileId":"s1","secureKeyName":"k","nonce":"bnVsbA==","mac":"bnVsbA=="}',
+        );
+        when(
+          () => testContext.mockFileOperations.deleteSecureFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            secureStorage: any(named: 'secureStorage'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).thenAnswer((_) async {});
+        when(() => testContext.mockSecureFilesBox.clear()).thenAnswer((_) async => 0);
+
+        // Act
+        await testContext.vaultStorage.clearSecure(includeFiles: true);
+
+        // Assert
+        verify(() => testContext.mockSecureBox.clear()).called(1);
+        verify(
+          () => testContext.mockFileOperations.deleteSecureFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            secureStorage: any(named: 'secureStorage'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).called(1);
+        verify(() => testContext.mockSecureFilesBox.clear()).called(1);
+      });
+    });
+
+    group('clearAll', () {
+      test('clears key-value only when includeFiles=false', () async {
+        // Arrange
+        when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
+        when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
+
+        // Act
+        await testContext.vaultStorage.clearAll(includeFiles: false);
+
+        // Assert
+        verify(() => testContext.mockNormalBox.clear()).called(1);
+        verify(() => testContext.mockSecureBox.clear()).called(1);
+        verifyNever(() => testContext.mockNormalFilesBox.clear());
+        verifyNever(() => testContext.mockSecureFilesBox.clear());
+        // Master key should NOT be deleted when includeFiles=false
+        verifyNever(() => testContext.mockSecureStorage.delete(key: StorageKeys.secureKey));
+      });
+
+      test('clears key-value and files when includeFiles=true', () async {
+        // Arrange: file keys present
+        when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
+        when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
+
+        when(() => testContext.mockNormalFilesBox.keys).thenReturn(<Object>['f1', 'f2']);
+        when(() => testContext.mockSecureFilesBox.keys).thenReturn(<Object>['fs1']);
+
+        // getFileMetadata reading via boxes.get(key)
+        when(() => testContext.mockNormalFilesBox.containsKey('f1')).thenReturn(true);
+        when(
+          () => testContext.mockNormalFilesBox.get('f1'),
+        ).thenAnswer((_) async => '{"fileId":"n1","extension":"txt"}');
+        when(() => testContext.mockNormalFilesBox.containsKey('f2')).thenReturn(true);
+        when(
+          () => testContext.mockNormalFilesBox.get('f2'),
+        ).thenAnswer((_) async => '{"fileId":"n2","extension":"bin"}');
+
+        when(() => testContext.mockSecureFilesBox.containsKey('fs1')).thenReturn(true);
+        when(() => testContext.mockSecureFilesBox.get('fs1')).thenAnswer(
+          (_) async => '{"fileId":"s1","secureKeyName":"k","nonce":"bnVsbA==","mac":"bnVsbA=="}',
+        );
+
+        // Underlying deletions succeed
+        when(
+          () => testContext.mockFileOperations.deleteNormalFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => testContext.mockFileOperations.deleteSecureFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            secureStorage: any(named: 'secureStorage'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // Clearing metadata boxes
+        when(() => testContext.mockNormalFilesBox.clear()).thenAnswer((_) async => 0);
+        when(() => testContext.mockSecureFilesBox.clear()).thenAnswer((_) async => 0);
+
+        // Mock master key deletion
+        when(
+          () => testContext.mockSecureStorage.delete(key: StorageKeys.secureKey),
+        ).thenAnswer((_) async {});
+
+        // Act
+        await testContext.vaultStorage.clearAll();
+
+        // Assert: key-value cleared
+        verify(() => testContext.mockNormalBox.clear()).called(1);
+        verify(() => testContext.mockSecureBox.clear()).called(1);
+
+        // Underlying file deletions called at least once
+        verify(
+          () => testContext.mockFileOperations.deleteNormalFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).called(greaterThanOrEqualTo(2));
+        verify(
+          () => testContext.mockFileOperations.deleteSecureFile(
+            fileMetadata: any(named: 'fileMetadata'),
+            isWeb: any(named: 'isWeb'),
+            secureStorage: any(named: 'secureStorage'),
+            getBox: any(named: 'getBox'),
+          ),
+        ).called(1);
+
+        // Metadata boxes cleared
+        verify(() => testContext.mockNormalFilesBox.clear()).called(1);
+        verify(() => testContext.mockSecureFilesBox.clear()).called(1);
+
+        // Master key should be deleted when includeFiles=true (complete wipe)
+        verify(() => testContext.mockSecureStorage.delete(key: StorageKeys.secureKey)).called(1);
+      });
+
+      test('throws StorageDeleteError on failure', () async {
+        // Arrange
+        when(() => testContext.mockNormalBox.clear()).thenThrow(Exception('fail'));
+
+        // Act & Assert
+        expect(() => testContext.vaultStorage.clearAll(), throwsA(isA<StorageDeleteError>()));
+      });
+    });
+
+    group('dispose', () {
+      test('should dispose successfully when initialized', () async {
+        // Arrange
+        testContext.vaultStorage.isVaultStorageReady = true;
+
+        // Act
+        await testContext.vaultStorage.dispose();
+
+        // Assert
+        expect(testContext.vaultStorage.isVaultStorageReady, isFalse);
+        expect(testContext.vaultStorage.boxes.isEmpty, isTrue);
+      });
+
+      test('should handle disposal gracefully when not initialized', () async {
+        // Arrange
+        testContext.vaultStorage.isVaultStorageReady = false;
+
+        // Act & Assert - Should not throw
+        await testContext.vaultStorage.dispose();
+
+        expect(testContext.vaultStorage.isVaultStorageReady, isFalse);
+      });
+    });
+
+    group('helper methods', () {
+      group('getFromBox', () {
+        test('should get value from normal box', () async {
+          // Arrange
+          const key = 'test_key';
+          const value = 'test_value';
+          const jsonValue = '"test_value"';
+
+          when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+          when(() => testContext.mockNormalBox.get(key)).thenReturn(jsonValue);
+
+          // Act
+          final result = await testContext.vaultStorage.getFromBox<String>(.normal, key);
+
+          // Assert
+          expect(result, equals(value));
+        });
+
+        test('should return null when key does not exist', () async {
+          // Arrange
+          const key = 'nonexistent_key';
+
+          when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(false);
+
+          // Act
+          final result = await testContext.vaultStorage.getFromBox<String>(.normal, key);
+
+          // Assert
+          expect(result, isNull);
+        });
+      });
+
+      group('setInBox', () {
+        test('should set value in normal box', () async {
+          // Arrange
+          const key = 'test_key';
+          const value = 'test_value';
+
+          when(
+            () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+          ).thenAnswer((_) async {});
+
+          // Act
+          await testContext.vaultStorage.setInBox(.normal, key, value);
+
+          // Assert
+          verify(() => testContext.mockNormalBox.put(key, any<Object?>())).called(1);
+        });
+
+        test('should throw StorageInitializationError when box is not opened', () async {
+          // Arrange
+          const key = 'test_key';
+          const value = 'test_value';
+
+          testContext.vaultStorage.boxes.remove(BoxType.normal);
+
+          // Act & Assert
+          expect(
+            () => testContext.vaultStorage.setInBox(.normal, key, value),
+            throwsA(isA<StorageInitializationError>()),
+          );
+        });
+      });
+
+      group('getFileMetadata', () {
+        test('should get metadata from secure files box when isSecure is true', () async {
+          // Arrange
+          const key = 'test_file';
+          const jsonMetadata = '{"fileId":"test-id","extension":"txt"}';
+
+          when(() => testContext.mockSecureFilesBox.containsKey(key)).thenReturn(true);
+          when(() => testContext.mockSecureFilesBox.get(key)).thenAnswer((_) async => jsonMetadata);
+
+          // Act
+          final result = await testContext.vaultStorage.getFileMetadata(key, isSecure: true);
+
+          // Assert
+          expect(result, isNotEmpty);
+          expect(result['fileId'], equals('test-id'));
+          expect(result['extension'], equals('txt'));
+          expect(result['isSecure'], isTrue);
+        });
+
+        test('should return null when metadata does not exist', () async {
+          // Arrange
+          const key = 'nonexistent_file';
+
+          when(() => testContext.mockNormalFilesBox.containsKey(key)).thenReturn(false);
+          when(() => testContext.mockSecureFilesBox.containsKey(key)).thenReturn(false);
+
+          // Act
+          final result = await testContext.vaultStorage.getFileMetadata(key);
+
+          // Assert
+          expect(result, isEmpty);
+        });
+      });
+
+      group('getInternalBox', () {
+        test('should return the correct box for given type', () {
+          // Act
+          final normalBox = testContext.vaultStorage.getInternalBox(.normal);
+          final secureBox = testContext.vaultStorage.getInternalBox(.secure);
+
+          // Assert
+          expect(normalBox, equals(testContext.mockNormalBox));
+          expect(secureBox, equals(testContext.mockSecureBox));
+        });
+      });
+    });
+
+    group('edge cases and error scenarios', () {
+      test('should handle JSON serialization errors gracefully', () async {
+        // Arrange
+        const key = 'test_key';
+        const invalidJson = 'invalid_json';
+
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(invalidJson);
+
+        // Act & Assert
+        expect(
+          () => testContext.vaultStorage.get<String>(key, isSecure: false),
+          throwsA(isA<StorageSerializationError>()),
+        );
+      });
+
+      test('should handle concurrent access gracefully', () async {
+        // Arrange
+        const key = 'concurrent_key';
+        const value = 'concurrent_value';
+
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenAnswer((_) async {});
+
+        // Act - Simulate concurrent writes
+        final futures = List.generate(
+          10,
+          (index) => testContext.vaultStorage.saveNormal(key: key, value: '${value}_$index'),
+        );
+
+        // Assert - Should complete without throwing
+        await Future.wait(futures);
+
+        verify(() => testContext.mockNormalBox.put(key, any<Object?>())).called(10);
+      });
+
+      test('should maintain state consistency after errors', () async {
+        // Arrange
+        const key = 'error_key';
+        const value = 'error_value';
+
+        when(
+          () => testContext.mockNormalBox.put(any<String>(), any<String>()),
+        ).thenThrow(Exception('Temporary error'));
+
+        // Act & Assert
+        expect(
+          () => testContext.vaultStorage.saveNormal(key: key, value: value),
+          throwsA(isA<StorageWriteError>()),
+        );
+
+        // Storage should still be ready after error
+        expect(testContext.vaultStorage.isVaultStorageReady, isTrue);
+      });
+    });
+  });
+}

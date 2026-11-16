@@ -123,7 +123,7 @@ void main() {
   });
 }
 
-({int strategyIndex, dynamic value}) _serializeAdapter(
+({int strategyIndex, Object? value}) _serializeAdapter(
   StoredValueAdapter adapter,
   StoredValue value,
 ) {
@@ -134,37 +134,35 @@ void main() {
 
 StoredValue _deserializeAdapter(
   StoredValueAdapter adapter,
-  ({int strategyIndex, dynamic value}) encoded,
+  ({int strategyIndex, Object? value}) encoded,
 ) {
   final reader = _RecordingBinaryReader(encoded);
   return adapter.read(reader);
 }
 
-class _RecordingBinaryWriter implements BinaryWriter {
-  late int strategyIndex;
-  dynamic value;
+class _RecordingBinaryWriter extends Fake implements BinaryWriter {
+  ({int strategyIndex, Object? value}) recorded = (strategyIndex: -1, value: null);
+
+  int get strategyIndex => recorded.strategyIndex;
+
+  Object? get value => recorded.value;
 
   @override
-  void writeByte(int byte) => strategyIndex = byte;
+  void writeByte(int byte) => recorded = (strategyIndex: byte, value: recorded.value);
 
   @override
-  void write<T>(T value, {bool withTypeId = true}) => this.value = value;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  void write<T>(T value, {bool withTypeId = true}) =>
+      recorded = (strategyIndex: recorded.strategyIndex, value: value);
 }
 
-class _RecordingBinaryReader implements BinaryReader {
+class _RecordingBinaryReader extends Fake implements BinaryReader {
   _RecordingBinaryReader(this.encoded);
 
-  final ({int strategyIndex, dynamic value}) encoded;
+  final ({int strategyIndex, Object? value}) encoded;
 
   @override
   int readByte() => encoded.strategyIndex;
 
   @override
-  dynamic read([int? typeId]) => encoded.value;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? read([int? typeId]) => encoded.value;
 }

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vault_storage/src/constants/config.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 
 void main() {
   group('VaultStorageConfig', () {
@@ -149,7 +149,7 @@ void main() {
 
     test('should not allow instantiation', () {
       // VaultStorageConfig has a private constructor
-      expect(() => VaultStorageConfig, isNotNull);
+      expect('$VaultStorageConfig', 'VaultStorageConfig');
     });
   });
 }

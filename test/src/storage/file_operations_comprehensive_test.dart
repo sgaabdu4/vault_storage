@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:vault_storage/src/entities/normal_file_request.dart';
+import 'package:vault_storage/src/entities/secure_file_request.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 
@@ -64,12 +66,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveSecureFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: false, // Use native to avoid web-specific issues
-          secureStorage: testContext.mockSecureStorage,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          SecureFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: false),
+          ),
         );
 
         // Assert
@@ -95,12 +96,11 @@ void main() {
         // Test that the method properly validates its inputs
         expect(
           () => fileOperations.saveSecureFile(
-            fileBytes: Uint8List(0), // Empty bytes
-            fileExtension: '',
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
+            SecureFileRequest(
+              fileBytes: Uint8List(0),
+              fileExtension: '',
+              services: testContext.fileServices(isWeb: true),
+            ),
           ),
           throwsA(isA<StorageWriteError>()),
         );
@@ -270,11 +270,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveNormalFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: true,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          NormalFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: true),
+          ),
         );
 
         // Assert
@@ -296,11 +296,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveNormalFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: false,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          NormalFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: false),
+          ),
         );
 
         // Assert
@@ -443,11 +443,11 @@ void main() {
         // Act & Assert
         expect(
           () => fileOperations.saveNormalFile(
-            fileBytes: fileBytes,
-            fileExtension: 'txt',
-            isWeb: false,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
+            NormalFileRequest(
+              fileBytes: fileBytes,
+              fileExtension: 'txt',
+              services: testContext.fileServices(isWeb: false),
+            ),
           ),
           throwsA(isA<StorageWriteError>()),
         );

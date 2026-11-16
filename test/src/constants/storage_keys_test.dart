@@ -15,7 +15,6 @@ void main() {
     test('constants should be accessible without instantiation', () {
       // This test ensures we can access constants directly from the class
       const keyValue = StorageKeys.secureKey;
-      expect(keyValue, isNotNull);
       expect(keyValue, equals('hive_encryption_key'));
     });
 

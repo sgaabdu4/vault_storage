@@ -8,14 +8,17 @@ import 'browser_check_failure.dart';
 final _newline = RegExp('\n');
 
 /// Map Chrome's measured ranges through the compiler's original Dart locations.
-Future<void> writeDartCoverage(File javascript, List<Object?> functions, File output) async {
-  final mapping = parse(await File('${javascript.path}.map').readAsString()) as SingleMapping;
-  final text = await javascript.readAsString();
+Future<void> writeDartCoverage(File bundle, List<Object?> functions, File output) async {
+  final mapping = switch (parse(await File('${bundle.path}.map').readAsString())) {
+    final SingleMapping single => single,
+    _ => throw const BrowserCheckFailure('Compiler wrote an unsupported source map'),
+  };
+  final text = await bundle.readAsString();
   final lineOffsets = [0, ..._newline.allMatches(text).map((match) => match.end)];
   final source = File('lib/src/storage/web_download_helper.dart').absolute.uri;
-  final mapUri = File('${javascript.path}.map').absolute.uri;
+  final mapUri = File('${bundle.path}.map').absolute.uri;
   final sourceIds = <int>{
-    for (var index = 0; index < mapping.urls.length; index++)
+    for (int index = 0; index < mapping.urls.length; index++)
       if (mapUri.resolve(mapping.urls[index]) == source) index,
   };
   if (sourceIds.isEmpty) throw const BrowserCheckFailure('Compiler omitted the browser source map');
@@ -30,7 +33,7 @@ Future<void> writeDartCoverage(File javascript, List<Object?> functions, File ou
   if (hits.isEmpty || !hits.values.any((count) => count > 0)) {
     throw const BrowserCheckFailure('Chrome did not execute mapped browser code');
   }
-  final lines = hits.keys.toList()..sort();
+  final lines = hits.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   await output.writeAsString(
     [
       'SF:lib/src/storage/web_download_helper.dart',
@@ -38,7 +41,7 @@ Future<void> writeDartCoverage(File javascript, List<Object?> functions, File ou
       'FNDA:$functionHits,downloadFileOnWeb',
       'FNF:1',
       'FNH:${functionHits > 0 ? 1 : 0}',
-      for (final line in lines) 'DA:$line,${hits[line]}',
+      for (final MapEntry(:key, :value) in lines) 'DA:$key,$value',
       'LF:${hits.length}',
       'LH:${hits.values.where((count) => count > 0).length}',
       'end_of_record',
@@ -48,38 +51,49 @@ Future<void> writeDartCoverage(File javascript, List<Object?> functions, File ou
   await File('coverage/browser-ranges.json').writeAsString(jsonEncode(functions));
 }
 
+typedef CoverageRange = ({int start, int end, int count});
+
 Map<int, int> mapLines(
   SingleMapping mapping,
   List<int> lineOffsets,
   Set<int> sourceIds,
   List<Object?> functions,
 ) {
+  final ranges = coverageRanges(functions);
   final hits = <int, int>{};
   for (final line in mapping.lines) {
     for (final entry in line.entries) {
-      if (!sourceIds.contains(entry.sourceUrlId) || entry.sourceLine == null) continue;
-      final offset = lineOffsets[line.line] + entry.column;
-      final count = rangeHits(functions, offset);
-      // Unmapped/non-executable generated text has no V8 function range.
-      if (count == null) continue;
-      final originalLine = entry.sourceLine! + 1;
-      if (count > (hits[originalLine] ?? -1)) hits[originalLine] = count;
+      final sourceLine = entry.sourceLine;
+      if (sourceIds.contains(entry.sourceUrlId) && sourceLine != null) {
+        final count = rangeHits(ranges, lineOffsets[line.line] + entry.column);
+        final originalLine = sourceLine + 1;
+        // Unmapped/non-executable generated text has no V8 function range.
+        if (count != null && count > (hits[originalLine] ?? -1)) hits[originalLine] = count;
+      }
     }
   }
   return hits;
 }
 
-int? rangeHits(List<Object?> functions, int offset) {
+List<CoverageRange> coverageRanges(List<Object?> functions) => [
+  for (final function in functions)
+    if (function case {'ranges': final List<Object?> ranges})
+      for (final range in ranges)
+        if (range case {
+          'startOffset': final int start,
+          'endOffset': final int end,
+          'count': final int count,
+        })
+          (start: start, end: end, count: count),
+];
+
+int? rangeHits(List<CoverageRange> ranges, int offset) {
   int? count;
   int? width;
-  for (final function in functions.cast<Map<String, Object?>>()) {
-    for (final range in (function['ranges']! as List<Object?>).cast<Map<String, Object?>>()) {
-      final start = range['startOffset']! as int;
-      final end = range['endOffset']! as int;
-      if (start <= offset && offset < end && (width == null || end - start < width)) {
-        width = end - start;
-        count = range['count']! as int;
-      }
+  for (final (:start, :end, count: rangeCount) in ranges) {
+    if (start <= offset && offset < end && (width == null || end - start < width)) {
+      width = end - start;
+      count = rangeCount;
     }
   }
   return count;

@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vault_storage/src/constants/config.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
+import 'package:vault_storage/src/extensions/json_safe.dart';
 import 'package:vault_storage/src/extensions/storage_extensions.dart';
 
 void main() {
@@ -409,9 +410,14 @@ void main() {
         await invalidBase64.decodeBase64Safely(context: 'encryption key');
         fail('Should have thrown an exception');
       } catch (error) {
-        expect(error, isA<Base64DecodeError>());
-        final base64Error = error as Base64DecodeError;
-        expect(base64Error.message, contains('encryption key'));
+        expect(
+          error,
+          isA<Base64DecodeError>().having(
+            (base64Error) => base64Error.message,
+            'message',
+            contains('encryption key'),
+          ),
+        );
       }
     });
 
@@ -422,9 +428,14 @@ void main() {
         await invalidJson.decodeJsonSafely<Map<String, dynamic>>();
         fail('Should have thrown an exception');
       } catch (error) {
-        expect(error, isA<StorageSerializationError>());
-        final serializationError = error as StorageSerializationError;
-        expect(serializationError.message, contains('Failed to decode value'));
+        expect(
+          error,
+          isA<StorageSerializationError>().having(
+            (serializationError) => serializationError.message,
+            'message',
+            contains('Failed to decode value'),
+          ),
+        );
       }
     });
   });
@@ -531,7 +542,7 @@ void main() {
     test('should handle all primitive types round-trip', () async {
       // Test int
       const intVal = 123;
-      var encoded = await JsonSafe.encode(intVal);
+      String encoded = await JsonSafe.encode(intVal);
       final decoded = await JsonSafe.decode<int>(encoded);
       expect(decoded, equals(intVal));
 
@@ -578,7 +589,7 @@ void main() {
       expect(decoded['double'], equals(3.14));
       expect(decoded['bool'], equals(true));
       expect(decoded['list'], equals([1, 2, 3]));
-      expect((decoded['nested'] as Map)['inner'], equals('value'));
+      expect(decoded['nested'], containsPair('inner', 'value'));
     });
   });
 }

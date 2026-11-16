@@ -43,8 +43,8 @@ void main() {
 
     test('should handle deeply nested structures without stack overflow', () {
       // Create a deeply nested list: [[[[...]]]]
-      dynamic deepList = 1;
-      for (var i = 0; i < 10000; i++) {
+      Object? deepList = 1;
+      for (int i = 0; i < 10000; i++) {
         deepList = [deepList];
       }
 
