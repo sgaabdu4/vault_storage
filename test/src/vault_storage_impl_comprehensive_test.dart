@@ -233,7 +233,7 @@ void main() {
         await testContext.vaultStorage.saveSecure(key: key, value: value);
 
         // Assert
-        verify(() => testContext.mockSecureBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockSecureBox.put(key, any<Object?>())).called(1);
         verify(() => testContext.mockNormalBox.containsKey(key)).called(1);
       });
 
@@ -252,7 +252,7 @@ void main() {
         await testContext.vaultStorage.saveSecure(key: key, value: value);
 
         // Assert
-        verify(() => testContext.mockSecureBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockSecureBox.put(key, any<Object?>())).called(1);
         verify(() => testContext.mockNormalBox.containsKey(key)).called(1);
         verify(() => testContext.mockNormalBox.delete(key)).called(1);
       });
@@ -270,7 +270,7 @@ void main() {
         await testContext.vaultStorage.saveNormal(key: key, value: value);
 
         // Assert
-        verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockNormalBox.put(key, any<Object?>())).called(1);
       });
 
       test('should throw StorageWriteError when save fails', () async {
@@ -409,7 +409,7 @@ void main() {
             getBox: any(named: 'getBox'),
           ),
         ).called(1);
-        verify(() => testContext.mockSecureFilesBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockSecureFilesBox.put(key, any<Object?>())).called(1);
       });
 
       test('should save normal file successfully', () async {
@@ -449,7 +449,7 @@ void main() {
             getBox: any(named: 'getBox'),
           ),
         ).called(1);
-        verify(() => testContext.mockNormalFilesBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockNormalFilesBox.put(key, any<Object?>())).called(1);
       });
 
       test('should return null when file does not exist', () async {
@@ -600,7 +600,7 @@ void main() {
         await testContext.vaultStorage.setInBox(.normal, key, value);
 
         // Assert
-        verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockNormalBox.put(key, any<Object?>())).called(1);
       });
 
       test('should throw StorageInitializationError when box is not opened', () async {
@@ -681,7 +681,7 @@ void main() {
         // Assert - Should complete without throwing
         await Future.wait(futures);
 
-        verify(() => testContext.mockNormalBox.put(key, any<dynamic>())).called(10);
+        verify(() => testContext.mockNormalBox.put(key, any<Object?>())).called(10);
       });
     });
 
@@ -753,6 +753,17 @@ void main() {
         );
       });
 
+      test('rejects a v4.x json StoredValue whose value is not text', () async {
+        const key = 'bad_v4_json';
+        when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
+        when(() => testContext.mockNormalBox.get(key)).thenReturn(const StoredValue(42, .json));
+
+        await expectLater(
+          testContext.vaultStorage.get<int>(key, isSecure: false),
+          throwsA(isA<VaultStorageError>()),
+        );
+      });
+
       test('reads mixed formats from different keys in same box', () async {
         // v2 key
         when(() => testContext.mockNormalBox.containsKey('k_v2')).thenReturn(true);
@@ -776,11 +787,11 @@ void main() {
         expect(await testContext.vaultStorage.get<String>('k_v4', isSecure: false), 'new_string');
       });
 
-      test('coerces v4.x native Map<dynamic,dynamic> to Map<String,dynamic>', () async {
+      test('coerces v4.x native Map<Object?,Object?> to Map<String,dynamic>', () async {
         const key = 'map_coerce';
         when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(true);
-        // Hive deserializes Maps as Map<dynamic, dynamic> after TypeAdapter round-trip
-        final hiveMap = <dynamic, dynamic>{'name': 'test', 'count': 5};
+        // Hive deserializes Maps as Map<Object?, Object?> after TypeAdapter round-trip
+        final hiveMap = <Object?, Object?>{'name': 'test', 'count': 5};
         when(() => testContext.mockNormalBox.get(key)).thenReturn(StoredValue(hiveMap, .native));
 
         final result = await testContext.vaultStorage.get<Map<String, dynamic>>(

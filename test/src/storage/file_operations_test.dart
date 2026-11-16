@@ -112,7 +112,7 @@ void main() {
             value: any(named: 'value'),
           ),
         ).called(1);
-        verify(() => mockBox.put(testFileId, any<dynamic>())).called(1);
+        verify(() => mockBox.put(testFileId, any<Object?>())).called(1);
       });
 
       test('should throw StorageWriteError when encryption fails', () async {
@@ -247,7 +247,7 @@ void main() {
         final storedChunks = <String, dynamic>{};
         String? encodedKey;
         when(() => testContext.mockUuid.v4()).thenReturn('stream-round-trip');
-        when(() => testContext.mockSecureFilesBox.put(any<String>(), any<dynamic>())).thenAnswer((
+        when(() => testContext.mockSecureFilesBox.put(any<String>(), any<Object?>())).thenAnswer((
           invocation,
         ) async {
           storedChunks[invocation.positionalArguments[0] as String] =
@@ -300,7 +300,7 @@ void main() {
           storedChunks = {};
           String? encodedKey;
           when(() => testContext.mockUuid.v4()).thenReturn('ordered-chunks');
-          when(() => testContext.mockSecureFilesBox.put(any<String>(), any<dynamic>())).thenAnswer((
+          when(() => testContext.mockSecureFilesBox.put(any<String>(), any<Object?>())).thenAnswer((
             invocation,
           ) async {
             storedChunks[invocation.positionalArguments[0] as String] =
@@ -647,7 +647,7 @@ void main() {
         expect(result['filePath'], isNull); // Web doesn't use file paths
 
         verify(() => testContext.mockUuid.v4()).called(1);
-        verify(() => mockBox.put(testFileId, any<dynamic>())).called(1);
+        verify(() => mockBox.put(testFileId, any<Object?>())).called(1);
       });
 
       test('should throw StorageWriteError when save fails', () async {

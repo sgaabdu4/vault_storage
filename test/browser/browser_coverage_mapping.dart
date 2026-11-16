@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:source_maps/source_maps.dart';
 
+import 'browser_check_failure.dart';
+
 final _newline = RegExp('\n');
 
 /// Map Chrome's measured ranges through the compiler's original Dart locations.
@@ -16,15 +18,17 @@ Future<void> writeDartCoverage(File javascript, List<Object?> functions, File ou
     for (var index = 0; index < mapping.urls.length; index++)
       if (mapUri.resolve(mapping.urls[index]) == source) index,
   };
-  if (sourceIds.isEmpty) throw StateError('Compiler omitted the browser source map');
+  if (sourceIds.isEmpty) throw const BrowserCheckFailure('Compiler omitted the browser source map');
   final hits = mapLines(mapping, lineOffsets, sourceIds, functions);
   final sourceLines = await File.fromUri(source).readAsLines();
   final functionLine =
       sourceLines.indexWhere((line) => line.startsWith('void downloadFileOnWeb(')) + 1;
   final functionHits = hits[functionLine];
-  if (functionHits == null) throw StateError('Download function has no mapped entry point');
+  if (functionHits == null) {
+    throw const BrowserCheckFailure('Download function has no mapped entry point');
+  }
   if (hits.isEmpty || !hits.values.any((count) => count > 0)) {
-    throw StateError('Chrome did not execute mapped browser code');
+    throw const BrowserCheckFailure('Chrome did not execute mapped browser code');
   }
   final lines = hits.keys.toList()..sort();
   await output.writeAsString(

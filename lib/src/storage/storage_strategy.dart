@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:vault_storage/src/errors/storage_error.dart';
+
 /// Strategy for storing values in Hive boxes.
 enum StorageStrategy {
   /// Store value directly using Hive's native binary serialization.
@@ -12,7 +14,7 @@ enum StorageStrategy {
 /// Wrapper for values stored in Hive with metadata about storage strategy.
 class StoredValue {
   /// The actual value being stored
-  final dynamic value;
+  final Object? value;
 
   /// The strategy used to store this value
   final StorageStrategy strategy;
@@ -30,8 +32,11 @@ class StoredValue {
   Map<String, dynamic> toHiveMap() => {_strategyKey: strategy.index, _valueKey: value};
 
   /// Reconstructs a StoredValue from a Hive map
-  static StoredValue fromHiveMap(Map<dynamic, dynamic> map) {
-    final strategyIndex = map[_strategyKey] as int;
+  static StoredValue fromHiveMap(Map<Object?, Object?> map) {
+    final strategyIndex = switch (map[_strategyKey]) {
+      final int index => index,
+      _ => throw const VaultStorageSerializationError('Stored value has no strategy index.'),
+    };
     final value = map[_valueKey];
     return StoredValue(value, StorageStrategy.values[strategyIndex]);
   }

@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:vault_storage/src/storage/web_download_helper.dart';
 import 'package:web/web.dart' as web;
 
+import 'browser_check_failure.dart';
+
 Future<void> main() async {
   try {
     await verifyDownload(null, 'application/octet-stream');
@@ -26,7 +28,7 @@ Future<void> verifyDownload(String? mimeType, String expectedType) async {
     final anchor = target as web.HTMLAnchorElement;
     event.preventDefault();
     if (anchor.download != name || anchor.style.display != 'none') {
-      throw StateError('Download metadata changed');
+      throw const BrowserCheckFailure('Download metadata changed');
     }
     blobUrl = anchor.href;
     response = web.window.fetch(anchor.href.toJS).toDart;
@@ -38,14 +40,14 @@ Future<void> verifyDownload(String? mimeType, String expectedType) async {
     web.document.removeEventListener('click', listener);
   }
   if (response == null || web.document.querySelectorAll('a').length != before) {
-    throw StateError('Download was not dispatched or the anchor leaked');
+    throw const BrowserCheckFailure('Download was not dispatched or the anchor leaked');
   }
   final result = await response!;
   final actual = (await result.arrayBuffer().toDart).toDart.asUint8List();
   if (result.headers.get('content-type') != expectedType ||
       actual.length != bytes.length ||
       List.generate(bytes.length, (index) => actual[index] == bytes[index]).contains(false)) {
-    throw StateError('Downloaded bytes or MIME type changed');
+    throw const BrowserCheckFailure('Downloaded bytes or MIME type changed');
   }
   var revoked = false;
   try {
@@ -53,5 +55,5 @@ Future<void> verifyDownload(String? mimeType, String expectedType) async {
   } catch (_) {
     revoked = true;
   }
-  if (!revoked) throw StateError('Object URL was not revoked');
+  if (!revoked) throw const BrowserCheckFailure('Object URL was not revoked');
 }

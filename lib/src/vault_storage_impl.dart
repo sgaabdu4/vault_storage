@@ -33,10 +33,10 @@ class VaultStorageImpl implements IVaultStorage {
   final String? _storageDirectory;
 
   @visibleForTesting
-  final Map<BoxType, BoxBase<dynamic>> boxes = {};
+  final Map<BoxType, BoxBase<Object?>> boxes = {};
 
   @visibleForTesting
-  final Map<String, BoxBase<dynamic>> customBoxes = {};
+  final Map<String, BoxBase<Object?>> customBoxes = {};
 
   @visibleForTesting
   bool isVaultStorageReady = false;
@@ -598,7 +598,7 @@ class VaultStorageImpl implements IVaultStorage {
     }
   }
 
-  BoxBase<dynamic> _requireCustomBox(String name) {
+  BoxBase<Object?> _requireCustomBox(String name) {
     final box = customBoxes[name];
     if (box == null) {
       throw BoxNotFoundError('Box "$name" not found. Register it during init()');
@@ -628,7 +628,7 @@ class VaultStorageImpl implements IVaultStorage {
   }
 
   Future<void> _deleteKeyFromBoxes(String key, List<BoxType> boxTypes) async {
-    final candidates = <BoxBase<dynamic>>[
+    final candidates = <BoxBase<Object?>>[
       for (final type in boxTypes)
         if (boxes[type] case final box?) box,
       ...customBoxes.values,

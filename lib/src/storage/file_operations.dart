@@ -35,7 +35,7 @@ class FileOperations implements IFileOperations {
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
     required Uuid uuid,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
       final fileId = uuid.v4();
@@ -52,7 +52,7 @@ class FileOperations implements IFileOperations {
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
         // WEB: Store encrypted bytes directly as Uint8List — no base64 overhead.
-        await (getBox(.secureFiles) as LazyBox<dynamic>).put(
+        await (getBox(.secureFiles) as LazyBox<Object?>).put(
           fileId,
           Uint8List.fromList(secretBox.cipherText),
         );
@@ -94,7 +94,7 @@ class FileOperations implements IFileOperations {
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
     required Uuid uuid,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     int? chunkSize,
   }) async {
     try {
@@ -148,7 +148,7 @@ class FileOperations implements IFileOperations {
     required String fileExtension,
     required List<int> keyBytes,
     required bool useWeb,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     String? filePath;
     IOSink? sink;
@@ -198,7 +198,7 @@ class FileOperations implements IFileOperations {
     required String fileId,
     required int chunkIndex,
     required bool useWeb,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     required IOSink? sink,
   }) async {
     final encryptedPayload = await compute(
@@ -206,7 +206,7 @@ class FileOperations implements IFileOperations {
       EncryptRequest(fileBytes: bytes, keyBytes: keyBytes),
     );
     if (useWeb) {
-      await (getBox(.secureFiles) as LazyBox<dynamic>).put(
+      await (getBox(.secureFiles) as LazyBox<Object?>).put(
         '$fileId:c:$chunkIndex',
         Uint8List.fromList(encryptedPayload.cipherText),
       );
@@ -241,7 +241,7 @@ class FileOperations implements IFileOperations {
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
@@ -288,7 +288,7 @@ class FileOperations implements IFileOperations {
     required String secureKeyName,
     required bool useWeb,
     required FlutterSecureStorage secureStorage,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     final keyBytes = await _readEncryptionKey(secureStorage, secureKeyName);
     if (useWeb) {
@@ -306,7 +306,7 @@ class FileOperations implements IFileOperations {
     required Map<String, dynamic> fileMetadata,
     required String fileId,
     required List<int> keyBytes,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
     final chunks = (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ?? [];
@@ -315,7 +315,7 @@ class FileOperations implements IFileOperations {
       List<int>.generate(chunkCount, (index) => index),
       _webChunkConcurrency,
       (index) async {
-        final stored = await (getBox(.secureFiles) as LazyBox<dynamic>).get('$fileId:c:$index');
+        final stored = await (getBox(.secureFiles) as LazyBox<Object?>).get('$fileId:c:$index');
         if (stored == null) {
           throw FileNotFoundError(fileId, 'Hive secure files chunk $index');
         }
@@ -389,7 +389,7 @@ class FileOperations implements IFileOperations {
     required String secureKeyName,
     required bool useWeb,
     required FlutterSecureStorage secureStorage,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async => compute(
     decryptInIsolate,
     DecryptRequest(
@@ -425,7 +425,7 @@ class FileOperations implements IFileOperations {
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
       final fileId = fileMetadata.getRequiredString('fileId');
@@ -455,9 +455,9 @@ class FileOperations implements IFileOperations {
   Future<void> _deleteWebChunks(
     Map<String, dynamic> fileMetadata,
     String fileId,
-    BoxBase<dynamic> Function(BoxType) getBox,
+    BoxBase<Object?> Function(BoxType) getBox,
   ) async {
-    final box = getBox(.secureFiles) as LazyBox<dynamic>;
+    final box = getBox(.secureFiles) as LazyBox<Object?>;
     final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
     await Future.wait([
       for (var index = 0; index < chunkCount; index++) box.delete('$fileId:c:$index'),
@@ -471,7 +471,7 @@ class FileOperations implements IFileOperations {
     required String fileExtension,
     required bool? isWeb,
     required Uuid uuid,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
       final fileId = uuid.v4();
@@ -480,7 +480,7 @@ class FileOperations implements IFileOperations {
       String? filePath; // Nullable for web
       if (isWeb ?? kIsWeb) {
         // WEB: Store bytes directly as Uint8List — no base64 overhead.
-        await (getBox(.normalFiles) as LazyBox<dynamic>).put(fileId, fileBytes);
+        await (getBox(.normalFiles) as LazyBox<Object?>).put(fileId, fileBytes);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -504,7 +504,7 @@ class FileOperations implements IFileOperations {
   Future<Uint8List> getNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
@@ -543,7 +543,7 @@ class FileOperations implements IFileOperations {
   Future<void> deleteNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
       final fileId = fileMetadata.getRequiredString('fileId');
@@ -568,10 +568,10 @@ class FileOperations implements IFileOperations {
     required String fileId,
     required bool useWeb,
     required BoxType boxType,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     if (useWeb) {
-      await (getBox(boxType) as LazyBox<dynamic>).delete(fileId);
+      await (getBox(boxType) as LazyBox<Object?>).delete(fileId);
       return;
     }
     final filePath = fileMetadata.getOptionalString('filePath');
@@ -585,9 +585,9 @@ class FileOperations implements IFileOperations {
     required BoxType boxType,
     required String location,
     required String decodeContext,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
-    final stored = await (getBox(boxType) as LazyBox<dynamic>).get(fileId);
+    final stored = await (getBox(boxType) as LazyBox<Object?>).get(fileId);
     if (stored == null) throw FileNotFoundError(fileId, location);
     return stored is Uint8List
         ? stored

@@ -352,7 +352,7 @@ void main() {
     });
 
     test('should clear custom boxes during clearAll', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant_1'] = mockCustomBox;
 
       when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
@@ -372,8 +372,8 @@ void main() {
     });
 
     test('should clear multiple custom boxes during clearAll', () async {
-      final mockBox1 = MockBox<dynamic>();
-      final mockBox2 = MockBox<dynamic>();
+      final mockBox1 = MockBox<Object?>();
+      final mockBox2 = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['box_a'] = mockBox1;
       testContext.vaultStorage.customBoxes['box_b'] = mockBox2;
 
@@ -396,7 +396,7 @@ void main() {
     });
 
     test('should clear custom boxes even when includeFiles is false', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant_1'] = mockCustomBox;
 
       when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
@@ -440,7 +440,7 @@ void main() {
     });
 
     test('should close custom boxes on dispose', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       when(() => testContext.mockSecureBox.close()).thenAnswer((_) async {});
@@ -500,7 +500,7 @@ void main() {
     });
 
     test('should include keys from custom boxes', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       when(() => testContext.mockNormalBox.keys).thenReturn(['normal_key']);
@@ -515,7 +515,7 @@ void main() {
     });
 
     test('should include custom box keys when isSecure is specified', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       when(() => testContext.mockSecureBox.keys).thenReturn(['secure_key']);
@@ -612,7 +612,7 @@ void main() {
     });
 
     test('should survive custom box close error during dispose', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['failing'] = mockCustomBox;
 
       when(() => testContext.mockSecureBox.close()).thenAnswer((_) async {});
@@ -631,7 +631,7 @@ void main() {
 
   group('Custom box file operations', () {
     late TestContext testContext;
-    late MockBox<dynamic> mockCustomBox;
+    late MockBox<Object?> mockCustomBox;
 
     setUpAll(() {
       MocksHelper.registerFallbackValues();
@@ -640,7 +640,7 @@ void main() {
     setUp(() {
       testContext = TestContext();
       testContext.setUpCommon();
-      mockCustomBox = MockBox<dynamic>();
+      mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
     });
 
@@ -649,8 +649,8 @@ void main() {
     });
 
     test('saveSecureFile to custom box should store base64 data', () async {
-      when(() => mockCustomBox.containsKey(any<dynamic>())).thenReturn(false);
-      when(() => mockCustomBox.put(any<dynamic>(), any<dynamic>())).thenAnswer((_) async {});
+      when(() => mockCustomBox.containsKey(any<Object?>())).thenReturn(false);
+      when(() => mockCustomBox.put(any<Object?>(), any<Object?>())).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveSecureFile(
         key: 'myfile',
@@ -661,7 +661,7 @@ void main() {
       );
 
       final captured = verify(
-        () => mockCustomBox.put('myfile', captureAny<dynamic>()),
+        () => mockCustomBox.put('myfile', captureAny<Object?>()),
       ).captured.single;
       // _putInBoxBase now stores StoredValue directly (v4.x TypeAdapter format)
       expect(captured, isA<StoredValue>());
@@ -679,8 +679,8 @@ void main() {
     });
 
     test('saveNormalFile to custom box should store base64 data', () async {
-      when(() => mockCustomBox.containsKey(any<dynamic>())).thenReturn(false);
-      when(() => mockCustomBox.put(any<dynamic>(), any<dynamic>())).thenAnswer((_) async {});
+      when(() => mockCustomBox.containsKey(any<Object?>())).thenReturn(false);
+      when(() => mockCustomBox.put(any<Object?>(), any<Object?>())).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveNormalFile(
         key: 'myfile',
@@ -691,7 +691,7 @@ void main() {
       );
 
       final captured = verify(
-        () => mockCustomBox.put('myfile', captureAny<dynamic>()),
+        () => mockCustomBox.put('myfile', captureAny<Object?>()),
       ).captured.single;
       // _putInBoxBase now stores StoredValue directly (v4.x TypeAdapter format)
       expect(captured, isA<StoredValue>());
@@ -710,7 +710,7 @@ void main() {
 
     test('getFile from custom box should return decoded bytes', () async {
       when(() => mockCustomBox.containsKey('myfile')).thenReturn(true);
-      // For Box<dynamic>, _getFromBoxBase calls box.get(key) synchronously.
+      // For Box<Object?>, _getFromBoxBase calls box.get(key) synchronously.
       when(
         () => mockCustomBox.get('myfile'),
       ).thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');

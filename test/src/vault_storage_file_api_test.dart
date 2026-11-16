@@ -64,7 +64,7 @@ void main() {
             getBox: any(named: 'getBox'),
           ),
         ).called(1);
-        verify(() => testContext.mockSecureFilesBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockSecureFilesBox.put(key, any<Object?>())).called(1);
       });
 
       test('should throw StorageWriteError when file save fails', () async {
@@ -129,7 +129,7 @@ void main() {
             getBox: any(named: 'getBox'),
           ),
         ).called(1);
-        verify(() => testContext.mockNormalFilesBox.put(key, any<dynamic>())).called(1);
+        verify(() => testContext.mockNormalFilesBox.put(key, any<Object?>())).called(1);
       });
     });
 

@@ -9,6 +9,10 @@ import 'package:vault_storage/src/vault_storage_impl.dart';
 import '../mocks.dart';
 import '../test_context.dart';
 
+class _IoFailure implements Exception {
+  const _IoFailure();
+}
+
 void main() {
   group('get() auto-search ambiguity detection', () {
     late TestContext testContext;
@@ -48,8 +52,8 @@ void main() {
     });
 
     test('lists ambiguous boxes in opening order and reads a lone custom hit', () async {
-      final firstBox = MockBox<dynamic>();
-      final secondBox = MockBox<dynamic>();
+      final firstBox = MockBox<Object?>();
+      final secondBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['box_a'] = firstBox;
       testContext.vaultStorage.customBoxes['box_b'] = secondBox;
       final wrapped = const StoredValue('custom_val', .native).toHiveMap();
@@ -75,7 +79,7 @@ void main() {
     });
 
     test('should throw AmbiguousKeyError when key in default box and custom box', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       final normalWrapped = const StoredValue('normal_val', .native).toHiveMap();
@@ -135,7 +139,7 @@ void main() {
         ),
       ).thenAnswer((_) async => streamMetadata);
       when(
-        () => testContext.mockSecureFilesBox.put(any<dynamic>(), any<dynamic>()),
+        () => testContext.mockSecureFilesBox.put(any<Object?>(), any<Object?>()),
       ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveSecureFile(
@@ -169,7 +173,7 @@ void main() {
         ),
       ).thenAnswer((_) async => mockMetadata);
       when(
-        () => testContext.mockSecureFilesBox.put(any<dynamic>(), any<dynamic>()),
+        () => testContext.mockSecureFilesBox.put(any<Object?>(), any<Object?>()),
       ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveSecureFile(
@@ -180,11 +184,14 @@ void main() {
 
       final captured =
           verify(
-                () => testContext.mockSecureFilesBox.put('with_meta', captureAny<dynamic>()),
+                () => testContext.mockSecureFilesBox.put('with_meta', captureAny<Object?>()),
               ).captured.single
               as StoredValue;
-      expect(captured.value, isA<Map<dynamic, dynamic>>());
-      expect((captured.value as Map<dynamic, dynamic>)['userMetadata'], equals({'author': 'test'}));
+      expect(captured.value, isA<Map<Object?, Object?>>());
+      expect(
+        (captured.value! as Map<Object?, Object?>)['userMetadata'],
+        equals({'author': 'test'}),
+      );
     });
   });
 
@@ -216,7 +223,7 @@ void main() {
         ),
       ).thenAnswer((_) async => mockMetadata);
       when(
-        () => testContext.mockNormalFilesBox.put(any<dynamic>(), any<dynamic>()),
+        () => testContext.mockNormalFilesBox.put(any<Object?>(), any<Object?>()),
       ).thenAnswer((_) async {});
 
       await testContext.vaultStorage.saveNormalFile(
@@ -227,12 +234,12 @@ void main() {
 
       final captured =
           verify(
-                () => testContext.mockNormalFilesBox.put('doc', captureAny<dynamic>()),
+                () => testContext.mockNormalFilesBox.put('doc', captureAny<Object?>()),
               ).captured.single
               as StoredValue;
-      expect(captured.value, isA<Map<dynamic, dynamic>>());
+      expect(captured.value, isA<Map<Object?, Object?>>());
       expect(
-        (captured.value as Map<dynamic, dynamic>)['userMetadata'],
+        (captured.value! as Map<Object?, Object?>)['userMetadata'],
         equals({'category': 'reports'}),
       );
     });
@@ -347,7 +354,7 @@ void main() {
     });
 
     test('getFile auto-search finds file in custom box and returns decoded bytes', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       // No file in default boxes
@@ -446,9 +453,9 @@ void main() {
       const jsonMetadata = '{"fileId":"f1","filePath":"/tmp/f1.txt"}';
 
       when(() => testContext.mockNormalFilesBox.keys).thenReturn(['file1', 'file2']);
-      when(() => testContext.mockNormalFilesBox.containsKey(any<dynamic>())).thenReturn(true);
+      when(() => testContext.mockNormalFilesBox.containsKey(any<Object?>())).thenReturn(true);
       when(
-        () => testContext.mockNormalFilesBox.get(any<dynamic>()),
+        () => testContext.mockNormalFilesBox.get(any<Object?>()),
       ).thenAnswer((_) async => jsonMetadata);
       when(() => testContext.mockNormalFilesBox.clear()).thenAnswer((_) async => 0);
 
@@ -462,7 +469,7 @@ void main() {
         ),
       ).thenAnswer((_) async {
         callCount++;
-        if (callCount == 1) throw Exception('IO error');
+        if (callCount == 1) throw const _IoFailure();
       });
 
       // Should not throw despite first file failing
@@ -521,7 +528,7 @@ void main() {
     });
 
     test('should delete from custom boxes during default deleteFile', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       // No metadata in default file boxes
@@ -590,13 +597,13 @@ void main() {
 
     test('should not attempt normal box removal when key not in normal box', () async {
       when(
-        () => testContext.mockSecureBox.put(any<dynamic>(), any<dynamic>()),
+        () => testContext.mockSecureBox.put(any<Object?>(), any<Object?>()),
       ).thenAnswer((_) async {});
       when(() => testContext.mockNormalBox.containsKey('only_secure')).thenReturn(false);
 
       await testContext.vaultStorage.saveSecure(key: 'only_secure', value: 'data');
 
-      verifyNever(() => testContext.mockNormalBox.delete(any<dynamic>()));
+      verifyNever(() => testContext.mockNormalBox.delete(any<Object?>()));
     });
   });
 }

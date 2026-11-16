@@ -3,6 +3,12 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_storage/src/utils/concurrency.dart';
 
+class _StepFailure implements Exception {
+  const _StepFailure(this.message);
+
+  final String message;
+}
+
 void main() {
   group('mapWithConcurrency', () {
     test('returns results in input order when later tasks finish first', () async {
@@ -63,11 +69,11 @@ void main() {
         value,
       ) async {
         started.add(value);
-        if (value == 2) throw StateError('item 2 failed');
+        if (value == 2) throw const _StepFailure('item 2 failed');
         return value;
       });
 
-      await expectLater(run, throwsA(isA<StateError>()));
+      await expectLater(run, throwsA(isA<_StepFailure>()));
       expect(started, [0, 1, 2]);
     });
   });
@@ -88,10 +94,10 @@ void main() {
       final seen = <int>[];
       final run = inOrder<int>([1, 2, 3], (value) async {
         seen.add(value);
-        if (value == 2) throw StateError('step 2 failed');
+        if (value == 2) throw const _StepFailure('step 2 failed');
       }, reason: 'The test needs strictly ordered steps');
 
-      await expectLater(run, throwsA(isA<StateError>()));
+      await expectLater(run, throwsA(isA<_StepFailure>()));
       expect(seen, [1, 2]);
     });
   });

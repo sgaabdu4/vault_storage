@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 
 void main() {
@@ -60,5 +61,12 @@ void main() {
       final mixed = [1, 2, DateTime.now()];
       expect(StorageStrategyHelper.determineStrategy(mixed), equals(StorageStrategy.json));
     });
+  });
+
+  test('a wrapped map without a strategy index is a serialization error', () {
+    expect(
+      () => StoredValue.fromHiveMap(const <Object?, Object?>{'value': 1}),
+      throwsA(isA<VaultStorageSerializationError>()),
+    );
   });
 }

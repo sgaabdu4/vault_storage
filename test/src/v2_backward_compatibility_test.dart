@@ -53,10 +53,10 @@ void main() {
       // v2.x format: json.encode([1, 2, 3]) = "[1,2,3]"
       const v2xListValue = '[1,2,3]';
 
-      final result = await JsonSafe.decode<List<dynamic>>(v2xListValue);
+      final result = await JsonSafe.decode<List<Object?>>(v2xListValue);
 
       expect(result, [1, 2, 3]);
-      expect(result, isA<List<dynamic>>());
+      expect(result, isA<List<Object?>>());
     });
 
     test('should decode v2.x Map stored as JSON string', () async {

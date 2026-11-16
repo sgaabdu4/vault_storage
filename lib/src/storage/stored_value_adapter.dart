@@ -1,4 +1,5 @@
 import 'package:hive_ce/hive_ce.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 
 /// TypeAdapter for [StoredValue], replacing the old Map wrapper format.
@@ -12,7 +13,7 @@ class StoredValueAdapter extends TypeAdapter<StoredValue> {
   StoredValue read(BinaryReader reader) {
     final strategyIndex = reader.readByte();
     if (strategyIndex >= StorageStrategy.values.length) {
-      throw RangeError('Invalid StorageStrategy index: $strategyIndex');
+      throw VaultStorageSerializationError('Invalid StorageStrategy index: $strategyIndex');
     }
     final value = reader.read();
     return StoredValue(value, StorageStrategy.values[strategyIndex]);

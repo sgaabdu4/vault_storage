@@ -53,11 +53,11 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   }
 
   /// Get value from any BoxBase (handles Box and LazyBox, with legacy support)
-  Future<T?> _getFromBoxBase<T>(BoxBase<dynamic> box, String key) async {
+  Future<T?> _getFromBoxBase<T>(BoxBase<Object?> box, String key) async {
     if (!box.containsKey(key)) return null;
 
     // Get value (sync for Box, async for LazyBox)
-    final stored = box is LazyBox<dynamic> ? await box.get(key) : (box as Box<dynamic>).get(key);
+    final stored = box is LazyBox<Object?> ? await box.get(key) : (box as Box<Object?>).get(key);
     if (stored == null) return null;
 
     // Legacy support - if it's a plain string, decode as JSON
@@ -68,7 +68,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     // v4.x format: TypeAdapter-deserialized StoredValue
     if (stored is StoredValue) {
       if (stored.strategy == .native) return _coerceToType<T>(stored.value);
-      return (stored.value as String).decodeJsonSafely<T>();
+      return _jsonText(stored.value).decodeJsonSafely<T>();
     }
 
     // v3.x format - check if it's a Map-wrapped StoredValue
@@ -80,7 +80,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
         return _coerceToType<T>(wrapper.value);
       } else {
         // JSON strategy - decode the JSON string
-        final jsonString = wrapper.value as String;
+        final jsonString = _jsonText(wrapper.value);
         return jsonString.decodeJsonSafely<T>();
       }
     }
@@ -99,7 +99,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     if (T == double && value is num) return value.toDouble() as T;
     if (T == String && value != null) return value.toString() as T;
 
-    // Hive deserializes Maps as Map<dynamic, dynamic>; coerce to Map<String, dynamic>
+    // Hive deserializes Maps as Map<Object?, Object?>; coerce to Map<String, dynamic>
     if (value is Map) {
       final coerced = <String, dynamic>{
         for (final entry in value.entries) entry.key.toString(): entry.value,
@@ -128,7 +128,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
   }
 
   /// Put value into any BoxBase (handles both Box and LazyBox)
-  Future<void> _putInBoxBase<T>(BoxBase<dynamic> box, String key, T value) async {
+  Future<void> _putInBoxBase<T>(BoxBase<Object?> box, String key, T value) async {
     final strategy = StorageStrategyHelper.determineStrategy(value);
 
     final toStore = strategy == .native
@@ -174,7 +174,7 @@ extension VaultStorageImplSupport on VaultStorageImpl {
 
   /// Get a box from storage - returns the box directly
   @visibleForTesting
-  BoxBase<dynamic> getInternalBox(BoxType type) {
+  BoxBase<Object?> getInternalBox(BoxType type) {
     return boxes[type]!;
   }
 
@@ -578,23 +578,23 @@ extension VaultStorageImplSupport on VaultStorageImpl {
       final cipher = HiveAesCipher(encryptionKey);
 
       // Open key-value storage boxes (normal boxes for fast access)
-      boxes[BoxType.secure] = await Hive.openBox<dynamic>(
+      boxes[BoxType.secure] = await Hive.openBox<Object?>(
         StorageKeys.secureBox,
         encryptionCipher: cipher,
         compactionStrategy: _vaultCompactionStrategy,
       );
-      boxes[BoxType.normal] = await Hive.openBox<dynamic>(
+      boxes[BoxType.normal] = await Hive.openBox<Object?>(
         StorageKeys.normalBox,
         compactionStrategy: _vaultCompactionStrategy,
       );
 
       // Open file storage boxes (lazy boxes for better memory usage)
-      boxes[BoxType.secureFiles] = await Hive.openLazyBox<dynamic>(
+      boxes[BoxType.secureFiles] = await Hive.openLazyBox<Object?>(
         StorageKeys.secureFilesBox,
         encryptionCipher: cipher,
         compactionStrategy: _vaultCompactionStrategy,
       );
-      boxes[BoxType.normalFiles] = await Hive.openLazyBox<dynamic>(
+      boxes[BoxType.normalFiles] = await Hive.openLazyBox<Object?>(
         StorageKeys.normalFilesBox,
         compactionStrategy: _vaultCompactionStrategy,
       );
@@ -615,13 +615,13 @@ extension VaultStorageImplSupport on VaultStorageImpl {
         final cipher = config.encrypted ? HiveAesCipher(encryptionKey) : null;
 
         if (config.lazy) {
-          customBoxes[config.name] = await Hive.openLazyBox<dynamic>(
+          customBoxes[config.name] = await Hive.openLazyBox<Object?>(
             config.name,
             encryptionCipher: cipher,
             compactionStrategy: _vaultCompactionStrategy,
           );
         } else {
-          customBoxes[config.name] = await Hive.openBox<dynamic>(
+          customBoxes[config.name] = await Hive.openBox<Object?>(
             config.name,
             encryptionCipher: cipher,
             compactionStrategy: _vaultCompactionStrategy,
@@ -637,3 +637,8 @@ extension VaultStorageImplSupport on VaultStorageImpl {
     }
   }
 }
+
+String _jsonText(Object? value) => switch (value) {
+  final String text => text,
+  _ => throw const VaultStorageSerializationError('Stored JSON value is not text.'),
+};

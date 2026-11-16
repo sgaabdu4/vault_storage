@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'browser_check_failure.dart';
 import 'browser_coverage_mapping.dart';
 
 final _devToolsPattern = RegExp(r'DevTools listening on (ws://\S+)');
@@ -19,7 +20,7 @@ Future<void> main() async {
     '-o',
     'coverage/browser-case.js',
   ]);
-  if (compiled.exitCode != 0) throw StateError('${compiled.stdout}\n${compiled.stderr}');
+  if (compiled.exitCode != 0) throw BrowserCheckFailure('${compiled.stdout}\n${compiled.stderr}');
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   final requests = server.listen((request) async {
     if (request.uri.path == '/case.js') {
@@ -117,10 +118,10 @@ Future<void> waitForResult(DevTools tools) async {
     });
     final value = (result['result']! as Map<String, Object?>)['value'];
     if (value == 'passed') return;
-    if (value is String && value.startsWith('failed:')) throw StateError(value);
+    if (value is String && value.startsWith('failed:')) throw BrowserCheckFailure(value);
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
-  throw StateError('Browser download checks did not complete');
+  throw const BrowserCheckFailure('Browser download checks did not complete');
 }
 
 class DevTools {
@@ -130,7 +131,7 @@ class DevTools {
       final response = pending.remove(data['id']);
       if (response == null) return;
       if (data.containsKey('error')) {
-        response.completeError(StateError('${data['error']}'));
+        response.completeError(BrowserCheckFailure('${data['error']}'));
       } else {
         response.complete(data['result']! as Map<String, Object?>);
       }
@@ -140,7 +141,7 @@ class DevTools {
   final WebSocket socket;
   final pending = <int, Completer<Map<String, Object?>>>{};
   late final StreamSubscription<Object?> subscription;
-  var nextId = 0;
+  int nextId = 0;
 
   Future<Map<String, Object?>> call(String method, [Map<String, Object?> params = const {}]) {
     final id = ++nextId;

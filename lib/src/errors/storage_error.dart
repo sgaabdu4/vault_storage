@@ -55,6 +55,12 @@ class VaultStorageSerializationError extends VaultStorageError {
   const VaultStorageSerializationError(super.message, [super.originalException]);
 }
 
+/// An error that occurs when an operation is not available on the current platform.
+class UnsupportedPlatformError extends VaultStorageError {
+  /// Creates a new [UnsupportedPlatformError].
+  const UnsupportedPlatformError(super.message, [super.originalException]);
+}
+
 /// An error that occurs when attempting to access a custom box that was not registered during init.
 class BoxNotFoundError extends VaultStorageError {
   /// Creates a new [BoxNotFoundError].

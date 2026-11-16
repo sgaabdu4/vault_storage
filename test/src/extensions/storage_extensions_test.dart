@@ -147,9 +147,9 @@ void main() {
 
       test('should handle different types correctly', () async {
         const jsonList = '[1, 2, 3]';
-        final result = await jsonList.decodeJsonSafely<List<dynamic>>();
+        final result = await jsonList.decodeJsonSafely<List<Object?>>();
 
-        expect(result, isA<List<dynamic>>());
+        expect(result, isA<List<Object?>>());
         expect(result, equals([1, 2, 3]));
       });
 
@@ -173,7 +173,7 @@ void main() {
 
       test('should decode legacy JSON array without type marker', () async {
         const legacyJson = '[1, 2, 3]';
-        final decoded = await JsonSafe.decode<List<dynamic>>(legacyJson);
+        final decoded = await JsonSafe.decode<List<Object?>>(legacyJson);
         expect(decoded, equals([1, 2, 3]));
       });
     });
@@ -195,7 +195,7 @@ void main() {
 
         expect(result, isA<String>());
         // Use our decode method to handle type markers
-        final decoded = await result.decodeJsonSafely<List<dynamic>>();
+        final decoded = await result.decodeJsonSafely<List<Object?>>();
         expect(decoded, equals(list));
       });
 
@@ -298,7 +298,7 @@ void main() {
       expect(result, contains('JSON'));
       expect(result, contains('null'));
 
-      final decoded = await JsonSafe.decode<dynamic>(result);
+      final decoded = await JsonSafe.decode<Object?>(result);
       expect(decoded, isNull);
     });
 
@@ -396,7 +396,7 @@ void main() {
       final encoded = await JsonSafe.encode(largeList);
       expect(encoded, startsWith('__VST__JSON:'));
 
-      final decoded = await JsonSafe.decode<List<dynamic>>(encoded);
+      final decoded = await JsonSafe.decode<List<Object?>>(encoded);
       expect(decoded.length, equals(150));
     });
   });

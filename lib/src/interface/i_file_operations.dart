@@ -14,7 +14,7 @@ abstract class IFileOperations {
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
     required Uuid uuid,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   });
 
   /// Save a secure (encrypted) file using a stream, encrypting in chunks.
@@ -24,7 +24,7 @@ abstract class IFileOperations {
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
     required Uuid uuid,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     int? chunkSize,
   });
 
@@ -33,7 +33,7 @@ abstract class IFileOperations {
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     String? downloadFileName, // Optional filename for web downloads
   });
 
@@ -42,7 +42,7 @@ abstract class IFileOperations {
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
     required FlutterSecureStorage secureStorage,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   });
 
   /// Save a normal (unencrypted) file
@@ -51,14 +51,14 @@ abstract class IFileOperations {
     required String fileExtension,
     required bool? isWeb,
     required Uuid uuid,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   });
 
   /// Get a normal (unencrypted) file
   Future<Uint8List> getNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
     String? downloadFileName, // Optional filename for web downloads
   });
 
@@ -66,6 +66,6 @@ abstract class IFileOperations {
   Future<void> deleteNormalFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required BoxBase<dynamic> Function(BoxType) getBox,
+    required BoxBase<Object?> Function(BoxType) getBox,
   });
 }

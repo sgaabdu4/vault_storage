@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/storage/stored_value_adapter.dart';
 
@@ -112,9 +113,12 @@ void main() {
       expect(encoded.strategyIndex, equals(1));
     });
 
-    test('throws RangeError for invalid strategy index', () {
+    test('throws a serialization error for invalid strategy index', () {
       const encoded = (strategyIndex: 99, value: 'value');
-      expect(() => _deserializeAdapter(adapter, encoded), throwsA(isA<RangeError>()));
+      expect(
+        () => _deserializeAdapter(adapter, encoded),
+        throwsA(isA<VaultStorageSerializationError>()),
+      );
     });
   });
 }
