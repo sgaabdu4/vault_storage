@@ -1,7 +1,5 @@
 /// Global configuration for Vault Storage performance tuning.
-class VaultStorageConfig {
-  VaultStorageConfig._();
-
+abstract final class VaultStorageConfig {
   /// JSON string length above which decoding runs in an isolate.
   static int jsonIsolateThreshold = 10000;
 

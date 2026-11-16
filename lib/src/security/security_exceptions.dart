@@ -13,7 +13,10 @@ class SecurityThreatException implements Exception {
 
   @override
   String toString() {
-    final causeStr = cause != null ? ' (caused by: $cause)' : '';
+    final causeStr = switch (cause) {
+      final Object cause => ' (caused by: $cause)',
+      null => '',
+    };
     return 'SecurityThreatException: $threatType - $message$causeStr';
   }
 }

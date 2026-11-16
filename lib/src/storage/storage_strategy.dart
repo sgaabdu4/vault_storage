@@ -8,7 +8,11 @@ enum StorageStrategy {
   native,
 
   /// Store value as JSON string.
-  json,
+  json;
+
+  /// Returns the strategy stored under [index], or null when no strategy has that index.
+  static StorageStrategy? fromIndex(int index) =>
+      values.where((strategy) => strategy.index == index).firstOrNull;
 }
 
 /// Wrapper for values stored in Hive with metadata about storage strategy.
@@ -25,11 +29,13 @@ class StoredValue {
   /// Key for value in stored map
   static const String _valueKey = '__VST_VALUE__';
 
+  static const int _wrappedEntryCount = 2;
+
   /// Creates a new stored value wrapper
   const StoredValue(this.value, this.strategy);
 
   /// Converts to a map suitable for Hive storage
-  Map<String, dynamic> toHiveMap() => {_strategyKey: strategy.index, _valueKey: value};
+  Map<String, Object?> toHiveMap() => {_strategyKey: strategy.index, _valueKey: value};
 
   /// Reconstructs a StoredValue from a Hive map
   static StoredValue fromHiveMap(Map<Object?, Object?> map) {
@@ -37,21 +43,24 @@ class StoredValue {
       final int index => index,
       _ => throw const VaultStorageSerializationError('Stored value has no strategy index.'),
     };
-    final value = map[_valueKey];
-    return StoredValue(value, StorageStrategy.values[strategyIndex]);
+    final strategy = StorageStrategy.fromIndex(strategyIndex);
+    if (strategy == null) {
+      throw VaultStorageSerializationError('Invalid StorageStrategy index: $strategyIndex');
+    }
+    return StoredValue(map[_valueKey], strategy);
   }
 
   /// Checks if a value from Hive is wrapped with our metadata
   static bool isWrapped(Object? value) {
     if (value is! Map) return false;
-    return value.length == 2 && value.containsKey(_strategyKey) && value.containsKey(_valueKey);
+    return value.length == _wrappedEntryCount &&
+        value.containsKey(_strategyKey) &&
+        value.containsKey(_valueKey);
   }
 }
 
 /// Helper functions for determining optimal storage strategy
-class StorageStrategyHelper {
-  StorageStrategyHelper._();
-
+abstract final class StorageStrategyHelper {
   /// Determines the optimal storage strategy for a given value
   static StorageStrategy determineStrategy(Object? value) {
     // Check if it's natively storable by Hive (includes primitives)
@@ -64,18 +73,18 @@ class StorageStrategyHelper {
 
     while (stack.isNotEmpty) {
       final current = stack.removeLast();
-      if (_isHivePrimitive(current)) continue;
-      if (current is List) {
-        stack.addAll(current);
-        continue;
+      if (!_isHivePrimitive(current)) {
+        switch (current) {
+          case List():
+            stack.addAll(current);
+          case Map():
+            stack
+              ..addAll(current.keys)
+              ..addAll(current.values);
+          default:
+            return false;
+        }
       }
-      if (current is Map) {
-        stack
-          ..addAll(current.keys)
-          ..addAll(current.values);
-        continue;
-      }
-      return false;
     }
 
     return true;

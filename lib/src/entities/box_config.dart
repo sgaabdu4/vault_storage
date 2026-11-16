@@ -4,7 +4,7 @@ part 'box_config.freezed.dart';
 
 /// Configuration for a custom storage box.
 @freezed
-abstract class BoxConfig with _$BoxConfig {
+sealed class BoxConfig with _$BoxConfig {
   const factory BoxConfig({
     /// The unique name of the box.
     required String name,

@@ -1,4 +1,4 @@
-import 'package:hive_ce/hive_ce.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 
@@ -12,11 +12,11 @@ class StoredValueAdapter extends TypeAdapter<StoredValue> {
   @override
   StoredValue read(BinaryReader reader) {
     final strategyIndex = reader.readByte();
-    if (strategyIndex >= StorageStrategy.values.length) {
+    final strategy = StorageStrategy.fromIndex(strategyIndex);
+    if (strategy == null) {
       throw VaultStorageSerializationError('Invalid StorageStrategy index: $strategyIndex');
     }
-    final value = reader.read();
-    return StoredValue(value, StorageStrategy.values[strategyIndex]);
+    return StoredValue(reader.read(), strategy);
   }
 
   @override

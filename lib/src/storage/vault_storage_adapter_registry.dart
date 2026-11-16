@@ -1,4 +1,4 @@
-import 'package:hive_ce/hive_ce.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:vault_storage/src/storage/stored_value_adapter.dart';
 
 /// Registers Hive adapters owned by vault_storage.

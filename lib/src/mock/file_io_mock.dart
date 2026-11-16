@@ -5,6 +5,11 @@ import 'dart:typed_data';
 
 import 'package:vault_storage/src/errors/storage_error.dart';
 
+/// Minimal stub of Directory used where dart:io is not available.
+abstract interface class Directory {
+  String get path;
+}
+
 /// Mock File class for web platform where dart:io is not available
 class File {
   final String path;

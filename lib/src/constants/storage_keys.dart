@@ -1,7 +1,5 @@
 /// A utility class that holds constant values for storage keys.
-class StorageKeys {
-  StorageKeys._();
-
+abstract final class StorageKeys {
   /// The secure storage key that holds the master encryption key for the secure Hive box.
   static const secureKey = 'hive_encryption_key';
 

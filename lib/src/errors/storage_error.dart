@@ -12,8 +12,8 @@ sealed class VaultStorageError implements Exception {
   @override
   String toString() {
     final buffer = StringBuffer('$runtimeType: $message');
-    if (originalException != null) {
-      buffer.write(' (caused by: $originalException)');
+    if (originalException case final Object cause) {
+      buffer.write(' (caused by: $cause)');
     }
     return buffer.toString();
   }

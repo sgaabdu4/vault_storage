@@ -153,18 +153,19 @@ class VaultSecurityConfig {
 
   @override
   String toString() {
-    return 'VaultSecurityConfig('
-        'enableRaspProtection: $enableRaspProtection, '
-        'isProd: $isProd, '
-        'watcherMail: ${watcherMail != null ? '***' : 'null'}, '
-        'blockOnJailbreak: $blockOnJailbreak, '
-        'blockOnDebug: $blockOnDebug, '
-        'blockOnTampering: $blockOnTampering, '
-        'blockOnHooks: $blockOnHooks, '
-        'blockOnEmulator: $blockOnEmulator, '
-        'blockOnUnofficialStore: $blockOnUnofficialStore, '
-        'enableLogging: $enableLogging'
-        ')';
+    final fields = [
+      'enableRaspProtection: $enableRaspProtection',
+      'isProd: $isProd',
+      'watcherMail: ${watcherMail != null ? '***' : 'null'}',
+      'blockOnJailbreak: $blockOnJailbreak',
+      'blockOnDebug: $blockOnDebug',
+      'blockOnTampering: $blockOnTampering',
+      'blockOnHooks: $blockOnHooks',
+      'blockOnEmulator: $blockOnEmulator',
+      'blockOnUnofficialStore: $blockOnUnofficialStore',
+      'enableLogging: $enableLogging',
+    ];
+    return 'VaultSecurityConfig(${fields.join(', ')})';
   }
 }
 

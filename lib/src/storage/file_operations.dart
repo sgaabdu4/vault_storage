@@ -1,26 +1,31 @@
 // Prefer web-safe default imports and gate native IO behind dart.library.io
-import 'dart:typed_data' show BytesBuilder, Uint8List;
-
 import 'package:cryptography_plus/cryptography_plus.dart' show SecretBox;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:uuid/uuid.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/entities/normal_file_request.dart';
+import 'package:vault_storage/src/entities/secure_file_request.dart';
+import 'package:vault_storage/src/entities/secure_file_stream_request.dart';
+import 'package:vault_storage/src/enum/box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
 import 'package:vault_storage/src/interface/i_file_operations.dart';
+import 'package:vault_storage/src/interface/i_secure_key_store.dart';
 import 'package:vault_storage/src/mock/file_io_mock.dart' if (dart.library.io) 'dart:io';
 import 'package:vault_storage/src/mock/path_provider_mock.dart'
     if (dart.library.io) 'package:path_provider/path_provider.dart';
 import 'package:vault_storage/src/storage/encryption_helpers.dart';
-import 'package:vault_storage/src/storage/web_download_helper.dart'
-    if (dart.library.io) 'package:vault_storage/src/mock/web_download_stub.dart';
-import 'package:vault_storage/src/utils/concurrency.dart';
+import 'package:vault_storage/src/storage/file_download.dart';
+import 'package:vault_storage/src/storage/file_metadata_keys.dart';
+import 'package:vault_storage/src/storage/file_ref.dart';
+import 'package:vault_storage/src/storage/secure_chunks.dart';
 
-const _webChunkConcurrency = 4;
+const _defaultChunkSize = 2 << 20;
+const _secureBoxLocation = 'Hive secure files box';
+const _secureDecodeContext = 'encrypted content';
+const _normalBoxLocation = 'Hive normal files box';
+const _normalDecodeContext = 'normal file content';
 
 /// Handles file operations for both secure and normal files
 class FileOperations implements IFileOperations {
@@ -29,16 +34,10 @@ class FileOperations implements IFileOperations {
 
   /// Save a secure (encrypted) file
   @override
-  Future<Map<String, dynamic>> saveSecureFile({
-    required Uint8List fileBytes,
-    required String fileExtension,
-    required bool? isWeb,
-    required FlutterSecureStorage secureStorage,
-    required Uuid uuid,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
+  Future<Map<String, dynamic>> saveSecureFile(SecureFileRequest request) async {
+    final SecureFileRequest(:fileBytes, :fileExtension, :services) = request;
     try {
-      final fileId = uuid.v4();
+      final fileId = services.uuid.v4();
       final secureKeyName = 'file_key_$fileId';
       final secretKey = await encryptionAlgorithm.newSecretKey();
       final keyBytes = await secretKey.extractBytes();
@@ -50,32 +49,34 @@ class FileOperations implements IFileOperations {
 
       // Platform-aware saving logic
       String? filePath; // Nullable for web
-      if (isWeb ?? kIsWeb) {
+      final useWeb = services.isWeb ?? kIsWeb;
+      if (useWeb) {
         // WEB: Store encrypted bytes directly as Uint8List — no base64 overhead.
-        await (getBox(.secureFiles) as LazyBox<Object?>).put(
-          fileId,
-          Uint8List.fromList(secretBox.cipherText),
-        );
+        await FileRef(
+          fileId: fileId,
+          useWeb: useWeb,
+          getBox: services.getBox,
+        ).lazyBox(.secureFiles).put(fileId, Uint8List.fromList(secretBox.cipherText));
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
         filePath = '${dir.path}/$fileId.$fileExtension.enc';
-        await _writeCiphertext(filePath, secretBox.cipherText);
+        await File(filePath).writeAsBytes(secretBox.cipherText, flush: true);
       }
 
-      await secureStorage.write(
+      await services.secureStorage.write(
         key: secureKeyName,
         value: await keyBytes.encodeBase64Safely(context: 'encryption key'),
       );
 
       // Return unified metadata
       return {
-        'fileId': fileId, // The universal key for retrieval
-        'filePath': filePath, // Path is only present on native platforms
-        'secureKeyName': secureKeyName,
-        'nonce': await secretBox.nonce.encodeBase64Safely(context: 'nonce'),
-        'mac': await secretBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
-        'extension': fileExtension, // Store the original extension
+        FileMetadataKeys.fileId: fileId,
+        FileMetadataKeys.filePath: filePath,
+        FileMetadataKeys.secureKeyName: secureKeyName,
+        FileMetadataKeys.nonce: await secretBox.nonce.encodeBase64Safely(context: 'nonce'),
+        FileMetadataKeys.mac: await secretBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
+        FileMetadataKeys.extension: fileExtension,
       };
     } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
@@ -88,49 +89,37 @@ class FileOperations implements IFileOperations {
 
   /// Save a secure file from a stream with chunked AES-GCM encryption
   @override
-  Future<Map<String, dynamic>> saveSecureFileStream({
-    required Stream<List<int>> stream,
-    required String fileExtension,
-    required bool? isWeb,
-    required FlutterSecureStorage secureStorage,
-    required Uuid uuid,
-    required BoxBase<Object?> Function(BoxType) getBox,
-    int? chunkSize,
-  }) async {
+  Future<Map<String, dynamic>> saveSecureFileStream(SecureFileStreamRequest request) async {
+    final SecureFileStreamRequest(:stream, :fileExtension, :services, :chunkSize) = request;
     try {
-      final fileId = uuid.v4();
+      final fileId = services.uuid.v4();
       final secureKeyName = 'file_key_$fileId';
       final secretKey = await encryptionAlgorithm.newSecretKey();
       final keyBytes = await secretKey.extractBytes();
-      final size = chunkSize ?? (2 << 20);
+      final size = chunkSize ?? _defaultChunkSize;
       if (size <= 0) {
         throw VaultStorageWriteError('Chunk size must be positive, got $size');
       }
 
-      final stored = await _writeSecureStream(
-        stream: stream,
-        size: size,
-        fileId: fileId,
-        fileExtension: fileExtension,
-        keyBytes: keyBytes,
-        useWeb: isWeb ?? kIsWeb,
-        getBox: getBox,
+      final stored = await SecureChunks.write(
+        StreamUpload(stream: stream, size: size, fileExtension: fileExtension, keyBytes: keyBytes),
+        FileRef(fileId: fileId, useWeb: services.isWeb ?? kIsWeb, getBox: services.getBox),
       );
 
-      await secureStorage.write(
+      await services.secureStorage.write(
         key: secureKeyName,
         value: await keyBytes.encodeBase64Safely(context: 'encryption key'),
       );
 
       return {
-        'fileId': fileId,
-        'filePath': stored.filePath,
-        'secureKeyName': secureKeyName,
-        'extension': fileExtension,
-        'streaming': true,
-        'chunkCount': stored.chunks.length,
-        'chunkSize': size,
-        'chunks': stored.chunks,
+        FileMetadataKeys.fileId: fileId,
+        FileMetadataKeys.filePath: stored.filePath,
+        FileMetadataKeys.secureKeyName: secureKeyName,
+        FileMetadataKeys.extension: fileExtension,
+        FileMetadataKeys.streaming: true,
+        FileMetadataKeys.chunkCount: stored.chunks.length,
+        FileMetadataKeys.chunkSize: size,
+        FileMetadataKeys.chunks: stored.chunks,
       };
     } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
@@ -141,138 +130,30 @@ class FileOperations implements IFileOperations {
     }
   }
 
-  Future<({String? filePath, List<Map<String, dynamic>> chunks})> _writeSecureStream({
-    required Stream<List<int>> stream,
-    required int size,
-    required String fileId,
-    required String fileExtension,
-    required List<int> keyBytes,
-    required bool useWeb,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
-    String? filePath;
-    IOSink? sink;
-    if (!useWeb) {
-      final dir = await getApplicationDocumentsDirectory();
-      filePath = '${dir.path}/$fileId.$fileExtension.encf';
-      sink = File(filePath).openWrite();
-    }
-    final chunks = <Map<String, dynamic>>[];
-    try {
-      await for (final bytes in _fileChunks(stream, size)) {
-        chunks.add(
-          await _encryptAndStoreChunk(
-            bytes: bytes,
-            keyBytes: keyBytes,
-            fileId: fileId,
-            chunkIndex: chunks.length,
-            useWeb: useWeb,
-            getBox: getBox,
-            sink: sink,
-          ),
-        );
-      }
-    } finally {
-      await sink?.close();
-    }
-    return (filePath: filePath, chunks: chunks);
-  }
-
-  Stream<Uint8List> _fileChunks(Stream<List<int>> stream, int size) async* {
-    final buffer = BytesBuilder(copy: false);
-    await for (final part in stream) {
-      buffer.add(part);
-      while (buffer.length >= size) {
-        final data = buffer.takeBytes();
-        yield Uint8List.sublistView(data, 0, size);
-        if (data.length > size) buffer.add(Uint8List.sublistView(data, size));
-      }
-    }
-    final tail = buffer.takeBytes();
-    if (tail.isNotEmpty) yield tail;
-  }
-
-  Future<Map<String, dynamic>> _encryptAndStoreChunk({
-    required Uint8List bytes,
-    required List<int> keyBytes,
-    required String fileId,
-    required int chunkIndex,
-    required bool useWeb,
-    required BoxBase<Object?> Function(BoxType) getBox,
-    required IOSink? sink,
-  }) async {
-    final encryptedPayload = await compute(
-      encryptInIsolate,
-      EncryptRequest(fileBytes: bytes, keyBytes: keyBytes),
-    );
-    if (useWeb) {
-      await (getBox(.secureFiles) as LazyBox<Object?>).put(
-        '$fileId:c:$chunkIndex',
-        Uint8List.fromList(encryptedPayload.cipherText),
-      );
-    } else {
-      _writeFramedChunk(sink!, encryptedPayload);
-    }
-    return {
-      'i': chunkIndex,
-      'size': bytes.length,
-      'nonce': await encryptedPayload.nonce.encodeBase64Safely(context: 'chunk nonce'),
-      'mac': await encryptedPayload.mac.bytes.encodeBase64Safely(context: 'chunk mac'),
-    };
-  }
-
-  void _writeFramedChunk(IOSink sink, SecretBox encryptedPayload) {
-    final bytes = encryptedPayload.cipherText;
-    final length = bytes.length;
-    final header = BytesBuilder()
-      ..add([length >> 24 & 0xFF, length >> 16 & 0xFF, length >> 8 & 0xFF, length & 0xFF])
-      ..add([encryptedPayload.nonce.length])
-      ..add(encryptedPayload.nonce)
-      ..add([encryptedPayload.mac.bytes.length])
-      ..add(encryptedPayload.mac.bytes);
-    sink
-      ..add(header.takeBytes())
-      ..add(bytes);
-  }
-
   /// Retrieve a secure (encrypted) file using its metadata
   @override
   Future<Uint8List> getSecureFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required FlutterSecureStorage secureStorage,
+    required ISecureKeyStore secureStorage,
     required BoxBase<Object?> Function(BoxType) getBox,
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
-      final fileId = fileMetadata.getRequiredString('fileId');
-      final secureKeyName = fileMetadata.getRequiredString('secureKeyName');
+      final fileId = fileMetadata.getRequiredString(FileMetadataKeys.fileId);
+      final secureKeyName = fileMetadata.getRequiredString(FileMetadataKeys.secureKeyName);
       final useWeb = isWeb ?? kIsWeb;
-      final decryptedBytes = fileMetadata['streaming'] == true
-          ? await _readStreamingSecureFile(
-              fileMetadata: fileMetadata,
-              fileId: fileId,
-              secureKeyName: secureKeyName,
-              useWeb: useWeb,
-              secureStorage: secureStorage,
-              getBox: getBox,
-            )
-          : await _readSingleSecureFile(
-              fileMetadata: fileMetadata,
-              fileId: fileId,
-              secureKeyName: secureKeyName,
-              useWeb: useWeb,
-              secureStorage: secureStorage,
-              getBox: getBox,
-            );
+      final file = FileRef(fileId: fileId, useWeb: useWeb, getBox: getBox);
+      final decryptedBytes = fileMetadata[FileMetadataKeys.streaming] == true
+          ? await _readStreamingSecureFile(fileMetadata, file, secureStorage, secureKeyName)
+          : await _readSingleSecureFile(fileMetadata, file, secureStorage, secureKeyName);
       if (useWeb) {
-        _downloadFile(
-          fileBytes: decryptedBytes,
+        FileDownload(
           fileId: fileId,
-          extension: fileMetadata.getOptionalString('extension') ?? '',
-          secure: true,
+          extension: fileMetadata.getOptionalString(FileMetadataKeys.extension),
+          suffix: FileDownload.secureSuffix,
           downloadFileName: downloadFileName,
-        );
+        ).start(decryptedBytes);
       }
       return decryptedBytes;
     } on VaultStorageError {
@@ -282,138 +163,43 @@ class FileOperations implements IFileOperations {
     }
   }
 
-  Future<Uint8List> _readStreamingSecureFile({
-    required Map<String, dynamic> fileMetadata,
-    required String fileId,
-    required String secureKeyName,
-    required bool useWeb,
-    required FlutterSecureStorage secureStorage,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
+  Future<Uint8List> _readStreamingSecureFile(
+    Map<String, dynamic> fileMetadata,
+    FileRef file,
+    ISecureKeyStore secureStorage,
+    String secureKeyName,
+  ) async {
     final keyBytes = await _readEncryptionKey(secureStorage, secureKeyName);
-    if (useWeb) {
-      return _readWebSecureChunks(
-        fileMetadata: fileMetadata,
-        fileId: fileId,
-        keyBytes: keyBytes,
-        getBox: getBox,
-      );
-    }
-    return _readNativeSecureChunks(fileMetadata: fileMetadata, fileId: fileId, keyBytes: keyBytes);
+    if (file.useWeb) return SecureChunks.readWeb(fileMetadata, file, keyBytes);
+    return SecureChunks.readNative(fileMetadata, file, keyBytes);
   }
 
-  Future<Uint8List> _readWebSecureChunks({
-    required Map<String, dynamic> fileMetadata,
-    required String fileId,
-    required List<int> keyBytes,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
-    final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
-    final chunks = (fileMetadata['chunks'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final output = BytesBuilder(copy: false);
-    final plainChunks = await mapWithConcurrency(
-      List<int>.generate(chunkCount, (index) => index),
-      _webChunkConcurrency,
-      (index) async {
-        final stored = await (getBox(.secureFiles) as LazyBox<Object?>).get('$fileId:c:$index');
-        if (stored == null) {
-          throw FileNotFoundError(fileId, 'Hive secure files chunk $index');
-        }
-        return _decryptChunk(
-          encryptedBytes: stored is Uint8List
-              ? stored
-              : await (stored as String).decodeBase64Safely(context: 'encrypted chunk'),
-          keyBytes: keyBytes,
-          metadata: chunks[index],
-        );
-      },
-    );
-    plainChunks.forEach(output.add);
-    return output.takeBytes();
-  }
-
-  Future<Uint8List> _readNativeSecureChunks({
-    required Map<String, dynamic> fileMetadata,
-    required String fileId,
-    required List<int> keyBytes,
-  }) async {
-    final file = await _existingFile(fileMetadata, fileId);
-    final output = BytesBuilder(copy: false);
-    final reader = await file.open();
-    try {
-      while (true) {
-        final lengthBytes = await reader.read(4);
-        if (lengthBytes.isEmpty) break;
-        final length =
-            (lengthBytes[0] << 24) |
-            (lengthBytes[1] << 16) |
-            (lengthBytes[2] << 8) |
-            lengthBytes[3];
-        final nonce = await reader.read((await reader.read(1))[0]);
-        final mac = await reader.read((await reader.read(1))[0]);
-        output.add(
-          await compute(
-            decryptInIsolate,
-            DecryptRequest(
-              encryptedBytes: await reader.read(length),
-              keyBytes: keyBytes,
-              nonce: nonce,
-              macBytes: mac,
-            ),
-          ),
-        );
-      }
-    } finally {
-      await reader.close();
-    }
-    return output.takeBytes();
-  }
-
-  Future<Uint8List> _decryptChunk({
-    required Uint8List encryptedBytes,
-    required List<int> keyBytes,
-    required Map<String, dynamic> metadata,
-  }) async => compute(
+  Future<Uint8List> _readSingleSecureFile(
+    Map<String, dynamic> fileMetadata,
+    FileRef file,
+    ISecureKeyStore secureStorage,
+    String secureKeyName,
+  ) async => compute(
     decryptInIsolate,
     DecryptRequest(
-      encryptedBytes: encryptedBytes,
-      keyBytes: keyBytes,
-      nonce: await metadata.getRequiredString('nonce').decodeBase64Safely(context: 'chunk nonce'),
-      macBytes: await metadata.getRequiredString('mac').decodeBase64Safely(context: 'chunk mac'),
-    ),
-  );
-
-  Future<Uint8List> _readSingleSecureFile({
-    required Map<String, dynamic> fileMetadata,
-    required String fileId,
-    required String secureKeyName,
-    required bool useWeb,
-    required FlutterSecureStorage secureStorage,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async => compute(
-    decryptInIsolate,
-    DecryptRequest(
-      encryptedBytes: useWeb
-          ? await _readWebFileBytes(
-              fileId: fileId,
-              boxType: .secureFiles,
-              location: 'Hive secure files box',
-              decodeContext: 'encrypted content',
-              getBox: getBox,
+      encryptedBytes: file.useWeb
+          ? await file.readWebBytes(
+              .secureFiles,
+              location: _secureBoxLocation,
+              decodeContext: _secureDecodeContext,
             )
-          : await (await _existingFile(fileMetadata, fileId)).readAsBytes(),
+          : await (await file.existingFile(fileMetadata)).readAsBytes(),
       keyBytes: await _readEncryptionKey(secureStorage, secureKeyName),
-      nonce: await fileMetadata.getRequiredString('nonce').decodeBase64Safely(context: 'nonce'),
+      nonce: await fileMetadata
+          .getRequiredString(FileMetadataKeys.nonce)
+          .decodeBase64Safely(context: 'nonce'),
       macBytes: await fileMetadata
-          .getRequiredString('mac')
+          .getRequiredString(FileMetadataKeys.mac)
           .decodeBase64Safely(context: 'MAC bytes'),
     ),
   );
 
-  Future<List<int>> _readEncryptionKey(
-    FlutterSecureStorage secureStorage,
-    String secureKeyName,
-  ) async {
+  Future<List<int>> _readEncryptionKey(ISecureKeyStore secureStorage, String secureKeyName) async {
     final encodedKey = await secureStorage.read(key: secureKeyName);
     if (encodedKey == null) throw KeyNotFoundError(secureKeyName);
     return encodedKey.decodeBase64Safely(context: 'encryption key');
@@ -424,23 +210,18 @@ class FileOperations implements IFileOperations {
   Future<void> deleteSecureFile({
     required Map<String, dynamic> fileMetadata,
     required bool? isWeb,
-    required FlutterSecureStorage secureStorage,
+    required ISecureKeyStore secureStorage,
     required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
-      final fileId = fileMetadata.getRequiredString('fileId');
-      final secureKeyName = fileMetadata.getRequiredString('secureKeyName');
+      final fileId = fileMetadata.getRequiredString(FileMetadataKeys.fileId);
+      final secureKeyName = fileMetadata.getRequiredString(FileMetadataKeys.secureKeyName);
       final useWeb = isWeb ?? kIsWeb;
-      if (fileMetadata['streaming'] == true && useWeb) {
-        await _deleteWebChunks(fileMetadata, fileId, getBox);
+      final file = FileRef(fileId: fileId, useWeb: useWeb, getBox: getBox);
+      if (fileMetadata[FileMetadataKeys.streaming] == true && useWeb) {
+        await SecureChunks.deleteWeb(fileMetadata, file);
       } else {
-        await _deleteStoredFile(
-          fileMetadata: fileMetadata,
-          fileId: fileId,
-          useWeb: useWeb,
-          boxType: .secureFiles,
-          getBox: getBox,
-        );
+        await file.deleteStored(fileMetadata, .secureFiles);
       }
       await secureStorage.delete(key: secureKeyName);
     } catch (e, stackTrace) {
@@ -452,35 +233,23 @@ class FileOperations implements IFileOperations {
     }
   }
 
-  Future<void> _deleteWebChunks(
-    Map<String, dynamic> fileMetadata,
-    String fileId,
-    BoxBase<Object?> Function(BoxType) getBox,
-  ) async {
-    final box = getBox(.secureFiles) as LazyBox<Object?>;
-    final chunkCount = fileMetadata['chunkCount'] as int? ?? 0;
-    await Future.wait([
-      for (var index = 0; index < chunkCount; index++) box.delete('$fileId:c:$index'),
-    ]);
-  }
-
   /// Save a normal (unencrypted) file
   @override
-  Future<Map<String, dynamic>> saveNormalFile({
-    required Uint8List fileBytes,
-    required String fileExtension,
-    required bool? isWeb,
-    required Uuid uuid,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
+  Future<Map<String, dynamic>> saveNormalFile(NormalFileRequest request) async {
+    final NormalFileRequest(:fileBytes, :fileExtension, :services) = request;
     try {
-      final fileId = uuid.v4();
+      final fileId = services.uuid.v4();
 
       // Platform-aware saving logic
       String? filePath; // Nullable for web
-      if (isWeb ?? kIsWeb) {
+      final useWeb = services.isWeb ?? kIsWeb;
+      if (useWeb) {
         // WEB: Store bytes directly as Uint8List — no base64 overhead.
-        await (getBox(.normalFiles) as LazyBox<Object?>).put(fileId, fileBytes);
+        await FileRef(
+          fileId: fileId,
+          useWeb: useWeb,
+          getBox: services.getBox,
+        ).lazyBox(.normalFiles).put(fileId, fileBytes);
       } else {
         // NATIVE: Use path_provider and dart:io to save to a file
         final dir = await getApplicationDocumentsDirectory();
@@ -489,7 +258,11 @@ class FileOperations implements IFileOperations {
       }
 
       // Return metadata
-      return {'fileId': fileId, 'filePath': filePath, 'extension': fileExtension};
+      return {
+        FileMetadataKeys.fileId: fileId,
+        FileMetadataKeys.filePath: filePath,
+        FileMetadataKeys.extension: fileExtension,
+      };
     } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
       Error.throwWithStackTrace(
@@ -508,25 +281,23 @@ class FileOperations implements IFileOperations {
     String? downloadFileName, // Optional filename for web downloads
   }) async {
     try {
-      final fileId = fileMetadata.getRequiredString('fileId');
+      final fileId = fileMetadata.getRequiredString(FileMetadataKeys.fileId);
       final useWeb = isWeb ?? kIsWeb;
+      final file = FileRef(fileId: fileId, useWeb: useWeb, getBox: getBox);
       final fileBytes = useWeb
-          ? await _readWebFileBytes(
-              fileId: fileId,
-              boxType: .normalFiles,
-              location: 'Hive normal files box',
-              decodeContext: 'normal file content',
-              getBox: getBox,
+          ? await file.readWebBytes(
+              .normalFiles,
+              location: _normalBoxLocation,
+              decodeContext: _normalDecodeContext,
             )
-          : await (await _existingFile(fileMetadata, fileId)).readAsBytes();
+          : await (await file.existingFile(fileMetadata)).readAsBytes();
       if (useWeb) {
-        _downloadFile(
-          fileBytes: fileBytes,
+        FileDownload(
           fileId: fileId,
-          extension: fileMetadata.getOptionalString('extension') ?? '',
-          secure: false,
+          extension: fileMetadata.getOptionalString(FileMetadataKeys.extension),
+          suffix: FileDownload.normalSuffix,
           downloadFileName: downloadFileName,
-        );
+        ).start(fileBytes);
       }
       return fileBytes;
     } catch (e, stackTrace) {
@@ -546,14 +317,12 @@ class FileOperations implements IFileOperations {
     required BoxBase<Object?> Function(BoxType) getBox,
   }) async {
     try {
-      final fileId = fileMetadata.getRequiredString('fileId');
-      await _deleteStoredFile(
-        fileMetadata: fileMetadata,
+      final fileId = fileMetadata.getRequiredString(FileMetadataKeys.fileId);
+      await FileRef(
         fileId: fileId,
         useWeb: isWeb ?? kIsWeb,
-        boxType: .normalFiles,
         getBox: getBox,
-      );
+      ).deleteStored(fileMetadata, .normalFiles);
     } catch (e, stackTrace) {
       if (e is VaultStorageError) rethrow;
       Error.throwWithStackTrace(
@@ -562,90 +331,4 @@ class FileOperations implements IFileOperations {
       );
     }
   }
-
-  Future<void> _deleteStoredFile({
-    required Map<String, dynamic> fileMetadata,
-    required String fileId,
-    required bool useWeb,
-    required BoxType boxType,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
-    if (useWeb) {
-      await (getBox(boxType) as LazyBox<Object?>).delete(fileId);
-      return;
-    }
-    final filePath = fileMetadata.getOptionalString('filePath');
-    if (filePath == null) return;
-    final file = File(filePath);
-    if (await file.exists()) await file.delete();
-  }
-
-  Future<Uint8List> _readWebFileBytes({
-    required String fileId,
-    required BoxType boxType,
-    required String location,
-    required String decodeContext,
-    required BoxBase<Object?> Function(BoxType) getBox,
-  }) async {
-    final stored = await (getBox(boxType) as LazyBox<Object?>).get(fileId);
-    if (stored == null) throw FileNotFoundError(fileId, location);
-    return stored is Uint8List
-        ? stored
-        : (stored as String).decodeBase64Safely(context: decodeContext);
-  }
-
-  Future<File> _existingFile(Map<String, dynamic> fileMetadata, String fileId) async {
-    final filePath = fileMetadata.getOptionalString('filePath');
-    if (filePath == null) throw InvalidMetadataError('filePath');
-    final file = File(filePath);
-    if (!await file.exists()) {
-      throw FileNotFoundError(fileId, 'file system at path: $filePath');
-    }
-    return file;
-  }
-
-  void _downloadFile({
-    required Uint8List fileBytes,
-    required String fileId,
-    required String extension,
-    required bool secure,
-    required String? downloadFileName,
-  }) {
-    final suffix = secure ? '_secure_file' : '_file';
-    final fileName =
-        downloadFileName ??
-        (extension.isNotEmpty ? '$fileId$suffix.$extension' : '$fileId$suffix.bin');
-    downloadFileOnWeb(
-      fileBytes: fileBytes,
-      fileName: fileName,
-      mimeType: _getMimeTypeFromExtension(extension),
-    );
-  }
-
-  Future<void> _writeCiphertext(String filePath, List<int> ciphertext) =>
-      File(filePath).writeAsBytes(ciphertext, flush: true);
-
-  static const _mimeTypes = <String, String>{
-    'pdf': 'application/pdf',
-    'txt': 'text/plain',
-    'json': 'application/json',
-    'xml': 'application/xml',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'gif': 'image/gif',
-    'svg': 'image/svg+xml',
-    'mp4': 'video/mp4',
-    'avi': 'video/x-msvideo',
-    'mp3': 'audio/mpeg',
-    'wav': 'audio/wav',
-    'zip': 'application/zip',
-    'doc': 'application/msword',
-    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'xls': 'application/vnd.ms-excel',
-    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  };
-
-  String _getMimeTypeFromExtension(String extension) =>
-      _mimeTypes[extension.toLowerCase()] ?? 'application/octet-stream';
 }

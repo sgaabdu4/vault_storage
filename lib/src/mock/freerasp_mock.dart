@@ -1,5 +1,7 @@
 // Mock implementations for FreeRASP on platforms where it is unavailable.
 
+import 'package:flutter/foundation.dart';
+
 /// Mock configuration for Talsec/FreeRASP
 class TalsecConfig {
   /// Creates a mock TalsecConfig
@@ -90,91 +92,91 @@ class ThreatCallback {
   });
 
   /// Privileged access callback
-  final void Function()? onPrivilegedAccess;
+  final VoidCallback? onPrivilegedAccess;
 
   /// App integrity callback
-  final void Function()? onAppIntegrity;
+  final VoidCallback? onAppIntegrity;
 
   /// Debug callback
-  final void Function()? onDebug;
+  final VoidCallback? onDebug;
 
   /// Hooks callback
-  final void Function()? onHooks;
+  final VoidCallback? onHooks;
 
   /// Simulator callback
-  final void Function()? onSimulator;
+  final VoidCallback? onSimulator;
 
   /// Unofficial store callback
-  final void Function()? onUnofficialStore;
+  final VoidCallback? onUnofficialStore;
 
   /// Screenshot callback
-  final void Function()? onScreenshot;
+  final VoidCallback? onScreenshot;
 
   /// Screen recording callback
-  final void Function()? onScreenRecording;
+  final VoidCallback? onScreenRecording;
 
   /// System VPN callback
-  final void Function()? onSystemVPN;
+  final VoidCallback? onSystemVPN;
 
   /// Passcode callback
-  final void Function()? onPasscode;
+  final VoidCallback? onPasscode;
 
   /// Secure hardware not available callback
-  final void Function()? onSecureHardwareNotAvailable;
+  final VoidCallback? onSecureHardwareNotAvailable;
 
   /// Developer mode callback
-  final void Function()? onDevMode;
+  final VoidCallback? onDevMode;
 
   /// ADB enabled callback
-  final void Function()? onAdbEnabled;
+  final VoidCallback? onAdbEnabled;
 
   /// Multi instance callback
-  final void Function()? onMultiInstance;
+  final VoidCallback? onMultiInstance;
 
   /// Jailbreak callback (legacy)
-  final void Function()? onJailbreak;
+  final VoidCallback? onJailbreak;
 
   /// Debugger attached callback (legacy)
-  final void Function()? onDebuggerAttached;
+  final VoidCallback? onDebuggerAttached;
 
   /// Hooks detected callback (legacy)
-  final void Function()? onHooksDetected;
+  final VoidCallback? onHooksDetected;
 
   /// Tampered callback (legacy)
-  final void Function()? onTampered;
+  final VoidCallback? onTampered;
 
   /// Emulator callback (legacy)
-  final void Function()? onEmulator;
+  final VoidCallback? onEmulator;
 
   /// Device binding callback (legacy)
-  final void Function()? onDeviceBinding;
+  final VoidCallback? onDeviceBinding;
 
   /// Untrusted installer callback (legacy)
-  final void Function()? onUntrustedInstaller;
+  final VoidCallback? onUntrustedInstaller;
 
   /// Screen capture detected callback (legacy)
-  final void Function()? onScreenCaptureDetected;
+  final VoidCallback? onScreenCaptureDetected;
 
   /// Obfuscation issues callback (legacy)
-  final void Function()? onObfuscationIssues;
+  final VoidCallback? onObfuscationIssues;
 
   /// Malware callback (legacy)
-  final void Function()? onMalware;
+  final VoidCallback? onMalware;
 
   /// Device ID callback (legacy)
-  final void Function()? onDeviceID;
+  final VoidCallback? onDeviceID;
 
   /// Passcode disabled callback (legacy)
-  final void Function()? onPasscodeDisabled;
+  final VoidCallback? onPasscodeDisabled;
 
   /// Passcode change callback (legacy)
-  final void Function()? onPasscodeChange;
+  final VoidCallback? onPasscodeChange;
 
   /// Biometry change callback (legacy)
-  final void Function()? onBiometryChange;
+  final VoidCallback? onBiometryChange;
 
   /// Automation callback
-  final void Function()? onAutomation;
+  final VoidCallback? onAutomation;
 }
 
 /// Mock Talsec instance

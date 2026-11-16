@@ -2,10 +2,7 @@
 library;
 
 import 'package:vault_storage/src/errors/storage_error.dart';
-
-abstract interface class Directory {
-  String get path;
-}
+import 'package:vault_storage/src/mock/file_io_mock.dart';
 
 Future<Directory> getApplicationDocumentsDirectory() async {
   throw const UnsupportedPlatformError(
