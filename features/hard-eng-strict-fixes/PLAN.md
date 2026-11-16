@@ -6,6 +6,10 @@ Status: Ready
 
 The package and its example pass the new Hard Eng rules for switch-offs, code comments, named Markdown files, flutter_skill_lints 0.14.0 and dart-decimate 0.0.76, with no test removed that proves behavior. The owner decided (2026-11-16) to ship the four public API breaks as release 6.0.0: remove the seven deprecated error aliases, make `VaultStorageConfig` an immutable value passed to `VaultStorage.create`, make the two `VaultSecurityConfig` collections non-null, and make `IVaultStorage` an `abstract interface class`. Other library behavior stays the same.
 
+## Sources + coverage
+
+Sources: N/A — the request is the only source.
+
 ## Repository context
 
 Owners: `lib/`, `test/`, `example/`, `analysis_options.yaml`, `example/analysis_options.yaml`, `.dart-decimaterc.json`, `README.md`, `test/README.md`.
@@ -47,6 +51,7 @@ N/A — no rendered interface changes.
 Result: Pending
 Evidence: Run 1, own hooks, Flutter 3.50.0: every gate passes except the analyzer gates (flutter_skill_lints findings) and the 8 MiB timing test, which took 5.2 to 8.9 s on a busy machine (the base branch took 5.17 s). Run 2, develop hooks: same, plus dart-decimate reading the starter pubspec in the develop .agents folder. Run 3, dart-decimate 0.0.76 by hand: both packages pass at CRAP 30. Final proof runs: Pending.
 E2E: N/A — no user journey changes; the package and example tests cover the behavior.
+Real service: N/A — the change calls no outside service; the package tests use fakes for secure storage and the example runs offline.
 Retro: Pending
 
 Delivery target: Merge
