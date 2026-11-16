@@ -69,6 +69,7 @@ One API replaces four packages. Encryption is built in. Error handling is consis
 - [Security Features](#security-features)
 - [Production Notes](#production-notes)
 - [Getting Started](#getting-started)
+- [Migration Guide: 5.x -> 6.0](#migration-guide-5x---60)
 - [Migration Guide: 1.x -> 2.0](#migration-guide-1x---20)
 - [Quick Start](#quick-start)
 - [Platform Setup](#platform-setup)
@@ -292,6 +293,15 @@ Then run:
 ```bash
 flutter pub get
 ```
+
+## Migration Guide: 5.x -> 6.0
+
+Four breaking changes. The CHANGELOG lists each one with before and after code.
+
+1. Replace the seven removed error aliases (`StorageError`, `StorageReadError` and so on) with their `Vault` named types, such as `VaultStorageError` and `VaultStorageReadError`.
+2. Replace the global setters on `VaultStorageConfig` with a `const VaultStorageConfig(...)` passed as `VaultStorage.create(config: ...)`.
+3. Stop null checking `VaultSecurityConfig.androidSigningCertHashes` and `threatCallbacks`. Both default to an empty collection.
+4. Implement `IVaultStorage` instead of extending it. It is now an `abstract interface class`.
 
 ## Migration Guide: 1.x -> 2.0
 
