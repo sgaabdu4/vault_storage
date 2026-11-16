@@ -5,9 +5,6 @@ void main() {
   group('StorageKeys', () {
     test('should not allow instantiation', () {
       // Test that StorageKeys has a private constructor
-      // This ensures it's used as a constants-only class
-      // We can't actually call StorageKeys._() from outside the class,
-      // but we can verify the constants are accessible without instantiation
       expect(StorageKeys.secureKey, isA<String>());
       expect(StorageKeys.secureBox, isA<String>());
       expect(StorageKeys.normalBox, isA<String>());
@@ -17,7 +14,6 @@ void main() {
 
     test('constants should be accessible without instantiation', () {
       // This test ensures we can access constants directly from the class
-      // which indirectly tests that the private constructor works as intended
       const keyValue = StorageKeys.secureKey;
       expect(keyValue, isNotNull);
       expect(keyValue, equals('hive_encryption_key'));

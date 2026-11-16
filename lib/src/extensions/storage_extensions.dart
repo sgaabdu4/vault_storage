@@ -47,21 +47,6 @@ String _encodeBase64InIsolate(_Base64EncodeRequest request) {
 /// Extension on [String] to provide safe base64 decoding with proper error handling
 extension Base64DecodingExtension on String {
   /// Decodes a base64Url string safely with performance optimizations
-  ///
-  /// Performance features:
-  /// - Uses isolates for large base64 strings (>50KB) to prevent UI blocking
-  /// - Optimized error handling with context information
-  /// - Supports both standard base64 and base64Url encoding
-  ///
-  /// Example:
-  /// ```dart
-  /// try {
-  ///   final bytes = await base64String.decodeBase64Safely(context: 'encryption key');
-  ///   print('Decoded ${bytes.length} bytes successfully');
-  /// } catch (e) {
-  ///   print('Decode failed: ${e.message}');
-  /// }
-  /// ```
   Future<Uint8List> decodeBase64Safely({required String context}) async {
     try {
       // For large base64 strings, use isolate to prevent UI blocking
@@ -83,9 +68,6 @@ extension Base64DecodingExtension on String {
   }
 
   /// Synchronous version for backwards compatibility and small data
-  ///
-  /// Use this only for small base64 strings or when you're sure about the size.
-  /// For unknown sizes, prefer [decodeBase64Safely] async version.
   Uint8List decodeBase64SafelySync({required String context}) {
     try {
       try {
@@ -103,18 +85,6 @@ extension Base64DecodingExtension on String {
 /// Extension on [Uint8List] and [List<int>] to provide safe base64 encoding with performance optimizations
 extension Base64EncodingExtension on List<int> {
   /// Encodes bytes to base64Url string safely with performance optimizations
-  ///
-  /// Performance features:
-  /// - Uses isolates for large binary data (>50KB) to prevent UI blocking
-  /// - Optimized for both small and large data sizes
-  /// - Uses base64Url encoding for URL-safe output
-  ///
-  /// Example:
-  /// ```dart
-  /// final bytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-  /// final encoded = await bytes.encodeBase64Safely(context: 'file content');
-  /// print('Encoded: $encoded');
-  /// ```
   Future<String> encodeBase64Safely({required String context}) async {
     try {
       // Convert to Uint8List if needed for consistency
@@ -134,9 +104,6 @@ extension Base64EncodingExtension on List<int> {
   }
 
   /// Synchronous version for backwards compatibility and small data
-  ///
-  /// Use this only for small binary data or when you're sure about the size.
-  /// For unknown sizes, prefer [encodeBase64Safely] async version.
   String encodeBase64SafelySync({required String context}) {
     try {
       return base64Url.encode(this);
@@ -190,12 +157,6 @@ class JsonSafe {
   static const String _jsonMarker = '${_typeMarkerPrefix}JSON:';
 
   /// Safely encodes an object to JSON with automatic type-based optimization
-  ///
-  /// Performance optimizations:
-  /// - Primitives (String, int, double, bool) bypass JSON encoding
-  /// - Small objects use synchronous encoding
-  /// - Large objects use isolate-based encoding to prevent UI blocking
-  /// Throws [VaultStorageSerializationError] if encoding fails.
   static Future<String> encode(Object? value) async {
     try {
       // Type-based optimization for primitives
@@ -232,12 +193,6 @@ class JsonSafe {
   }
 
   /// Safely decodes a JSON string with automatic type-based optimization
-  ///
-  /// Automatically detects and handles:
-  /// - Type-optimized primitives
-  /// - Small JSON strings (sync decoding)
-  /// - Large JSON strings (isolate-based decoding)
-  /// Throws [VaultStorageSerializationError] if decoding fails.
   static Future<T> decode<T>(String encodedValue) async {
     try {
       // Check for type markers (primitive optimizations)
@@ -276,7 +231,6 @@ class JsonSafe {
           : json.decode(jsonString);
 
       // Legacy v2.x compatibility: Handle type coercion for primitives
-      // v2.x stored primitives as JSON strings without type markers
       return _coerceType<T>(decoded);
     } catch (e) {
       throw VaultStorageSerializationError('Failed to decode value', e);
@@ -284,9 +238,6 @@ class JsonSafe {
   }
 
   /// Coerces decoded value to expected type T for legacy v2.x compatibility
-  ///
-  /// v2.x stored primitives as JSON-encoded strings without type markers.
-  /// Simple type coercion only - complex migrations should be handled by users.
   static T _coerceType<T>(Object? value) {
     if (value is T) return value;
 
@@ -360,20 +311,6 @@ class JsonSafe {
 /// Extension on [String] to provide safe JSON decoding with proper error handling
 extension JsonDecodingExtension on String {
   /// Decodes a JSON string safely with automatic isolate optimization
-  ///
-  /// For small JSON strings, uses synchronous decoding for better performance.
-  /// For large JSON strings, uses isolate-based decoding to prevent UI blocking.
-  /// Throws [VaultStorageSerializationError] if decoding fails.
-  ///
-  /// Example:
-  /// ```dart
-  /// try {
-  ///   final map = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
-  ///   print('Decoded successfully: $map');
-  /// } catch (e) {
-  ///   print('Decode failed: ${e.message}');
-  /// }
-  /// ```
   Future<T> decodeJsonSafely<T>() async {
     return JsonSafe.decode<T>(this);
   }
@@ -382,20 +319,6 @@ extension JsonDecodingExtension on String {
 /// Extension on [Object] to provide safe JSON encoding with proper error handling
 extension JsonEncodingExtension on Object? {
   /// Encodes an object to JSON safely with automatic isolate optimization
-  ///
-  /// For small objects, uses synchronous encoding for better performance.
-  /// For large objects, uses isolate-based encoding to prevent UI blocking.
-  /// Throws [VaultStorageSerializationError] if encoding fails.
-  ///
-  /// Example:
-  /// ```dart
-  /// try {
-  ///   final jsonString = await object.encodeJsonSafely();
-  ///   print('Encoded successfully: $jsonString');
-  /// } catch (e) {
-  ///   print('Encode failed: ${e.message}');
-  /// }
-  /// ```
   Future<String> encodeJsonSafely() async {
     return JsonSafe.encode(this);
   }
@@ -411,7 +334,6 @@ String _encodeInIsolate(Object? value) {
 }
 
 /// Generic JSON decode in isolate - returns decoded value
-/// The caller must handle type casting
 Object? _decodeInIsolate(String jsonString) {
   try {
     return json.decode(jsonString);

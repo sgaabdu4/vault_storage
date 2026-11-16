@@ -1,7 +1,5 @@
 #!/bin/bash
 # Usage: ./release.sh [patch|minor|major] "Description of changes"
-# Example: ./release.sh patch "Upgraded all dependencies"
-# Example: ./release.sh minor "Added custom box support"
 
 set -e
 

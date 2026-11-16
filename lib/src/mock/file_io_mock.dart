@@ -1,5 +1,4 @@
 /// Mock implementation for `dart:io` File operations on the web.
-/// These should not be called on the web, and will throw if they are.
 library;
 
 import 'dart:typed_data';

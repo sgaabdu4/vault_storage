@@ -1,28 +1,15 @@
 import 'dart:typed_data';
 
 /// Strategy for storing values in Hive boxes.
-///
-/// Determines the most efficient storage method based on the data type.
 enum StorageStrategy {
   /// Store value directly using Hive's native binary serialization.
-  ///
-  /// Used for: Lists, Maps, primitives, and other types Hive can natively handle.
-  /// This is the fastest method as it avoids JSON encoding/decoding overhead.
   native,
 
   /// Store value as JSON string.
-  ///
-  /// Used for: Custom objects that can't be stored natively.
-  /// Falls back to JSON serialization for compatibility.
   json,
 }
 
 /// Wrapper for values stored in Hive with metadata about storage strategy.
-///
-/// This wrapper enables:
-/// - Backward compatibility with string-based storage
-/// - Automatic detection of optimal storage method
-/// - Transparent migration from old to new format
 class StoredValue {
   /// The actual value being stored
   final dynamic value;

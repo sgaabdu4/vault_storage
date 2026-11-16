@@ -46,7 +46,6 @@ void main() {
         );
 
         // Provide a valid 32-byte key (AES-256) encoded in base64
-        // 32 zero bytes -> base64 encodes to a string of 'A's with padding
         final base64Key = base64Encode(Uint8List(32));
         when(
           () => testContext.mockSecureStorage.read(key: StorageKeys.secureKey),

@@ -3,9 +3,6 @@ import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/extensions/storage_extensions.dart';
 
 /// Tests for v2.x backward compatibility
-///
-/// v2.x stored all values as JSON-encoded strings without type markers.
-/// v3.0 must properly decode these legacy formats and coerce to correct types.
 void main() {
   group('v2.x Legacy Format Compatibility', () {
     test('should decode v2.x int stored as JSON string', () async {

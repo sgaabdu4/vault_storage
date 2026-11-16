@@ -1,5 +1,4 @@
-// Mock implementations for FreeRASP that are used on platforms where
-// FreeRASP is not available (Web, Windows, Linux, macOS)
+// Mock implementations for FreeRASP on platforms where it is unavailable.
 
 /// Mock configuration for Talsec/FreeRASP
 class TalsecConfig {

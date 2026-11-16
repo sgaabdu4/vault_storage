@@ -1,6 +1,3 @@
-// test/helpers.dart
-// Common test setup, mocks, and utilities for vault storage tests.
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';

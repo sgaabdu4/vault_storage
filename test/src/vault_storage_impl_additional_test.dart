@@ -12,7 +12,6 @@ import 'package:vault_storage/src/vault_storage_impl.dart';
 import '../mocks.dart';
 import '../test_context.dart';
 
-/// Additional tests to improve coverage for vault_storage_impl.dart
 void main() {
   group('VaultStorageImpl - Additional Coverage Tests', () {
     late TestContext testContext;
@@ -31,49 +30,6 @@ void main() {
     });
 
     group('Custom Boxes - Initialization', () {
-      // Note: These tests require full Hive initialization and can't use mocks
-      // They are tested in integration tests instead
-
-      // test('should initialize with custom normal boxes', () async {
-      //   final storage = VaultStorageImpl(
-      //     secureStorage: testContext.mockSecureStorage,
-      //     uuid: testContext.mockUuid,
-      //     customBoxes: [
-      //       const BoxConfig(name: 'custom1'),
-      //       const BoxConfig(name: 'custom2', lazy: true),
-      //     ],
-      //   );
-
-      //   final base64Key = base64Encode(Uint8List(32));
-      //   when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-      //       .thenAnswer((_) async => base64Key);
-
-      //   await storage.init();
-
-      //   expect(storage.isVaultStorageReady, isTrue);
-      //   expect(storage.customBoxes.length, greaterThanOrEqualTo(2));
-      // });
-
-      // test('should initialize with custom encrypted boxes', () async {
-      //   final storage = VaultStorageImpl(
-      //     secureStorage: testContext.mockSecureStorage,
-      //     uuid: testContext.mockUuid,
-      //     customBoxes: [
-      //       const BoxConfig(name: 'secure1', encrypted: true),
-      //       const BoxConfig(name: 'secure2', encrypted: true, lazy: true),
-      //     ],
-      //   );
-
-      //   final base64Key = base64Encode(Uint8List(32));
-      //   when(() => testContext.mockSecureStorage.read(key: StorageKeys.secureKey))
-      //       .thenAnswer((_) async => base64Key);
-
-      //   await storage.init();
-
-      //   expect(storage.isVaultStorageReady, isTrue);
-      //   expect(storage.customBoxes.length, greaterThanOrEqualTo(2));
-      // });
-
       test('should handle custom storage directory', () async {
         final storage = VaultStorageImpl(
           secureStorage: testContext.mockSecureStorage,
@@ -129,21 +85,6 @@ void main() {
           throwsA(isA<BoxNotFoundError>()),
         );
       });
-
-      // Test commented out - requires custom box setup that doesn't work with mocks
-      // test('should throw AmbiguousKeyError when key exists in multiple boxes without specifying box', () async {
-      //   when(() => testContext.mockNormalBox.containsKey('ambiguous')).thenReturn(true);
-      //   when(() => testContext.mockNormalBox.get('ambiguous')).thenReturn('"value1"');
-      //   when(() => testContext.mockSecureBox.containsKey('ambiguous')).thenReturn(true);
-      //   when(() => testContext.mockSecureBox.get('ambiguous')).thenReturn('"value2"');
-      //   when(() => testContext.mockNormalFilesBox.containsKey('ambiguous')).thenReturn(false);
-      //   when(() => testContext.mockSecureFilesBox.containsKey('ambiguous')).thenReturn(false);
-
-      //   expect(
-      //     () => testContext.vaultStorage.get<String>('ambiguous'),
-      //     throwsA(isA<AmbiguousKeyError>()),
-      //   );
-      // });
 
       test('should handle get with null result', () async {
         when(() => testContext.mockNormalBox.get('missing')).thenReturn(null);
@@ -357,12 +298,10 @@ void main() {
           },
         };
 
-        // Accept dynamic since we now store Maps natively wrapped
         when(
           () => testContext.mockNormalBox.put(any<String>(), any<dynamic>()),
         ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('deep')).thenReturn(true);
-        // Return the wrapped format for native storage
         when(() => testContext.mockNormalBox.get('deep')).thenReturn({
           '__VST_STRATEGY__': 0, // StorageStrategy.native.index
           '__VST_VALUE__': deepMap,
@@ -377,12 +316,10 @@ void main() {
 
       test('should handle lists with mixed types', () async {
         final mixedList = [1, 'two', 3.0, true, null];
-        // Accept dynamic since we now store Lists natively wrapped
         when(
           () => testContext.mockNormalBox.put(any<String>(), any<dynamic>()),
         ).thenAnswer((_) async {});
         when(() => testContext.mockNormalBox.containsKey('mixed')).thenReturn(true);
-        // Return the wrapped format for native storage
         when(() => testContext.mockNormalBox.get('mixed')).thenReturn({
           '__VST_STRATEGY__': 0, // StorageStrategy.native.index
           '__VST_VALUE__': mixedList,
@@ -492,7 +429,6 @@ void main() {
           box: 'testBox',
         );
 
-        // Verify skipped - internal serialization format may vary
         verify(() => mockCustomBox.put(any<String>(), any<dynamic>())).called(1);
       });
 
@@ -532,7 +468,6 @@ void main() {
           box: 'testBox',
         );
 
-        // Verify skipped - internal serialization format may vary
         verify(() => mockCustomBox.put(any<String>(), any<dynamic>())).called(1);
       });
 
@@ -592,52 +527,13 @@ void main() {
         testContext.vaultStorage.customBoxes['box2'] = mockCustomBox2;
       });
 
-      // Test commented out - requires custom box logic that doesn't work well with mocks
-      // test('should throw AmbiguousKeyError when key exists in multiple custom boxes', () async {
-      //   const key = 'shared_key';
-      //
-      //   // Key exists in box1 and box2
-      //   when(() => mockCustomBox1.containsKey(key)).thenReturn(true);
-      //   when(() => mockCustomBox1.get(key)).thenReturn('"value1"');
-      //   when(() => mockCustomBox2.containsKey(key)).thenReturn(true);
-      //   when(() => mockCustomBox2.get(key)).thenReturn('"value2"');
-      //
-      //   // Key doesn't exist in default boxes
-      //   when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(false);
-      //   when(() => testContext.mockSecureBox.containsKey(key)).thenReturn(false);
-
-      //   expect(
-      //     () => testContext.vaultStorage.get<String>(key),
-      //     throwsA(isA<AmbiguousKeyError>()),
-      //   );
-      // });
-
-      // Test commented out - requires file box ambiguity logic that may not be fully implemented
-      // test('should throw AmbiguousKeyError for file when exists in multiple boxes', () async {
-      //   const key = 'shared_file';
-      //   final fileMetadata = {'filePath': '/path/to/file', 'extension': 'txt'};
-      //
-      //   // File exists in both normal and secure file boxes
-      //   when(() => testContext.mockNormalFilesBox.containsKey(key)).thenReturn(true);
-      //   when(() => testContext.mockNormalFilesBox.get(key)).thenAnswer((_) async => jsonEncode(fileMetadata));
-      //   when(() => testContext.mockSecureFilesBox.containsKey(key)).thenReturn(true);
-      //   when(() => testContext.mockSecureFilesBox.get(key)).thenAnswer((_) async => jsonEncode(fileMetadata));
-
-      //   expect(
-      //     () => testContext.vaultStorage.getFile(key),
-      //     throwsA(isA<AmbiguousKeyError>()),
-      //   );
-      // });
-
       test('should not throw AmbiguousKeyError when key exists in only one box', () async {
         const key = 'unique_key';
 
-        // Key exists only in box1
         when(() => mockCustomBox1.containsKey(key)).thenReturn(true);
         when(() => mockCustomBox1.get(key)).thenReturn('"value1"');
         when(() => mockCustomBox2.containsKey(key)).thenReturn(false);
 
-        // Key doesn't exist in default boxes
         when(() => testContext.mockNormalBox.containsKey(key)).thenReturn(false);
         when(() => testContext.mockSecureBox.containsKey(key)).thenReturn(false);
 
@@ -645,9 +541,6 @@ void main() {
         expect(result, equals('value1'));
       });
     });
-
-    // Note: listKeys tests removed - method uses keys property which returns Iterable
-    // and is tested in other test files
 
     group('Dispose Operations', () {
       late MockBox<String> mockCustomBox;
@@ -681,7 +574,6 @@ void main() {
         when(() => testContext.mockSecureFilesBox.close()).thenAnswer((_) async {});
         when(() => mockCustomBox.close()).thenThrow(Exception('Close error'));
 
-        // Should not throw - errors are ignored
         await testContext.vaultStorage.dispose();
 
         expect(testContext.vaultStorage.isVaultStorageReady, isFalse);
@@ -712,59 +604,9 @@ void main() {
         verify(() => testContext.mockSecureBox.delete(key)).called(1);
         verify(() => mockCustomBox.delete(key)).called(1);
       });
-
-      // Test commented out - complex file deletion across multiple boxes is hard to mock properly
-      // test('should delete files from all file boxes when no box specified', () async {
-      //   const key = 'file_everywhere';
-      //   final normalMetadata = {'filePath': '/normal/path', 'extension': 'txt'};
-      //   final secureMetadata = {'filePath': '/secure/path', 'extension': 'txt'};
-      //
-      //   when(() => testContext.mockNormalFilesBox.containsKey(key)).thenReturn(true);
-      //   when(() => testContext.mockNormalFilesBox.get(key)).thenAnswer((_) async => jsonEncode(normalMetadata));
-      //   when(() => testContext.mockSecureFilesBox.containsKey(key)).thenReturn(true);
-      //   when(() => testContext.mockSecureFilesBox.get(key)).thenAnswer((_) async => jsonEncode(secureMetadata));
-      //
-      //   when(() => testContext.mockFileOperations.deleteNormalFile(
-      //     fileMetadata: any(named: 'fileMetadata'),
-      //     isWeb: any(named: 'isWeb'),
-      //     getBox: any(named: 'getBox'),
-      //   )).thenAnswer((_) async {});
-      //
-      //   when(() => testContext.mockFileOperations.deleteSecureFile(
-      //     fileMetadata: any(named: 'fileMetadata'),
-      //     isWeb: any(named: 'isWeb'),
-      //     secureStorage: any(named: 'secureStorage'),
-      //     getBox: any(named: 'getBox'),
-      //   )).thenAnswer((_) async {});
-
-      //   await testContext.vaultStorage.deleteFile(key);
-
-      //   verify(() => testContext.mockFileOperations.deleteNormalFile(
-      //     fileMetadata: any(named: 'fileMetadata'),
-      //     isWeb: any(named: 'isWeb'),
-      //     getBox: any(named: 'getBox'),
-      //   )).called(1);
-      //
-      //   verify(() => testContext.mockFileOperations.deleteSecureFile(
-      //     fileMetadata: any(named: 'fileMetadata'),
-      //     isWeb: any(named: 'isWeb'),
-      //     secureStorage: any(named: 'secureStorage'),
-      //     getBox: any(named: 'getBox'),
-      //   )).called(1);
-      // });
     });
 
     group('Security Validation', () {
-      // Test commented out - SecurityThreatException requires security config with block flags
-      // test('should validate secure environment for saveSecure', () async {
-      //   testContext.vaultStorage.isSecureEnvironment = false;
-
-      //   expect(
-      //     () => testContext.vaultStorage.saveSecure(key: 'test', value: 'value'),
-      //     throwsA(isA<SecurityThreatException>()),
-      //   );
-      // });
-
       test('should allow saveNormal even in insecure environment', () async {
         testContext.vaultStorage.isSecureEnvironment = false;
 
@@ -772,10 +614,8 @@ void main() {
           () => testContext.mockNormalBox.put(any<String>(), any<String>()),
         ).thenAnswer((_) async {});
 
-        // Should not throw
         await testContext.vaultStorage.saveNormal(key: 'test', value: 'value');
 
-        // Verify skipped - internal serialization format may vary
         verify(() => testContext.mockNormalBox.put(any<String>(), any<String>())).called(1);
       });
     });
