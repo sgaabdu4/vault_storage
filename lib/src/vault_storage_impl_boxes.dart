@@ -21,7 +21,7 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
 
     return switch (stored) {
       null => null,
-      final String legacyJson => await legacyJson.decodeJsonSafely<T>(),
+      final String legacyJson => await legacyJson.decodeJsonSafely<T>(_config),
       final StoredValue value => await _decodeStored<T>(value),
       final Map<Object?, Object?> wrapped when StoredValue.isWrapped(wrapped) =>
         await _decodeStored<T>(.fromHiveMap(wrapped)),
@@ -31,7 +31,7 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
 
   Future<T?> _decodeStored<T>(StoredValue stored) async {
     if (stored.strategy == .native) return _coerceToType<T>(stored.value);
-    return _jsonText(stored.value).decodeJsonSafely<T>();
+    return _jsonText(stored.value).decodeJsonSafely<T>(_config);
   }
 
   T _coerceToType<T>(Object? value) {
@@ -69,7 +69,7 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
 
     final toStore = strategy == .native
         ? StoredValue(value, strategy)
-        : StoredValue(await value.encodeJsonSafely(), strategy);
+        : StoredValue(await value.encodeJsonSafely(_config), strategy);
 
     await box.put(key, toStore);
   }

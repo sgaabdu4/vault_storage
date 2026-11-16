@@ -1,6 +1,7 @@
 /// A barrel file that exports the public-facing API of the vault storage.
 library;
 
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/entities/box_config.dart';
 import 'package:vault_storage/src/interface/i_vault_storage.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
@@ -25,12 +26,14 @@ abstract final class VaultStorage {
     VaultSecurityConfig? securityConfig,
     List<BoxConfig>? customBoxes,
     String? storageDirectory,
+    VaultStorageConfig config = const VaultStorageConfig(),
   }) => VaultStorageImpl(
     secureStorage: const FlutterSecureKeyStore(),
     uuid: const UuidIdGenerator(),
-    fileOperations: FileOperations(),
+    fileOperations: FileOperations(config: config),
     securityConfig: securityConfig,
     customBoxes: customBoxes,
     storageDirectory: storageDirectory,
+    config: config,
   );
 }

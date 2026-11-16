@@ -1,6 +1,7 @@
 import 'dart:typed_data' show Uint8List;
 
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/enum/box_type.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/extensions.dart';
@@ -36,16 +37,21 @@ final class FileRef {
     BoxType boxType, {
     required String location,
     required String decodeContext,
+    required VaultStorageConfig config,
   }) async {
     final stored = await lazyBox(boxType).get(fileId);
     if (stored == null) throw FileNotFoundError(fileId, location);
-    return storedBytes(stored, decodeContext);
+    return storedBytes(stored, decodeContext, config);
   }
 
   /// The bytes of a value read from a box.
-  Future<Uint8List> storedBytes(Object stored, String decodeContext) async {
+  Future<Uint8List> storedBytes(
+    Object stored,
+    String decodeContext,
+    VaultStorageConfig config,
+  ) async {
     if (stored is Uint8List) return stored;
-    if (stored is String) return stored.decodeBase64Safely(context: decodeContext);
+    if (stored is String) return stored.decodeBase64Safely(context: decodeContext, config: config);
     throw VaultStorageSerializationError('Unsupported stored file content: ${stored.runtimeType}');
   }
 

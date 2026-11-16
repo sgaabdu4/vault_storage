@@ -34,7 +34,7 @@ AmbiguousKeyError _multiBoxMatch(String subject, String key, List<String> boxes)
 
 extension VaultStorageFiles on VaultStorageImpl {
   Future<Map<String, dynamic>> _storeSecureFileBytes(Uint8List fileBytes, String ext) async {
-    final shouldStream = fileBytes.length >= VaultStorageConfig.secureFileStreamingThresholdBytes;
+    final shouldStream = fileBytes.length >= _config.secureFileStreamingThresholdBytes;
 
     return shouldStream
         ? await _fileOperations.saveSecureFileStream(
@@ -42,7 +42,7 @@ extension VaultStorageFiles on VaultStorageImpl {
               stream: .value(fileBytes),
               fileExtension: ext,
               services: _fileServices,
-              chunkSize: VaultStorageConfig.secureFileStreamingChunkSizeBytes,
+              chunkSize: _config.secureFileStreamingChunkSizeBytes,
             ),
           )
         : await _fileOperations.saveSecureFile(
@@ -60,7 +60,10 @@ extension VaultStorageFiles on VaultStorageImpl {
   Future<void> _saveFileToCustomBox(String box, _FileUpload upload) async {
     final _FileUpload(:key, :fileBytes, :extension, :userEntry) = upload;
     final toStore = <String, dynamic>{
-      StoredFileKeys.base64Data: await fileBytes.encodeBase64Safely(context: 'custom box file'),
+      StoredFileKeys.base64Data: await fileBytes.encodeBase64Safely(
+        context: 'custom box file',
+        config: _config,
+      ),
       FileMetadataKeys.extension: extension,
       StoredFileKeys.isCustomBox: true,
       ...userEntry,
@@ -83,7 +86,7 @@ extension VaultStorageFiles on VaultStorageImpl {
   }
 
   Future<Uint8List> _decodeCustomFile(String encoded) =>
-      encoded.decodeBase64Safely(context: 'custom box file');
+      encoded.decodeBase64Safely(context: 'custom box file', config: _config);
 
   Future<Uint8List> _readFileContent(Map<String, dynamic> metadata) {
     if (metadata[StoredFileKeys.isSecure] == true) {

@@ -2,6 +2,7 @@ import 'dart:typed_data' show ByteData, BytesBuilder, Uint8List;
 
 import 'package:cryptography_plus/cryptography_plus.dart' show SecretBox;
 import 'package:flutter/foundation.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
 import 'package:vault_storage/src/errors/errors.dart';
@@ -75,7 +76,16 @@ abstract final class SecureChunks {
                 Uint8List.fromList(encryptedPayload.cipherText),
               );
         }
-        chunks.add(await _chunkMetadata(chunkIndex, bytes.length, encryptedPayload));
+        chunks.add({
+          FileMetadataKeys.chunkIndex: chunkIndex,
+          FileMetadataKeys.chunkLength: bytes.length,
+          FileMetadataKeys.nonce: encryptedPayload.nonce.encodeBase64SafelySync(
+            context: 'chunk nonce',
+          ),
+          FileMetadataKeys.mac: encryptedPayload.mac.bytes.encodeBase64SafelySync(
+            context: 'chunk mac',
+          ),
+        });
       }
     } finally {
       await sink?.close();
@@ -88,6 +98,7 @@ abstract final class SecureChunks {
     Map<String, dynamic> fileMetadata,
     FileRef file,
     List<int> keyBytes,
+    VaultStorageConfig config,
   ) async {
     final chunks = switch (fileMetadata[FileMetadataKeys.chunks]) {
       final List<Object?> items => [
@@ -108,7 +119,7 @@ abstract final class SecureChunks {
           throw FileNotFoundError(file.fileId, _chunkLocation(index));
         }
         return _decryptChunk(
-          encryptedBytes: await file.storedBytes(stored, _chunkDecodeContext),
+          encryptedBytes: await file.storedBytes(stored, _chunkDecodeContext, config),
           keyBytes: keyBytes,
           metadata: chunks[index],
         );
@@ -184,17 +195,6 @@ abstract final class SecureChunks {
     if (tail.isNotEmpty) yield tail;
   }
 
-  static Future<Map<String, dynamic>> _chunkMetadata(
-    int chunkIndex,
-    int size,
-    SecretBox payload,
-  ) async => {
-    FileMetadataKeys.chunkIndex: chunkIndex,
-    FileMetadataKeys.chunkLength: size,
-    FileMetadataKeys.nonce: await payload.nonce.encodeBase64Safely(context: 'chunk nonce'),
-    FileMetadataKeys.mac: await payload.mac.bytes.encodeBase64Safely(context: 'chunk mac'),
-  };
-
   static void _writeFramedChunk(IOSink sink, SecretBox encryptedPayload) {
     final bytes = encryptedPayload.cipherText;
     final header = BytesBuilder()
@@ -217,17 +217,17 @@ abstract final class SecureChunks {
     required Uint8List encryptedBytes,
     required List<int> keyBytes,
     required Map<String, dynamic> metadata,
-  }) async => compute(
+  }) => compute(
     decryptInIsolate,
     DecryptRequest(
       encryptedBytes: encryptedBytes,
       keyBytes: keyBytes,
-      nonce: await metadata
+      nonce: metadata
           .getRequiredString(FileMetadataKeys.nonce)
-          .decodeBase64Safely(context: 'chunk nonce'),
-      macBytes: await metadata
+          .decodeBase64SafelySync(context: 'chunk nonce'),
+      macBytes: metadata
           .getRequiredString(FileMetadataKeys.mac)
-          .decodeBase64Safely(context: 'chunk mac'),
+          .decodeBase64SafelySync(context: 'chunk mac'),
     ),
   );
 }

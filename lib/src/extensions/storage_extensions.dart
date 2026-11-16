@@ -35,8 +35,11 @@ Future<String> _encodeLargeBase64(Uint8List data, String label) async {
 /// Extension on [String] to provide safe base64 decoding with proper error handling
 extension Base64DecodingExtension on String {
   /// Decodes a base64Url string safely with performance optimizations
-  Future<Uint8List> decodeBase64Safely({required String context}) async {
-    if (length > VaultStorageConfig.base64IsolateThreshold) {
+  Future<Uint8List> decodeBase64Safely({
+    required String context,
+    required VaultStorageConfig config,
+  }) async {
+    if (length > config.base64IsolateThreshold) {
       return _decodeLargeBase64(this, context);
     }
     return decodeBase64SafelySync(context: context);
@@ -55,8 +58,11 @@ extension Base64DecodingExtension on String {
 /// Extension on [Uint8List] and [List<int>] to provide safe base64 encoding with performance optimizations
 extension Base64EncodingExtension on List<int> {
   /// Encodes bytes to base64Url string safely with performance optimizations
-  Future<String> encodeBase64Safely({required String context}) async {
-    if (length > VaultStorageConfig.base64IsolateThreshold) {
+  Future<String> encodeBase64Safely({
+    required String context,
+    required VaultStorageConfig config,
+  }) async {
+    if (length > config.base64IsolateThreshold) {
       final Uint8List bytes = switch (this) {
         final Uint8List list => list,
         _ => .fromList(this),

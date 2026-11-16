@@ -2,6 +2,7 @@
 import 'package:cryptography_plus/cryptography_plus.dart' show SecretBox;
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/entities/decrypt_request.dart';
 import 'package:vault_storage/src/entities/encrypt_request.dart';
 import 'package:vault_storage/src/entities/normal_file_request.dart';
@@ -31,7 +32,10 @@ const _normalDecodeContext = 'normal file content';
 /// Handles file operations for both secure and normal files
 class FileOperations implements IFileOperations {
   /// Creates a new [FileOperations] instance
-  FileOperations();
+  FileOperations({this.config = const VaultStorageConfig()});
+
+  /// Thresholds that decide when base64 work runs in an isolate.
+  final VaultStorageConfig config;
 
   /// Save a secure (encrypted) file
   @override
@@ -67,7 +71,7 @@ class FileOperations implements IFileOperations {
 
       await services.secureStorage.write(
         key: secureKeyName,
-        value: await keyBytes.encodeBase64Safely(context: 'encryption key'),
+        value: keyBytes.encodeBase64SafelySync(context: 'encryption key'),
       );
 
       // Return unified metadata
@@ -75,8 +79,8 @@ class FileOperations implements IFileOperations {
         FileMetadataKeys.fileId: fileId,
         FileMetadataKeys.filePath: filePath,
         FileMetadataKeys.secureKeyName: secureKeyName,
-        FileMetadataKeys.nonce: await sealedBox.nonce.encodeBase64Safely(context: 'nonce'),
-        FileMetadataKeys.mac: await sealedBox.mac.bytes.encodeBase64Safely(context: 'MAC bytes'),
+        FileMetadataKeys.nonce: sealedBox.nonce.encodeBase64SafelySync(context: 'nonce'),
+        FileMetadataKeys.mac: sealedBox.mac.bytes.encodeBase64SafelySync(context: 'MAC bytes'),
         FileMetadataKeys.extension: fileExtension,
       };
     } catch (e, stackTrace) {
@@ -109,7 +113,7 @@ class FileOperations implements IFileOperations {
 
       await services.secureStorage.write(
         key: secureKeyName,
-        value: await keyBytes.encodeBase64Safely(context: 'encryption key'),
+        value: keyBytes.encodeBase64SafelySync(context: 'encryption key'),
       );
 
       return {
@@ -173,7 +177,7 @@ class FileOperations implements IFileOperations {
     String secureKeyName,
   ) async {
     final keyBytes = await _readEncryptionKey(secureStorage, secureKeyName);
-    if (file.useWeb) return SecureChunks.readWeb(fileMetadata, file, keyBytes);
+    if (file.useWeb) return SecureChunks.readWeb(fileMetadata, file, keyBytes, config);
     return SecureChunks.readNative(fileMetadata, file, keyBytes);
   }
 
@@ -190,22 +194,23 @@ class FileOperations implements IFileOperations {
               .secureFiles,
               location: _secureBoxLocation,
               decodeContext: _secureDecodeContext,
+              config: config,
             )
           : await (await file.existingFile(fileMetadata)).readAsBytes(),
       keyBytes: await _readEncryptionKey(secureStorage, secureKeyName),
-      nonce: await fileMetadata
+      nonce: fileMetadata
           .getRequiredString(FileMetadataKeys.nonce)
-          .decodeBase64Safely(context: 'nonce'),
-      macBytes: await fileMetadata
+          .decodeBase64SafelySync(context: 'nonce'),
+      macBytes: fileMetadata
           .getRequiredString(FileMetadataKeys.mac)
-          .decodeBase64Safely(context: 'MAC bytes'),
+          .decodeBase64SafelySync(context: 'MAC bytes'),
     ),
   );
 
   Future<List<int>> _readEncryptionKey(ISecureKeyStore secureStorage, String secureKeyName) async {
     final encodedKey = await secureStorage.read(key: secureKeyName);
     if (encodedKey == null) throw KeyNotFoundError(secureKeyName);
-    return encodedKey.decodeBase64Safely(context: 'encryption key');
+    return encodedKey.decodeBase64SafelySync(context: 'encryption key');
   }
 
   /// Delete a secure file and its associated encryption key
@@ -293,6 +298,7 @@ class FileOperations implements IFileOperations {
               .normalFiles,
               location: _normalBoxLocation,
               decodeContext: _normalDecodeContext,
+              config: config,
             )
           : await (await file.existingFile(fileMetadata)).readAsBytes();
       if (useWeb) {

@@ -1,17 +1,26 @@
-/// Global configuration for Vault Storage performance tuning.
-abstract final class VaultStorageConfig {
+/// Performance tuning for one vault storage instance.
+final class VaultStorageConfig {
+  /// Creates a new [VaultStorageConfig].
+  const VaultStorageConfig({
+    this.jsonIsolateThreshold = 10000,
+    this.primitiveStringThreshold = 1000,
+    this.base64IsolateThreshold = 50000,
+    this.secureFileStreamingThresholdBytes = 2 * 1024 * 1024,
+    this.secureFileStreamingChunkSizeBytes = 2 * 1024 * 1024,
+  });
+
   /// JSON string length above which decoding runs in an isolate.
-  static int jsonIsolateThreshold = 10000;
+  final int jsonIsolateThreshold;
 
   /// Longest String primitive stored with a light-weight marker instead of JSON.
-  static int primitiveStringThreshold = 1000;
+  final int primitiveStringThreshold;
 
   /// Payload size above which base64 encode and decode run in an isolate.
-  static int base64IsolateThreshold = 50000;
+  final int base64IsolateThreshold;
 
   /// Secure file size in bytes above which saving uses streaming encryption.
-  static int secureFileStreamingThresholdBytes = 2 * 1024 * 1024;
+  final int secureFileStreamingThresholdBytes;
 
   /// Default chunk size for streaming secure file encryption.
-  static int secureFileStreamingChunkSizeBytes = 2 * 1024 * 1024;
+  final int secureFileStreamingChunkSizeBytes;
 }

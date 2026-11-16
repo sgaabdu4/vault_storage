@@ -6,10 +6,6 @@ import 'package:vault_storage/src/errors/storage_error.dart';
 
 /// Utility class for safe JSON encoding and decoding with isolate support
 abstract final class JsonSafe {
-  // Thresholds for optimization decisions
-  static int get _isolateThreshold => VaultStorageConfig.jsonIsolateThreshold;
-  static int get _primitiveStringThreshold => VaultStorageConfig.primitiveStringThreshold;
-
   static const String _corruptedDataHint = 'Consider clearing corrupted data.';
 
   // Type markers for optimized storage
@@ -21,18 +17,19 @@ abstract final class JsonSafe {
   static const String _jsonMarker = '${_typeMarkerPrefix}JSON:';
 
   /// Safely encodes an object to JSON with automatic type-based optimization
-  static Future<String> encode(Object? value) async {
+  static Future<String> encode(Object? value, VaultStorageConfig config) async {
     try {
       // Type-based optimization for primitives
       if (value == null) return '${_jsonMarker}null';
 
       // String optimization - store directly if small
       if (value is String) {
-        if (value.length <= _primitiveStringThreshold && !value.startsWith(_typeMarkerPrefix)) {
+        if (value.length <= config.primitiveStringThreshold &&
+            !value.startsWith(_typeMarkerPrefix)) {
           return '$_stringMarker$value';
         }
         // Large strings go through JSON for consistency
-        return await _encodeComplex(value);
+        return await _encodeComplex(value, config);
       }
 
       // Numeric types - store directly
@@ -50,7 +47,7 @@ abstract final class JsonSafe {
       }
 
       // Complex types (Map, List, custom objects) - use JSON
-      return await _encodeComplex(value);
+      return await _encodeComplex(value, config);
     } catch (e, stackTrace) {
       Error.throwWithStackTrace(
         VaultStorageSerializationError('Failed to encode object', e),
@@ -60,7 +57,7 @@ abstract final class JsonSafe {
   }
 
   /// Safely decodes a JSON string with automatic type-based optimization
-  static Future<T> decode<T>(String encodedValue) async {
+  static Future<T> decode<T>(String encodedValue, VaultStorageConfig config) async {
     try {
       // Check for type markers (primitive optimizations)
       if (encodedValue.startsWith(_stringMarker)) {
@@ -93,7 +90,7 @@ abstract final class JsonSafe {
       }
 
       // Size-based optimization for JSON decoding
-      final decoded = jsonString.length > _isolateThreshold
+      final decoded = jsonString.length > config.jsonIsolateThreshold
           ? await compute(_decodeInIsolate, jsonString)
           : json.decode(jsonString);
 
@@ -165,8 +162,8 @@ abstract final class JsonSafe {
   );
 
   /// Encodes complex objects (non-primitives) with isolate optimization
-  static Future<String> _encodeComplex(Object? value) async {
-    if (_shouldUseIsolate(value)) {
+  static Future<String> _encodeComplex(Object? value, VaultStorageConfig config) async {
+    if (_shouldUseIsolate(value, config)) {
       final jsonResult = await compute(_encodeInIsolate, value);
       return '$_jsonMarker$jsonResult';
     }
@@ -177,9 +174,9 @@ abstract final class JsonSafe {
   }
 
   // Helper to estimate if object is large enough for isolate
-  static bool _shouldUseIsolate(Object? value) {
+  static bool _shouldUseIsolate(Object? value, VaultStorageConfig config) {
     if (value == null) return false;
-    if (value is String && value.length > _isolateThreshold) return true;
+    if (value is String && value.length > config.jsonIsolateThreshold) return true;
     if (value is List && value.length > 100) return true;
     if (value is Map && value.length > 50) return true;
     return false;
@@ -189,13 +186,13 @@ abstract final class JsonSafe {
 /// Extension on [String] to provide safe JSON decoding with proper error handling
 extension JsonDecodingExtension on String {
   /// Decodes a JSON string safely with automatic isolate optimization
-  Future<T> decodeJsonSafely<T>() => JsonSafe.decode<T>(this);
+  Future<T> decodeJsonSafely<T>(VaultStorageConfig config) => JsonSafe.decode<T>(this, config);
 }
 
 /// Extension on [Object] to provide safe JSON encoding with proper error handling
 extension JsonEncodingExtension on Object? {
   /// Encodes an object to JSON safely with automatic isolate optimization
-  Future<String> encodeJsonSafely() => JsonSafe.encode(this);
+  Future<String> encodeJsonSafely(VaultStorageConfig config) => JsonSafe.encode(this, config);
 }
 
 // Top-level isolate functions for JSON operations

@@ -40,6 +40,7 @@ class VaultStorageImpl implements IVaultStorage {
   final VaultSecurityConfig? _securityConfig;
   final List<BoxConfig> _customBoxConfigs;
   final String? _storageDirectory;
+  final VaultStorageConfig _config;
 
   @visibleForTesting
   final bool isAdapterRegistered = _registerAdapters();
@@ -66,6 +67,7 @@ class VaultStorageImpl implements IVaultStorage {
     VaultSecurityConfig? securityConfig,
     List<BoxConfig>? customBoxes,
     String? storageDirectory,
+    VaultStorageConfig config = const VaultStorageConfig(),
   }) : _secureStorage = secureStorage,
        _uuid = uuid,
        _fileOperations = fileOperations,
@@ -74,7 +76,8 @@ class VaultStorageImpl implements IVaultStorage {
          final configs? => configs,
          null => const <BoxConfig>[],
        },
-       _storageDirectory = storageDirectory;
+       _storageDirectory = storageDirectory,
+       _config = config;
 
   @override
   Future<void> init() {

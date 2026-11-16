@@ -100,7 +100,6 @@ void main() {
 
   group('saveSecureFile streaming and metadata', () {
     late TestContext testContext;
-    late int originalThreshold;
 
     setUpAll(() {
       MocksHelper.registerFallbackValues();
@@ -109,18 +108,17 @@ void main() {
     setUp(() {
       testContext = TestContext();
       testContext.setUpCommon();
-      originalThreshold = VaultStorageConfig.secureFileStreamingThresholdBytes;
     });
 
     tearDown(() {
-      VaultStorageConfig.secureFileStreamingThresholdBytes = originalThreshold;
       testContext.tearDownCommon();
     });
 
     test('should use streaming path when file exceeds threshold', () async {
-      // Lower threshold to trigger streaming path
-      VaultStorageConfig.secureFileStreamingThresholdBytes = 1;
-
+      testContext = TestContext(
+        config: const VaultStorageConfig(secureFileStreamingThresholdBytes: 1),
+      );
+      testContext.setUpCommon();
       final streamMetadata = {'fileId': 'stream-id', 'extension': 'bin'};
       when(
         () => testContext.mockFileOperations.saveSecureFileStream(any()),

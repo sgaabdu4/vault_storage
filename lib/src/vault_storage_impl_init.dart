@@ -37,12 +37,12 @@ extension VaultStorageInitialization on VaultStorageImpl {
         final key = Hive.generateSecureKey();
         await _secureStorage.write(
           key: StorageKeys.secureKey,
-          value: await key.encodeBase64Safely(context: 'master encryption key'),
+          value: key.encodeBase64SafelySync(context: 'master encryption key'),
         );
         return key;
       }
 
-      return await encodedKey.decodeBase64Safely(context: 'secure storage key');
+      return encodedKey.decodeBase64SafelySync(context: 'secure storage key');
     } catch (e, stackTrace) {
       Error.throwWithStackTrace(
         VaultStorageInitializationError('Failed to get/create secure key', e),

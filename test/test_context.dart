@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/entities/box_config.dart';
 import 'package:vault_storage/src/entities/file_services.dart';
 import 'package:vault_storage/src/enum/box_type.dart';
@@ -10,6 +11,9 @@ import 'package:vault_storage/src/vault_storage_impl.dart';
 import 'mocks.dart';
 
 class TestContext {
+  TestContext({this.config = const VaultStorageConfig()});
+
+  final VaultStorageConfig config;
   final MockSecureKeyStore mockSecureStorage = MockSecureKeyStore();
   final MockIdGenerator mockUuid = MockIdGenerator();
   final MockBox<Object?> mockSecureBox = MockBox<Object?>();
@@ -30,6 +34,7 @@ class TestContext {
     securityConfig: securityConfig,
     customBoxes: customBoxes,
     storageDirectory: storageDirectory,
+    config: config,
   );
 
   FileServices fileServices({required bool? isWeb}) =>
