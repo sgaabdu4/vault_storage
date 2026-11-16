@@ -228,15 +228,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copyPath => 'Copy Path';
 
   @override
-  String storageLocationMessage(String path, String keyFile, String exists) {
-    String _temp0 = intl.Intl.selectLogic(exists, {'yes': '✅ YES', 'other': '❌ NO'});
-    String _temp1 = intl.Intl.selectLogic(exists, {
-      'yes':
-          'To view in File Explorer:\n1. Press Win+R\n2. Paste: $path\n3. Look for: flutter_secure_storage.dat\n\nThis file contains your encryption key encrypted with Windows DPAPI.\nThe key \'\'hive_encryption_key\'\' is stored inside this file.\n',
-      'other': 'The file will be created when you first save secure data.\nTry saving a secure value first.\n',
-    });
-    return 'Storage Location Information:\n\n📁 Application Support Directory:\n$path\n\n🔐 Encrypted Key File:\n$keyFile\n\nFile exists: $_temp0\n\n$_temp1';
-  }
+  String get storageSupportDirectoryLabel => 'Application Support Directory';
+
+  @override
+  String get storageKeyFileLabel => 'Encrypted Key File';
+
+  @override
+  String get storageKeyFileFound => 'Key file found';
+
+  @override
+  String get storageKeyFileMissing => 'Key file not found';
+
+  @override
+  String get storageViewHeading => 'To view it in File Explorer:';
+
+  @override
+  String get storageViewStepRun => 'Press Win+R.';
+
+  @override
+  String get storageViewStepPaste => 'Paste the Application Support Directory path.';
+
+  @override
+  String get storageViewStepLook => 'Look for flutter_secure_storage.dat.';
+
+  @override
+  String get storageKeyFileEncrypted =>
+      'This file holds your encryption key, encrypted with Windows DPAPI.';
+
+  @override
+  String get storageKeyFileKeyName =>
+      'The key \'\'hive_encryption_key\'\' is stored inside this file.';
+
+  @override
+  String get storageKeyFileCreatedLater => 'The file is created when you first save secure data.';
+
+  @override
+  String get storageKeyFileSaveFirst => 'Try saving a secure value first.';
 
   @override
   String get saveSecure => 'Save Secure';

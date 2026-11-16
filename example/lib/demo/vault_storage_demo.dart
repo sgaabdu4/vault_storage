@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:example/demo/demo_button.dart';
 import 'package:example/demo/demo_keys.dart';
-import 'package:example/demo/demo_storage.dart';
+import 'package:example/demo/demo_storage_config.dart';
 import 'package:example/demo/dialogs/key_dropdown_dialog.dart';
 import 'package:example/demo/dialogs/key_input_dialog.dart';
 import 'package:example/demo/dialogs/key_value_dialog.dart';
@@ -249,12 +249,12 @@ class _VaultStorageDemoState extends State<VaultStorageDemo> {
       final Directory supportDirectory = await getApplicationSupportDirectory();
       final String keyFilePath =
           '${supportDirectory.path}${Platform.pathSeparator}${DemoStorageConfig.keyFileName}';
-      final KeyFilePresence presence = File(keyFilePath).existsSync() ? .yes : .no;
       if (!screen.mounted) return;
       await StorageLocationDialog.show(
         screen,
-        message: l10n.storageLocationMessage(supportDirectory.path, keyFilePath, presence.name),
-        path: supportDirectory.path,
+        directoryPath: supportDirectory.path,
+        keyFilePath: keyFilePath,
+        keyFileExists: File(keyFilePath).existsSync(),
       );
     } catch (e) {
       _update(() => _errorMessage = l10n.storageLocationError('$e'));

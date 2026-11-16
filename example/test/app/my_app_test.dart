@@ -32,7 +32,8 @@ void main() {
     await demo.start(tester);
     await demo.tapButton(tester, DemoKeys.showStorageLocation);
     expect(find.text('Storage Location'), findsOneWidget);
-    expect(find.textContaining(demo.directory.path), findsOneWidget);
+    expect(find.text(demo.directory.path), findsOneWidget);
+    expect(find.textContaining(demo.directory.path), findsNWidgets(2));
     await demo.tapKey(tester, DemoKeys.copyPath);
     expect(copiedPath, demo.directory.path);
     expect(find.text('Path copied to clipboard!'), findsOneWidget);

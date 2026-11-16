@@ -34,5 +34,3 @@ IVaultStorage createDemoStorage(ValueChanged<ThreatLabel> onThreat) => VaultStor
     },
   ),
 );
-
-enum KeyFilePresence { yes, no }

@@ -466,11 +466,77 @@ abstract class AppLocalizations {
   /// **'Copy Path'**
   String get copyPath;
 
-  /// No description provided for @storageLocationMessage.
+  /// No description provided for @storageSupportDirectoryLabel.
   ///
   /// In en, this message translates to:
-  /// **'Storage Location Information:\n\n📁 Application Support Directory:\n{path}\n\n🔐 Encrypted Key File:\n{keyFile}\n\nFile exists: {exists, select, yes{✅ YES} other{❌ NO}}\n\n{exists, select, yes{To view in File Explorer:\n1. Press Win+R\n2. Paste: {path}\n3. Look for: flutter_secure_storage.dat\n\nThis file contains your encryption key encrypted with Windows DPAPI.\nThe key \'\'hive_encryption_key\'\' is stored inside this file.\n} other{The file will be created when you first save secure data.\nTry saving a secure value first.\n}}'**
-  String storageLocationMessage(String path, String keyFile, String exists);
+  /// **'Application Support Directory'**
+  String get storageSupportDirectoryLabel;
+
+  /// No description provided for @storageKeyFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted Key File'**
+  String get storageKeyFileLabel;
+
+  /// No description provided for @storageKeyFileFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Key file found'**
+  String get storageKeyFileFound;
+
+  /// No description provided for @storageKeyFileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Key file not found'**
+  String get storageKeyFileMissing;
+
+  /// No description provided for @storageViewHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'To view it in File Explorer:'**
+  String get storageViewHeading;
+
+  /// No description provided for @storageViewStepRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Press Win+R.'**
+  String get storageViewStepRun;
+
+  /// No description provided for @storageViewStepPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the Application Support Directory path.'**
+  String get storageViewStepPaste;
+
+  /// No description provided for @storageViewStepLook.
+  ///
+  /// In en, this message translates to:
+  /// **'Look for flutter_secure_storage.dat.'**
+  String get storageViewStepLook;
+
+  /// No description provided for @storageKeyFileEncrypted.
+  ///
+  /// In en, this message translates to:
+  /// **'This file holds your encryption key, encrypted with Windows DPAPI.'**
+  String get storageKeyFileEncrypted;
+
+  /// No description provided for @storageKeyFileKeyName.
+  ///
+  /// In en, this message translates to:
+  /// **'The key \'\'hive_encryption_key\'\' is stored inside this file.'**
+  String get storageKeyFileKeyName;
+
+  /// No description provided for @storageKeyFileCreatedLater.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is created when you first save secure data.'**
+  String get storageKeyFileCreatedLater;
+
+  /// No description provided for @storageKeyFileSaveFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Try saving a secure value first.'**
+  String get storageKeyFileSaveFirst;
 
   /// No description provided for @saveSecure.
   ///

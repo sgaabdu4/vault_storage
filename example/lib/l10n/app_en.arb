@@ -169,20 +169,18 @@
   "storageLocationTitle": "Storage Location",
   "pathCopied": "Path copied to clipboard!",
   "copyPath": "Copy Path",
-  "storageLocationMessage": "Storage Location Information:\n\n📁 Application Support Directory:\n{path}\n\n🔐 Encrypted Key File:\n{keyFile}\n\nFile exists: {exists, select, yes{✅ YES} other{❌ NO}}\n\n{exists, select, yes{To view in File Explorer:\n1. Press Win+R\n2. Paste: {path}\n3. Look for: flutter_secure_storage.dat\n\nThis file contains your encryption key encrypted with Windows DPAPI.\nThe key ''hive_encryption_key'' is stored inside this file.\n} other{The file will be created when you first save secure data.\nTry saving a secure value first.\n}}",
-  "@storageLocationMessage": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      },
-      "keyFile": {
-        "type": "String"
-      },
-      "exists": {
-        "type": "String"
-      }
-    }
-  },
+  "storageSupportDirectoryLabel": "Application Support Directory",
+  "storageKeyFileLabel": "Encrypted Key File",
+  "storageKeyFileFound": "Key file found",
+  "storageKeyFileMissing": "Key file not found",
+  "storageViewHeading": "To view it in File Explorer:",
+  "storageViewStepRun": "Press Win+R.",
+  "storageViewStepPaste": "Paste the Application Support Directory path.",
+  "storageViewStepLook": "Look for flutter_secure_storage.dat.",
+  "storageKeyFileEncrypted": "This file holds your encryption key, encrypted with Windows DPAPI.",
+  "storageKeyFileKeyName": "The key ''hive_encryption_key'' is stored inside this file.",
+  "storageKeyFileCreatedLater": "The file is created when you first save secure data.",
+  "storageKeyFileSaveFirst": "Try saving a secure value first.",
   "saveSecure": "Save Secure",
   "saveNormal": "Save Normal",
   "getAuto": "Get (Auto-detect)",
