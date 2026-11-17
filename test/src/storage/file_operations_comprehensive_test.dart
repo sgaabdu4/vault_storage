@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:vault_storage/src/entities/normal_file_request.dart';
+import 'package:vault_storage/src/entities/secure_file_request.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 
@@ -64,12 +66,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveSecureFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: false, // Use native to avoid web-specific issues
-          secureStorage: testContext.mockSecureStorage,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          SecureFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: false),
+          ),
         );
 
         // Assert
@@ -95,14 +96,13 @@ void main() {
         // Test that the method properly validates its inputs
         expect(
           () => fileOperations.saveSecureFile(
-            fileBytes: Uint8List(0), // Empty bytes
-            fileExtension: '',
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
+            SecureFileRequest(
+              fileBytes: Uint8List(0),
+              fileExtension: '',
+              services: testContext.fileServices(isWeb: true),
+            ),
           ),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
@@ -270,11 +270,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveNormalFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: true,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          NormalFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: true),
+          ),
         );
 
         // Assert
@@ -296,11 +296,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveNormalFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: false,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          NormalFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: false),
+          ),
         );
 
         // Assert
@@ -434,24 +434,27 @@ void main() {
     });
 
     group('Error handling and edge cases', () {
-      test('should wrap non-StorageError exceptions appropriately in saveNormalFile', () async {
-        // Arrange
-        final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
+      test(
+        'should wrap non-VaultStorageError exceptions appropriately in saveNormalFile',
+        () async {
+          // Arrange
+          final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
 
-        when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
+          when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
 
-        // Act & Assert
-        expect(
-          () => fileOperations.saveNormalFile(
-            fileBytes: fileBytes,
-            fileExtension: 'txt',
-            isWeb: false,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageWriteError>()),
-        );
-      });
+          // Act & Assert
+          expect(
+            () => fileOperations.saveNormalFile(
+              NormalFileRequest(
+                fileBytes: fileBytes,
+                fileExtension: 'txt',
+                services: testContext.fileServices(isWeb: false),
+              ),
+            ),
+            throwsA(isA<VaultStorageWriteError>()),
+          );
+        },
+      );
 
       test('should handle storage operation failures gracefully', () async {
         // Arrange
@@ -470,11 +473,11 @@ void main() {
             isWeb: true,
             getBox: testContext.getBox,
           ),
-          throwsA(isA<StorageDeleteError>()),
+          throwsA(isA<VaultStorageDeleteError>()),
         );
       });
 
-      test('should preserve original StorageError types', () async {
+      test('should preserve original VaultStorageError types', () async {
         // Arrange
         const testFileId = 'test-file-id';
         const secureKeyName = 'file_key_$testFileId';

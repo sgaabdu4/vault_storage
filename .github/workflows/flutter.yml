@@ -114,6 +114,48 @@ jobs:
           RESULT: ${{ needs.verify.result }}
         run: test "$RESULT" = success
 
+  example-web:
+    name: Build example for web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # Read the example source.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: "3.50.0"
+          cache: true
+      - name: Add the web platform folder
+        working-directory: example
+        run: flutter create --platforms web --project-name example .
+      - name: Build the example for web
+        working-directory: example
+        run: flutter build web
+
+  secrecy-chrome:
+    name: Error secrecy in Chrome
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # Read the package source.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: "3.50.0"
+          cache: true
+      - name: Run the secrecy tests in Chrome
+        run: flutter test --platform chrome test/src/error_message_secrecy_test.dart
+
   pana:
     name: Package Analysis (PANA)
     runs-on: ubuntu-latest
@@ -172,7 +214,7 @@ jobs:
     name: Auto-Tag Release
     environment: package-release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [version-check, format, analyze, test, pana]
+    needs: [version-check, format, analyze, test, pana, example-web, secrecy-chrome]
     runs-on: ubuntu-latest
     permissions:
       contents: write # Create the release tag and GitHub release.

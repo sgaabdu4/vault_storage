@@ -1,38 +1,59 @@
-// test/helpers.dart
-// Common test setup, mocks, and utilities for vault storage tests.
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:vault_storage/src/enum/storage_box_type.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
+import 'package:vault_storage/src/entities/box_config.dart';
+import 'package:vault_storage/src/entities/file_services.dart';
+import 'package:vault_storage/src/enum/box_type.dart';
+import 'package:vault_storage/src/security/vault_security_config.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import 'mocks.dart';
 
 class TestContext {
-  late VaultStorageImpl vaultStorage;
-  late MockFlutterSecureStorage mockSecureStorage;
-  late MockUuid mockUuid;
-  late MockBox<dynamic> mockSecureBox;
-  late MockBox<dynamic> mockNormalBox;
-  late MockLazyBox<dynamic> mockSecureFilesBox;
-  late MockLazyBox<dynamic> mockNormalFilesBox;
-  late MockFileOperations mockFileOperations;
+  TestContext({this.config = const VaultStorageConfig()});
+
+  final VaultStorageConfig config;
+  final MockSecureKeyStore mockSecureStorage = MockSecureKeyStore();
+  final MockIdGenerator mockUuid = MockIdGenerator();
+  final MockBox<Object?> mockSecureBox = MockBox<Object?>();
+  final MockBox<Object?> mockNormalBox = MockBox<Object?>();
+  final MockLazyBox<Object?> mockSecureFilesBox = MockLazyBox<Object?>();
+  final MockLazyBox<Object?> mockNormalFilesBox = MockLazyBox<Object?>();
+  final MockFileOperations mockFileOperations = MockFileOperations();
+  late final VaultStorageImpl vaultStorage = createStorage();
+
+  VaultStorageImpl createStorage({
+    VaultSecurityConfig? securityConfig,
+    List<BoxConfig>? customBoxes,
+    String? storageDirectory,
+  }) => VaultStorageImpl(
+    secureStorage: mockSecureStorage,
+    uuid: mockUuid,
+    fileOperations: mockFileOperations,
+    securityConfig: securityConfig,
+    customBoxes: customBoxes,
+    storageDirectory: storageDirectory,
+    config: config,
+  );
+
+  FileServices fileServices({required bool? isWeb}) =>
+      FileServices(isWeb: isWeb, secureStorage: mockSecureStorage, uuid: mockUuid, getBox: getBox);
 
   // Convenience getters for common naming patterns
-  MockLazyBox<dynamic> get mockSecureFileStorageBox => mockSecureFilesBox;
-  MockLazyBox<dynamic> get mockNormalFileStorageBox => mockNormalFilesBox;
+  MockLazyBox<Object?> get mockSecureFileStorageBox => mockSecureFilesBox;
+  MockLazyBox<Object?> get mockNormalFileStorageBox => mockNormalFilesBox;
 
   // Get box function for FileOperations testing
-  BoxBase<dynamic> getBox(BoxType type) {
+  BoxBase<Object?> getBox(BoxType type) {
     switch (type) {
-      case BoxType.secure:
+      case .secure:
         return mockSecureBox;
-      case BoxType.normal:
+      case .normal:
         return mockNormalBox;
-      case BoxType.secureFiles:
+      case .secureFiles:
         return mockSecureFilesBox;
-      case BoxType.normalFiles:
+      case .normalFiles:
         return mockNormalFilesBox;
     }
   }
@@ -40,25 +61,11 @@ class TestContext {
   void setUpCommon() {
     TestWidgetsFlutterBinding.ensureInitialized();
 
-    mockSecureStorage = MockFlutterSecureStorage();
-    mockUuid = MockUuid();
-    mockSecureBox = MockBox<dynamic>();
-    mockNormalBox = MockBox<dynamic>();
-    mockSecureFilesBox = MockLazyBox<dynamic>();
-    mockNormalFilesBox = MockLazyBox<dynamic>();
-    mockFileOperations = MockFileOperations();
-
-    vaultStorage = VaultStorageImpl(
-      secureStorage: mockSecureStorage,
-      uuid: mockUuid,
-      fileOperations: mockFileOperations,
-    );
-
     vaultStorage.boxes.addAll({
-      BoxType.secure: mockSecureBox,
-      BoxType.normal: mockNormalBox,
-      BoxType.secureFiles: mockSecureFilesBox,
-      BoxType.normalFiles: mockNormalFilesBox,
+      .secure: mockSecureBox,
+      .normal: mockNormalBox,
+      .secureFiles: mockSecureFilesBox,
+      .normalFiles: mockNormalFilesBox,
     });
     vaultStorage.isVaultStorageReady = true;
 

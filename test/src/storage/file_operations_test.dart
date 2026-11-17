@@ -1,8 +1,9 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:vault_storage/src/entities/secure_file_request.dart';
+import 'package:vault_storage/src/entities/secure_file_stream_request.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
 
@@ -45,12 +46,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveSecureFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: false,
-          secureStorage: testContext.mockSecureStorage,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          SecureFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: false),
+          ),
         );
 
         // Assert
@@ -89,12 +89,11 @@ void main() {
 
         // Act
         final result = await fileOperations.saveSecureFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: true,
-          secureStorage: testContext.mockSecureStorage,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
+          SecureFileRequest(
+            fileBytes: fileBytes,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: true),
+          ),
         );
 
         // Assert
@@ -112,10 +111,10 @@ void main() {
             value: any(named: 'value'),
           ),
         ).called(1);
-        verify(() => mockBox.put(testFileId, any<dynamic>())).called(1);
+        verify(() => mockBox.put(testFileId, any<Object?>())).called(1);
       });
 
-      test('should throw StorageWriteError when encryption fails', () async {
+      test('should throw VaultStorageWriteError when encryption fails', () async {
         // Arrange
         final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
         const fileExtension = 'txt';
@@ -125,20 +124,19 @@ void main() {
         // Act & Assert
         expect(
           () => fileOperations.saveSecureFile(
-            fileBytes: fileBytes,
-            fileExtension: fileExtension,
-            isWeb: false,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
+            SecureFileRequest(
+              fileBytes: fileBytes,
+              fileExtension: fileExtension,
+              services: testContext.fileServices(isWeb: false),
+            ),
           ),
-          throwsA(isA<StorageWriteError>()),
+          throwsA(isA<VaultStorageWriteError>()),
         );
       });
     });
 
     group('saveSecureFileStream (streaming)', () {
-      test('should throw StorageWriteError when chunkSize is zero', () async {
+      test('should throw VaultStorageWriteError when chunkSize is zero', () async {
         // Arrange
         final stream = Stream<List<int>>.fromIterable([
           Uint8List.fromList([1, 2, 3]),
@@ -148,16 +146,15 @@ void main() {
         // Act & Assert
         expect(
           () => fileOperations.saveSecureFileStream(
-            stream: stream,
-            fileExtension: 'bin',
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-            chunkSize: 0,
+            SecureFileStreamRequest(
+              stream: stream,
+              fileExtension: 'bin',
+              services: testContext.fileServices(isWeb: true),
+              chunkSize: 0,
+            ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               contains('Chunk size must be positive'),
@@ -166,7 +163,7 @@ void main() {
         );
       });
 
-      test('should throw StorageWriteError when chunkSize is negative', () async {
+      test('should throw VaultStorageWriteError when chunkSize is negative', () async {
         // Arrange
         final stream = Stream<List<int>>.fromIterable([
           Uint8List.fromList([1, 2, 3]),
@@ -176,16 +173,15 @@ void main() {
         // Act & Assert
         expect(
           () => fileOperations.saveSecureFileStream(
-            stream: stream,
-            fileExtension: 'bin',
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-            chunkSize: -1,
+            SecureFileStreamRequest(
+              stream: stream,
+              fileExtension: 'bin',
+              services: testContext.fileServices(isWeb: true),
+              chunkSize: -1,
+            ),
           ),
           throwsA(
-            isA<StorageWriteError>().having(
+            isA<VaultStorageWriteError>().having(
               (e) => e.message,
               'message',
               contains('Chunk size must be positive'),
@@ -197,8 +193,8 @@ void main() {
       test('should save streaming secure file successfully on web', () async {
         // Arrange
         final parts = [
-          Uint8List.fromList(List.generate(1024, (i) => i % 256)),
-          Uint8List.fromList(List.generate(2048, (i) => (i + 1) % 256)),
+          Uint8List.fromList(.generate(1024, (i) => i % 256)),
+          Uint8List.fromList(.generate(2048, (i) => (i + 1) % 256)),
         ];
         final stream = Stream<List<int>>.fromIterable(parts);
         const fileExtension = 'bin';
@@ -217,13 +213,12 @@ void main() {
 
         // Act
         final meta = await fileOperations.saveSecureFileStream(
-          stream: stream,
-          fileExtension: fileExtension,
-          isWeb: true,
-          secureStorage: testContext.mockSecureStorage,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
-          chunkSize: 1024,
+          SecureFileStreamRequest(
+            stream: stream,
+            fileExtension: fileExtension,
+            services: testContext.fileServices(isWeb: true),
+            chunkSize: 1024,
+          ),
         );
 
         // Assert
@@ -239,685 +234,6 @@ void main() {
             value: any(named: 'value'),
           ),
         ).called(1);
-      });
-    });
-
-    group('getSecureFile', () {
-      test('should read streamed web metadata without single-file nonce fields', () async {
-        final storedChunks = <String, dynamic>{};
-        String? encodedKey;
-        when(() => testContext.mockUuid.v4()).thenReturn('stream-round-trip');
-        when(() => testContext.mockSecureFilesBox.put(any<String>(), any<dynamic>())).thenAnswer((
-          invocation,
-        ) async {
-          storedChunks[invocation.positionalArguments[0] as String] =
-              invocation.positionalArguments[1];
-        });
-        when(
-          () => testContext.mockSecureFilesBox.get(any<String>()),
-        ).thenAnswer((invocation) async => storedChunks[invocation.positionalArguments[0]]);
-        when(
-          () => testContext.mockSecureStorage.write(
-            key: any(named: 'key'),
-            value: any(named: 'value'),
-          ),
-        ).thenAnswer((invocation) async {
-          encodedKey = invocation.namedArguments[#value] as String?;
-        });
-        when(
-          () => testContext.mockSecureStorage.read(key: any(named: 'key')),
-        ).thenAnswer((_) async => encodedKey);
-
-        final original = Uint8List.fromList([1, 2, 3, 4, 5, 6, 7]);
-        final metadata = await fileOperations.saveSecureFileStream(
-          stream: Stream.value(original),
-          fileExtension: 'bin',
-          isWeb: true,
-          secureStorage: testContext.mockSecureStorage,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
-          chunkSize: 3,
-        );
-
-        expect(metadata, isNot(contains('nonce')));
-        expect(
-          await fileOperations.getSecureFile(
-            fileMetadata: metadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          original,
-        );
-      });
-
-      group('streamed web chunks', () {
-        late Map<String, dynamic> storedChunks;
-        late Map<String, dynamic> metadata;
-        final original = Uint8List.fromList(List.generate(10, (index) => index + 1));
-
-        setUp(() async {
-          storedChunks = {};
-          String? encodedKey;
-          when(() => testContext.mockUuid.v4()).thenReturn('ordered-chunks');
-          when(() => testContext.mockSecureFilesBox.put(any<String>(), any<dynamic>())).thenAnswer((
-            invocation,
-          ) async {
-            storedChunks[invocation.positionalArguments[0] as String] =
-                invocation.positionalArguments[1];
-          });
-          when(
-            () => testContext.mockSecureStorage.write(
-              key: any(named: 'key'),
-              value: any(named: 'value'),
-            ),
-          ).thenAnswer((invocation) async {
-            encodedKey = invocation.namedArguments[#value] as String?;
-          });
-          when(
-            () => testContext.mockSecureStorage.read(key: any(named: 'key')),
-          ).thenAnswer((_) async => encodedKey);
-          metadata = await fileOperations.saveSecureFileStream(
-            stream: Stream.value(original),
-            fileExtension: 'bin',
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-            chunkSize: 2,
-          );
-        });
-
-        test('joins chunks in index order when earlier chunks load last', () async {
-          expect(metadata['chunkCount'], 5);
-          when(() => testContext.mockSecureFilesBox.get(any<String>())).thenAnswer((
-            invocation,
-          ) async {
-            final name = invocation.positionalArguments[0] as String;
-            final index = int.parse(name.split(':c:').last);
-            await Future<void>.delayed(Duration(milliseconds: (5 - index) * 5));
-            return storedChunks[name];
-          });
-
-          expect(
-            await fileOperations.getSecureFile(
-              fileMetadata: metadata,
-              isWeb: true,
-              secureStorage: testContext.mockSecureStorage,
-              getBox: testContext.getBox,
-            ),
-            original,
-          );
-        });
-
-        test('names the missing chunk when one chunk is not stored', () async {
-          when(() => testContext.mockSecureFilesBox.get(any<String>())).thenAnswer((
-            invocation,
-          ) async {
-            final name = invocation.positionalArguments[0] as String;
-            return name.endsWith(':c:3') ? null : storedChunks[name];
-          });
-
-          await expectLater(
-            fileOperations.getSecureFile(
-              fileMetadata: metadata,
-              isWeb: true,
-              secureStorage: testContext.mockSecureStorage,
-              getBox: testContext.getBox,
-            ),
-            throwsA(
-              isA<FileNotFoundError>().having(
-                (e) => e.toString(),
-                'message',
-                contains('Hive secure files chunk 3'),
-              ),
-            ),
-          );
-        });
-      });
-
-      test('should retrieve secure file successfully on native platforms', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-        final testKey = Uint8List.fromList(List.generate(32, (i) => i));
-
-        final fileMetadata = {
-          'fileId': testFileId,
-          'filePath': '/test/path/$testFileId.txt.enc',
-          'secureKeyName': secureKeyName,
-          'nonce': 'dGVzdE5vbmNl', // base64 encoded test nonce
-          'mac': 'dGVzdE1hYw==', // base64 encoded test MAC
-          'extension': 'txt',
-        };
-
-        when(
-          () => testContext.mockSecureStorage.read(key: secureKeyName),
-        ).thenAnswer((_) async => base64Encode(testKey));
-
-        expect(
-          () => fileOperations.getSecureFile(
-            fileMetadata: fileMetadata,
-            isWeb: false,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageReadError>()),
-        );
-      });
-
-      test('should retrieve secure file successfully on web platform', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-        final mockBox = testContext.mockSecureFilesBox;
-
-        final fileMetadata = {
-          'fileId': testFileId,
-          'secureKeyName': secureKeyName,
-          'nonce': 'dGVzdE5vbmNl', // base64 encoded test nonce
-          'mac': 'dGVzdE1hYw==', // base64 encoded test MAC
-          'extension': 'txt',
-        };
-
-        when(
-          () => mockBox.get(testFileId),
-        ).thenAnswer((_) async => 'dGVzdENvbnRlbnQ='); // base64 encoded test content
-        when(
-          () => testContext.mockSecureStorage.read(key: secureKeyName),
-        ).thenAnswer((_) async => 'dGVzdEtleQ=='); // base64 encoded test key
-
-        expect(
-          () => fileOperations.getSecureFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageReadError>()),
-        );
-      });
-
-      test('should throw FileNotFoundError when file does not exist on web', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-        final mockBox = testContext.mockSecureFilesBox;
-
-        final fileMetadata = {
-          'fileId': testFileId,
-          'secureKeyName': secureKeyName,
-          'nonce': 'dGVzdE5vbmNl',
-          'mac': 'dGVzdE1hYw==',
-          'extension': 'txt',
-        };
-
-        when(() => mockBox.get(testFileId)).thenAnswer((_) async => null);
-
-        // Act & Assert
-        expect(
-          () => fileOperations.getSecureFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<FileNotFoundError>()),
-        );
-      });
-
-      test('should throw KeyNotFoundError when encryption key is missing', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-        final mockBox = testContext.mockSecureFilesBox;
-
-        final fileMetadata = {
-          'fileId': testFileId,
-          'secureKeyName': secureKeyName,
-          'nonce': 'dGVzdE5vbmNl',
-          'mac': 'dGVzdE1hYw==',
-          'extension': 'txt',
-        };
-
-        when(() => mockBox.get(testFileId)).thenAnswer((_) async => 'dGVzdENvbnRlbnQ=');
-        when(
-          () => testContext.mockSecureStorage.read(key: secureKeyName),
-        ).thenAnswer((_) async => null);
-
-        // Act & Assert
-        expect(
-          () => fileOperations.getSecureFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<KeyNotFoundError>()),
-        );
-      });
-
-      test('should throw InvalidMetadataError when required fields are missing', () async {
-        // Arrange
-        final incompleteMetadata = <String, dynamic>{
-          'fileId': 'test-file-id',
-          // Missing secureKeyName, nonce, mac
-        };
-
-        // Act & Assert
-        expect(
-          () => fileOperations.getSecureFile(
-            fileMetadata: incompleteMetadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<InvalidMetadataError>()),
-        );
-      });
-    });
-
-    group('deleteSecureFile', () {
-      test('should delete secure file successfully on native platforms', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-
-        final fileMetadata = {
-          'fileId': testFileId,
-          'filePath': '/test/path/$testFileId.txt.enc',
-          'secureKeyName': secureKeyName,
-        };
-
-        when(
-          () => testContext.mockSecureStorage.delete(key: secureKeyName),
-        ).thenAnswer((_) async {});
-
-        // Act
-        await fileOperations.deleteSecureFile(
-          fileMetadata: fileMetadata,
-          isWeb: false,
-          secureStorage: testContext.mockSecureStorage,
-          getBox: testContext.getBox,
-        );
-
-        // Assert
-        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName)).called(1);
-      });
-
-      test('should delete secure file successfully on web platform', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-        final mockBox = testContext.mockSecureFilesBox;
-
-        final fileMetadata = {'fileId': testFileId, 'secureKeyName': secureKeyName};
-
-        when(() => mockBox.delete(testFileId)).thenAnswer((_) async {});
-        when(
-          () => testContext.mockSecureStorage.delete(key: secureKeyName),
-        ).thenAnswer((_) async {});
-
-        // Act
-        await fileOperations.deleteSecureFile(
-          fileMetadata: fileMetadata,
-          isWeb: true,
-          secureStorage: testContext.mockSecureStorage,
-          getBox: testContext.getBox,
-        );
-
-        // Assert
-        verify(() => mockBox.delete(testFileId)).called(1);
-        verify(() => testContext.mockSecureStorage.delete(key: secureKeyName)).called(1);
-      });
-
-      test('should throw StorageDeleteError when deletion fails', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-
-        final fileMetadata = {'fileId': testFileId, 'secureKeyName': secureKeyName};
-
-        when(
-          () => testContext.mockSecureStorage.delete(key: secureKeyName),
-        ).thenThrow(Exception('Deletion failed'));
-
-        // Act & Assert
-        expect(
-          () => fileOperations.deleteSecureFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageDeleteError>()),
-        );
-      });
-    });
-
-    group('saveNormalFile', () {
-      test('should save normal file successfully on native platforms', () async {
-        // Arrange
-        final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-        const fileExtension = 'txt';
-        const testFileId = 'test-file-id';
-
-        when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-
-        // Act
-        final result = await fileOperations.saveNormalFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: false,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
-        );
-
-        // Assert
-        expect(result['fileId'], equals(testFileId));
-        expect(result['extension'], equals(fileExtension));
-        expect(result['filePath'], contains(testFileId));
-        expect(result['filePath'], endsWith('.$fileExtension'));
-
-        verify(() => testContext.mockUuid.v4()).called(1);
-      });
-
-      test('should save normal file successfully on web platform', () async {
-        // Arrange
-        final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-        const fileExtension = 'txt';
-        const testFileId = 'test-file-id';
-        final mockBox = testContext.mockNormalFilesBox;
-
-        when(() => testContext.mockUuid.v4()).thenReturn(testFileId);
-        when(() => mockBox.put(any<String>(), any<String>())).thenAnswer((_) async {});
-
-        // Act
-        final result = await fileOperations.saveNormalFile(
-          fileBytes: fileBytes,
-          fileExtension: fileExtension,
-          isWeb: true,
-          uuid: testContext.mockUuid,
-          getBox: testContext.getBox,
-        );
-
-        // Assert
-        expect(result['fileId'], equals(testFileId));
-        expect(result['extension'], equals(fileExtension));
-        expect(result['filePath'], isNull); // Web doesn't use file paths
-
-        verify(() => testContext.mockUuid.v4()).called(1);
-        verify(() => mockBox.put(testFileId, any<dynamic>())).called(1);
-      });
-
-      test('should throw StorageWriteError when save fails', () async {
-        // Arrange
-        final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-        const fileExtension = 'txt';
-
-        when(() => testContext.mockUuid.v4()).thenThrow(Exception('UUID generation failed'));
-
-        // Act & Assert
-        expect(
-          () => fileOperations.saveNormalFile(
-            fileBytes: fileBytes,
-            fileExtension: fileExtension,
-            isWeb: false,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageWriteError>()),
-        );
-      });
-    });
-
-    group('getNormalFile', () {
-      test('should retrieve normal file successfully on web platform', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        final mockBox = testContext.mockNormalFilesBox;
-        final expectedBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-
-        final fileMetadata = {'fileId': testFileId, 'extension': 'txt'};
-
-        when(
-          () => mockBox.get(testFileId),
-        ).thenAnswer((_) async => 'AQIDBAU='); // base64 of [1,2,3,4,5]
-
-        // Act
-        final result = await fileOperations.getNormalFile(
-          fileMetadata: fileMetadata,
-          isWeb: true,
-          getBox: testContext.getBox,
-        );
-
-        // Assert
-        expect(result, equals(expectedBytes));
-        verify(() => mockBox.get(testFileId)).called(1);
-      });
-
-      test('should throw FileNotFoundError when file does not exist on web', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        final mockBox = testContext.mockNormalFilesBox;
-
-        final fileMetadata = {'fileId': testFileId, 'extension': 'txt'};
-
-        when(() => mockBox.get(testFileId)).thenAnswer((_) async => null);
-
-        // Act & Assert
-        expect(
-          () => fileOperations.getNormalFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<FileNotFoundError>()),
-        );
-      });
-
-      test('should throw InvalidMetadataError when filePath is missing on native', () async {
-        // Arrange
-        final fileMetadata = {
-          'fileId': 'test-file-id',
-          // Missing filePath for native platform
-        };
-
-        // Act & Assert
-        expect(
-          () => fileOperations.getNormalFile(
-            fileMetadata: fileMetadata,
-            isWeb: false,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<InvalidMetadataError>()),
-        );
-      });
-    });
-
-    group('deleteNormalFile', () {
-      test('should delete normal file successfully on web platform', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        final mockBox = testContext.mockNormalFilesBox;
-
-        final fileMetadata = {'fileId': testFileId};
-
-        when(() => mockBox.delete(testFileId)).thenAnswer((_) async {});
-
-        // Act
-        await fileOperations.deleteNormalFile(
-          fileMetadata: fileMetadata,
-          isWeb: true,
-          getBox: testContext.getBox,
-        );
-
-        // Assert
-        verify(() => mockBox.delete(testFileId)).called(1);
-      });
-
-      test('should handle deletion gracefully when file does not exist', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        final mockBox = testContext.mockNormalFilesBox;
-
-        final fileMetadata = {'fileId': testFileId, 'filePath': '/nonexistent/path'};
-
-        when(() => mockBox.delete(testFileId)).thenAnswer((_) async {});
-
-        // Act & Assert - Should not throw
-        await fileOperations.deleteNormalFile(
-          fileMetadata: fileMetadata,
-          isWeb: true,
-          getBox: testContext.getBox,
-        );
-
-        verify(() => mockBox.delete(testFileId)).called(1);
-      });
-
-      test('should throw StorageDeleteError when deletion fails', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        final mockBox = testContext.mockNormalFilesBox;
-
-        final fileMetadata = {'fileId': testFileId};
-
-        when(() => mockBox.delete(testFileId)).thenThrow(Exception('Deletion failed'));
-
-        // Act & Assert
-        expect(
-          () => fileOperations.deleteNormalFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageDeleteError>()),
-        );
-      });
-    });
-
-    group('MIME type detection', () {
-      test('should return correct MIME types for common file extensions', () {
-        // For now, we can verify the behavior through file operations
-        expect(true, isTrue); // Placeholder - would need access to private method
-      });
-    });
-
-    group('Error handling', () {
-      test('should preserve original StorageError types', () async {
-        // Arrange
-        const testFileId = 'test-file-id';
-        const secureKeyName = 'file_key_$testFileId';
-
-        final fileMetadata = {
-          'fileId': testFileId,
-          'secureKeyName': secureKeyName,
-          'nonce': 'dGVzdE5vbmNl',
-          'mac': 'dGVzdE1hYw==',
-        };
-
-        when(() => testContext.mockSecureFilesBox.get(testFileId)).thenAnswer((_) async => null);
-
-        // Act & Assert
-        expect(
-          () => fileOperations.getSecureFile(
-            fileMetadata: fileMetadata,
-            isWeb: true,
-            secureStorage: testContext.mockSecureStorage,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<FileNotFoundError>()),
-        );
-      });
-
-      test('should wrap non-StorageError exceptions appropriately', () async {
-        // Arrange
-        final fileBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-
-        when(() => testContext.mockUuid.v4()).thenThrow(Exception('Unexpected error'));
-
-        // Act & Assert
-        expect(
-          () => fileOperations.saveNormalFile(
-            fileBytes: fileBytes,
-            fileExtension: 'txt',
-            isWeb: false,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-          ),
-          throwsA(isA<StorageWriteError>()),
-        );
-      });
-
-      test('saveSecureFile should rethrow StorageError without wrapping', () async {
-        when(
-          () => testContext.mockUuid.v4(),
-        ).thenThrow(const StorageWriteError('pre-existing error'));
-
-        expect(
-          () => fileOperations.saveSecureFile(
-            fileBytes: Uint8List.fromList([1, 2, 3]),
-            fileExtension: 'bin',
-            isWeb: false,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-          ),
-          throwsA(
-            isA<StorageWriteError>().having(
-              (e) => e.message,
-              'message',
-              equals('pre-existing error'),
-            ),
-          ),
-        );
-      });
-
-      test('saveSecureFileStream should rethrow StorageError without wrapping', () async {
-        when(
-          () => testContext.mockUuid.v4(),
-        ).thenThrow(const StorageWriteError('stream pre-existing error'));
-
-        expect(
-          () => fileOperations.saveSecureFileStream(
-            stream: Stream<List<int>>.value([1, 2, 3]),
-            fileExtension: 'bin',
-            isWeb: false,
-            secureStorage: testContext.mockSecureStorage,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-          ),
-          throwsA(
-            isA<StorageWriteError>().having(
-              (e) => e.message,
-              'message',
-              equals('stream pre-existing error'),
-            ),
-          ),
-        );
-      });
-
-      test('saveNormalFile should rethrow StorageError without wrapping', () async {
-        when(
-          () => testContext.mockUuid.v4(),
-        ).thenThrow(const StorageWriteError('normal pre-existing error'));
-
-        expect(
-          () => fileOperations.saveNormalFile(
-            fileBytes: Uint8List.fromList([1, 2, 3]),
-            fileExtension: 'bin',
-            isWeb: false,
-            uuid: testContext.mockUuid,
-            getBox: testContext.getBox,
-          ),
-          throwsA(
-            isA<StorageWriteError>().having(
-              (e) => e.message,
-              'message',
-              equals('normal pre-existing error'),
-            ),
-          ),
-        );
       });
     });
   });

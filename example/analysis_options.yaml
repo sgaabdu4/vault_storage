@@ -1,5 +1,8 @@
 include: ../analysis_options.yaml
 
+plugins:
+  flutter_skill_lints: ^0.15.1
+
 analyzer:
   language:
     strict-inference: true

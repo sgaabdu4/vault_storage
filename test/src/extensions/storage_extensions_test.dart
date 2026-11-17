@@ -2,17 +2,20 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vault_storage/src/constants/config.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/errors/file_errors.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
+import 'package:vault_storage/src/extensions/json_safe.dart';
 import 'package:vault_storage/src/extensions/storage_extensions.dart';
 
 void main() {
+  const config = VaultStorageConfig();
+
   group('Base64 Extensions', () {
     group('Base64DecodingExtension', () {
       test('should decode valid base64 string correctly', () async {
         const base64String = 'SGVsbG8gV29ybGQ=';
-        final result = await base64String.decodeBase64Safely(context: 'test');
+        final result = await base64String.decodeBase64Safely(context: 'test', config: config);
 
         expect(result, equals(utf8.encode('Hello World')));
       });
@@ -21,7 +24,7 @@ void main() {
         const invalidBase64 = 'not-valid-base64!';
 
         await expectLater(
-          () => invalidBase64.decodeBase64Safely(context: 'test context'),
+          () => invalidBase64.decodeBase64Safely(context: 'test context', config: config),
           throwsA(isA<Base64DecodeError>()),
         );
       });
@@ -31,7 +34,7 @@ void main() {
         const context = 'custom context';
 
         expect(
-          () => invalidBase64.decodeBase64Safely(context: context),
+          () => invalidBase64.decodeBase64Safely(context: context, config: config),
           throwsA(isA<Base64DecodeError>()),
         );
       });
@@ -41,7 +44,10 @@ void main() {
         final largeData = List.generate(60000, (i) => i % 256);
         final base64String = base64Url.encode(largeData);
 
-        final result = await base64String.decodeBase64Safely(context: 'large data test');
+        final result = await base64String.decodeBase64Safely(
+          context: 'large data test',
+          config: config,
+        );
         expect(result, equals(largeData));
       });
 
@@ -50,7 +56,10 @@ void main() {
         final data = List.generate(60000, (i) => 255);
         final standardBase64 = base64.encode(data);
 
-        final result = await standardBase64.decodeBase64Safely(context: 'standard fallback test');
+        final result = await standardBase64.decodeBase64Safely(
+          context: 'standard fallback test',
+          config: config,
+        );
         expect(result.length, equals(60000));
       });
 
@@ -83,20 +92,26 @@ void main() {
 
         expect(result, isA<String>());
         // Test that we can decode it back
-        final decoded = await result.decodeBase64Safely(context: 'test round trip');
+        final decoded = await result.decodeBase64Safely(context: 'test round trip', config: config);
         expect(decoded, equals(bytes));
       });
 
       test('should encode large bytes using isolate', () async {
         // Create large data (> base64IsolateThreshold)
-        final largeData = Uint8List.fromList(List.generate(60000, (i) => i % 256));
-        final result = await largeData.encodeBase64Safely(context: 'large encode test');
+        final largeData = Uint8List.fromList(.generate(60000, (i) => i % 256));
+        final result = await largeData.encodeBase64Safely(
+          context: 'large encode test',
+          config: config,
+        );
 
         expect(result, isA<String>());
         expect(result.length, greaterThan(0));
 
         // Verify we can decode it back
-        final decoded = await result.decodeBase64Safely(context: 'decode verification');
+        final decoded = await result.decodeBase64Safely(
+          context: 'decode verification',
+          config: config,
+        );
         expect(decoded, equals(largeData));
       });
 
@@ -108,13 +123,16 @@ void main() {
 
       test('should convert List<int> to Uint8List before encoding', () async {
         final listData = <int>[1, 2, 3, 4, 5];
-        final result = await listData.encodeBase64Safely(context: 'list encode test');
+        final result = await listData.encodeBase64Safely(
+          context: 'list encode test',
+          config: config,
+        );
         expect(result, isA<String>());
 
         // Verify it's the same as Uint8List encoding
         final uint8Result = await Uint8List.fromList(
           listData,
-        ).encodeBase64Safely(context: 'uint8 test');
+        ).encodeBase64Safely(context: 'uint8 test', config: config);
         expect(result, equals(uint8Result));
       });
 
@@ -130,26 +148,26 @@ void main() {
     group('JsonDecodingExtension', () {
       test('should decode valid JSON object correctly', () async {
         const jsonString = '{"name": "test", "value": 42}';
-        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>(config);
 
         expect(result, isA<Map<String, dynamic>>());
         expect(result, equals({'name': 'test', 'value': 42}));
       });
 
-      test('should throw StorageSerializationError for invalid JSON string', () async {
+      test('should throw VaultStorageSerializationError for invalid JSON string', () async {
         const invalidJson = '{invalid json}';
 
         await expectLater(
-          () => invalidJson.decodeJsonSafely<Map<String, dynamic>>(),
-          throwsA(isA<StorageSerializationError>()),
+          () => invalidJson.decodeJsonSafely<Map<String, dynamic>>(config),
+          throwsA(isA<VaultStorageSerializationError>()),
         );
       });
 
       test('should handle different types correctly', () async {
         const jsonList = '[1, 2, 3]';
-        final result = await jsonList.decodeJsonSafely<List<dynamic>>();
+        final result = await jsonList.decodeJsonSafely<List<Object?>>(config);
 
-        expect(result, isA<List<dynamic>>());
+        expect(result, isA<List<Object?>>());
         expect(result, equals([1, 2, 3]));
       });
 
@@ -159,21 +177,21 @@ void main() {
           List.generate(150, (i) => 'key_$i'),
           List.generate(150, (i) => 'value_$i'),
         );
-        final jsonString = await largeMap.encodeJsonSafely();
+        final jsonString = await largeMap.encodeJsonSafely(config);
 
-        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+        final result = await jsonString.decodeJsonSafely<Map<String, dynamic>>(config);
         expect(result.length, equals(150));
       });
 
       test('should decode legacy JSON without type marker', () async {
         const legacyJson = '{"name": "test"}';
-        final decoded = await JsonSafe.decode<Map<String, dynamic>>(legacyJson);
+        final decoded = await JsonSafe.decode<Map<String, dynamic>>(legacyJson, config);
         expect(decoded, equals({'name': 'test'}));
       });
 
       test('should decode legacy JSON array without type marker', () async {
         const legacyJson = '[1, 2, 3]';
-        final decoded = await JsonSafe.decode<List<dynamic>>(legacyJson);
+        final decoded = await JsonSafe.decode<List<Object?>>(legacyJson, config);
         expect(decoded, equals([1, 2, 3]));
       });
     });
@@ -181,30 +199,33 @@ void main() {
     group('JsonEncodingExtension', () {
       test('should encode Map object to JSON string correctly', () async {
         final map = {'name': 'test', 'value': 42};
-        final result = await map.encodeJsonSafely();
+        final result = await map.encodeJsonSafely(config);
 
         expect(result, isA<String>());
         // Use our decode method to handle type markers
-        final decoded = await result.decodeJsonSafely<Map<String, dynamic>>();
+        final decoded = await result.decodeJsonSafely<Map<String, dynamic>>(config);
         expect(decoded, equals(map));
       });
 
       test('should encode List object to JSON string correctly', () async {
         final list = [1, 2, 3, 'test'];
-        final result = await list.encodeJsonSafely();
+        final result = await list.encodeJsonSafely(config);
 
         expect(result, isA<String>());
         // Use our decode method to handle type markers
-        final decoded = await result.decodeJsonSafely<List<dynamic>>();
+        final decoded = await result.decodeJsonSafely<List<Object?>>(config);
         expect(decoded, equals(list));
       });
 
-      test('should throw StorageSerializationError for circular reference objects', () async {
+      test('should throw VaultStorageSerializationError for circular reference objects', () async {
         // Create a circular reference
         final map = <String, dynamic>{'name': 'test'};
         map['self'] = map; // Create circular reference
 
-        await expectLater(() => map.encodeJsonSafely(), throwsA(isA<StorageSerializationError>()));
+        await expectLater(
+          () => map.encodeJsonSafely(config),
+          throwsA(isA<VaultStorageSerializationError>()),
+        );
       });
     });
   });
@@ -261,121 +282,124 @@ void main() {
   group('JsonSafe Utility Class', () {
     test('should encode object to JSON string correctly', () async {
       final map = {'name': 'test', 'value': 42};
-      final result = await JsonSafe.encode(map);
+      final result = await JsonSafe.encode(map, config);
 
       expect(result, isA<String>());
       // Use our decode method to handle type markers
-      final decoded = await JsonSafe.decode<Map<String, dynamic>>(result);
+      final decoded = await JsonSafe.decode<Map<String, dynamic>>(result, config);
       expect(decoded, equals(map));
     });
 
     test('should decode JSON string to object correctly', () async {
       const jsonString = '{"name": "test", "value": 42}';
-      final result = await JsonSafe.decode<Map<String, dynamic>>(jsonString);
+      final result = await JsonSafe.decode<Map<String, dynamic>>(jsonString, config);
 
       expect(result, isA<Map<String, dynamic>>());
       expect(result, equals({'name': 'test', 'value': 42}));
     });
 
-    test('should throw StorageSerializationError for encoding failures', () async {
+    test('should throw VaultStorageSerializationError for encoding failures', () async {
       final map = <String, dynamic>{'name': 'test'};
       map['self'] = map; // Create circular reference
 
-      await expectLater(() => JsonSafe.encode(map), throwsA(isA<StorageSerializationError>()));
+      await expectLater(
+        () => JsonSafe.encode(map, config),
+        throwsA(isA<VaultStorageSerializationError>()),
+      );
     });
 
-    test('should throw StorageSerializationError for decoding failures', () async {
+    test('should throw VaultStorageSerializationError for decoding failures', () async {
       const invalidJson = '{invalid json}';
 
       await expectLater(
-        () => JsonSafe.decode<Map<String, dynamic>>(invalidJson),
-        throwsA(isA<StorageSerializationError>()),
+        () => JsonSafe.decode<Map<String, dynamic>>(invalidJson, config),
+        throwsA(isA<VaultStorageSerializationError>()),
       );
     });
 
     test('should encode null value', () async {
-      final result = await JsonSafe.encode(null);
+      final result = await JsonSafe.encode(null, config);
       expect(result, contains('JSON'));
       expect(result, contains('null'));
 
-      final decoded = await JsonSafe.decode<dynamic>(result);
+      final decoded = await JsonSafe.decode<Object?>(result, config);
       expect(decoded, isNull);
     });
 
     test('should encode and decode small string without JSON', () async {
       const smallString = 'test';
-      final encoded = await JsonSafe.encode(smallString);
+      final encoded = await JsonSafe.encode(smallString, config);
       expect(encoded, startsWith('__VST__STR:'));
       expect(encoded, equals('__VST__STR:test'));
 
-      final decoded = await JsonSafe.decode<String>(encoded);
+      final decoded = await JsonSafe.decode<String>(encoded, config);
       expect(decoded, equals(smallString));
     });
 
     test('should encode large string with JSON', () async {
       // Create string larger than primitiveStringThreshold
       final largeString = 'x' * 1500;
-      final encoded = await JsonSafe.encode(largeString);
+      final encoded = await JsonSafe.encode(largeString, config);
       expect(encoded, startsWith('__VST__JSON:'));
 
-      final decoded = await JsonSafe.decode<String>(encoded);
+      final decoded = await JsonSafe.decode<String>(encoded, config);
       expect(decoded, equals(largeString));
     });
 
     test('should encode and decode int primitive', () async {
       const intValue = 42;
-      final encoded = await JsonSafe.encode(intValue);
+      final encoded = await JsonSafe.encode(intValue, config);
       expect(encoded, startsWith('__VST__INT:'));
       expect(encoded, equals('__VST__INT:42'));
 
-      final decoded = await JsonSafe.decode<int>(encoded);
+      final decoded = await JsonSafe.decode<int>(encoded, config);
       expect(decoded, equals(intValue));
     });
 
     test('should encode and decode negative int', () async {
       const intValue = -123;
-      final encoded = await JsonSafe.encode(intValue);
+      final encoded = await JsonSafe.encode(intValue, config);
       expect(encoded, equals('__VST__INT:-123'));
 
-      final decoded = await JsonSafe.decode<int>(encoded);
+      final decoded = await JsonSafe.decode<int>(encoded, config);
       expect(decoded, equals(intValue));
     });
 
     test('should encode and decode double primitive', () async {
       const doubleValue = 3.14159;
-      final encoded = await JsonSafe.encode(doubleValue);
+      final encoded = await JsonSafe.encode(doubleValue, config);
       expect(encoded, startsWith('__VST__DBL:'));
 
-      final decoded = await JsonSafe.decode<double>(encoded);
+      final decoded = await JsonSafe.decode<double>(encoded, config);
       expect(decoded, equals(doubleValue));
     });
 
     test('should encode and decode bool true', () async {
       const boolValue = true;
-      final encoded = await JsonSafe.encode(boolValue);
+      final encoded = await JsonSafe.encode(boolValue, config);
       expect(encoded, startsWith('__VST__BOOL:'));
       expect(encoded, equals('__VST__BOOL:true'));
 
-      final decoded = await JsonSafe.decode<bool>(encoded);
+      final decoded = await JsonSafe.decode<bool>(encoded, config);
       expect(decoded, equals(true));
     });
 
     test('should encode and decode bool false', () async {
       const boolValue = false;
-      final encoded = await JsonSafe.encode(boolValue);
+      final encoded = await JsonSafe.encode(boolValue, config);
       expect(encoded, equals('__VST__BOOL:false'));
 
-      final decoded = await JsonSafe.decode<bool>(encoded);
+      final decoded = await JsonSafe.decode<bool>(encoded, config);
       expect(decoded, equals(false));
     });
 
     test('should handle string with type marker prefix', () async {
       // String that starts with type marker prefix should be JSON encoded
       const specialString = '__VST__special';
-      final encoded = await JsonSafe.encode(specialString);
+      final encoded = await JsonSafe.encode(specialString, config);
       expect(encoded, startsWith('__VST__JSON:'));
 
-      final decoded = await JsonSafe.decode<String>(encoded);
+      final decoded = await JsonSafe.decode<String>(encoded, config);
       expect(decoded, equals(specialString));
     });
 
@@ -384,19 +408,19 @@ void main() {
         List.generate(150, (i) => 'key_$i'),
         List.generate(150, (i) => 'value_$i'),
       );
-      final encoded = await JsonSafe.encode(largeMap);
+      final encoded = await JsonSafe.encode(largeMap, config);
       expect(encoded, startsWith('__VST__JSON:'));
 
-      final decoded = await JsonSafe.decode<Map<String, dynamic>>(encoded);
+      final decoded = await JsonSafe.decode<Map<String, dynamic>>(encoded, config);
       expect(decoded.length, equals(150));
     });
 
     test('should encode large List using isolate', () async {
       final largeList = List.generate(150, (i) => i);
-      final encoded = await JsonSafe.encode(largeList);
+      final encoded = await JsonSafe.encode(largeList, config);
       expect(encoded, startsWith('__VST__JSON:'));
 
-      final decoded = await JsonSafe.decode<List<dynamic>>(encoded);
+      final decoded = await JsonSafe.decode<List<Object?>>(encoded, config);
       expect(decoded.length, equals(150));
     });
   });
@@ -406,12 +430,17 @@ void main() {
       const invalidBase64 = 'not-valid-base64!';
 
       try {
-        await invalidBase64.decodeBase64Safely(context: 'encryption key');
+        await invalidBase64.decodeBase64Safely(context: 'encryption key', config: config);
         fail('Should have thrown an exception');
       } catch (error) {
-        expect(error, isA<Base64DecodeError>());
-        final base64Error = error as Base64DecodeError;
-        expect(base64Error.message, contains('encryption key'));
+        expect(
+          error,
+          isA<Base64DecodeError>().having(
+            (base64Error) => base64Error.message,
+            'message',
+            contains('encryption key'),
+          ),
+        );
       }
     });
 
@@ -419,77 +448,60 @@ void main() {
       const invalidJson = '{broken json}';
 
       try {
-        await invalidJson.decodeJsonSafely<Map<String, dynamic>>();
+        await invalidJson.decodeJsonSafely<Map<String, dynamic>>(config);
         fail('Should have thrown an exception');
       } catch (error) {
-        expect(error, isA<StorageSerializationError>());
-        final serializationError = error as StorageSerializationError;
-        expect(serializationError.message, contains('Failed to decode value'));
+        expect(
+          error,
+          isA<VaultStorageSerializationError>().having(
+            (serializationError) => serializationError.message,
+            'message',
+            contains('Failed to decode value'),
+          ),
+        );
       }
     });
   });
 
   group('Configuration and Performance Tests', () {
     test('should respect custom base64IsolateThreshold', () async {
-      // Save original value
-      final originalThreshold = VaultStorageConfig.base64IsolateThreshold;
+      const lowThreshold = VaultStorageConfig(base64IsolateThreshold: 10);
 
-      try {
-        // Set very low threshold to force isolate usage
-        VaultStorageConfig.base64IsolateThreshold = 10;
+      final data = Uint8List.fromList(.generate(20, (i) => i));
+      final encoded = await data.encodeBase64Safely(
+        context: 'threshold test',
+        config: lowThreshold,
+      );
+      expect(encoded, isA<String>());
 
-        final data = Uint8List.fromList(List.generate(20, (i) => i));
-        final encoded = await data.encodeBase64Safely(context: 'threshold test');
-        expect(encoded, isA<String>());
-
-        final decoded = await encoded.decodeBase64Safely(context: 'threshold test');
-        expect(decoded, equals(data));
-      } finally {
-        // Restore original value
-        VaultStorageConfig.base64IsolateThreshold = originalThreshold;
-      }
+      final decoded = await encoded.decodeBase64Safely(
+        context: 'threshold test',
+        config: lowThreshold,
+      );
+      expect(decoded, equals(data));
     });
 
     test('should respect custom jsonIsolateThreshold', () async {
-      // Save original value
-      final originalThreshold = VaultStorageConfig.jsonIsolateThreshold;
+      const lowThreshold = VaultStorageConfig(jsonIsolateThreshold: 5);
 
-      try {
-        // Set very low threshold to force isolate usage
-        VaultStorageConfig.jsonIsolateThreshold = 5;
+      final data = {'test': 'value that exceeds threshold'};
+      final encoded = await JsonSafe.encode(data, lowThreshold);
+      expect(encoded, isA<String>());
 
-        final data = {'test': 'value that exceeds threshold'};
-        final encoded = await JsonSafe.encode(data);
-        expect(encoded, isA<String>());
-
-        final decoded = await JsonSafe.decode<Map<String, dynamic>>(encoded);
-        expect(decoded, equals(data));
-      } finally {
-        // Restore original value
-        VaultStorageConfig.jsonIsolateThreshold = originalThreshold;
-      }
+      final decoded = await JsonSafe.decode<Map<String, dynamic>>(encoded, lowThreshold);
+      expect(decoded, equals(data));
     });
 
     test('should respect custom primitiveStringThreshold', () async {
-      // Save original value
-      final originalThreshold = VaultStorageConfig.primitiveStringThreshold;
+      const lowThreshold = VaultStorageConfig(primitiveStringThreshold: 5);
+      const shortString = 'abc';
+      const longString = 'this is longer than 5 chars';
 
-      try {
-        // Set very low threshold
-        VaultStorageConfig.primitiveStringThreshold = 5;
+      final shortEncoded = await JsonSafe.encode(shortString, lowThreshold);
+      expect(shortEncoded, startsWith('__VST__STR:'));
 
-        const shortString = 'abc';
-        const longString = 'this is longer than 5 chars';
-
-        final shortEncoded = await JsonSafe.encode(shortString);
-        expect(shortEncoded, startsWith('__VST__STR:'));
-
-        final longEncoded = await JsonSafe.encode(longString);
-        expect(longEncoded, startsWith('__VST__JSON:'));
-      } finally {
-        // Restore original value
-        VaultStorageConfig.primitiveStringThreshold = originalThreshold;
-      }
+      final longEncoded = await JsonSafe.encode(longString, lowThreshold);
+      expect(longEncoded, startsWith('__VST__JSON:'));
     });
   });
 
@@ -503,11 +515,11 @@ void main() {
       };
 
       // Encode to JSON
-      final jsonString = await originalData.encodeJsonSafely();
+      final jsonString = await originalData.encodeJsonSafely(config);
       expect(jsonString, isA<String>());
 
       // Decode back to object
-      final decodedData = await jsonString.decodeJsonSafely<Map<String, dynamic>>();
+      final decodedData = await jsonString.decodeJsonSafely<Map<String, dynamic>>(config);
       expect(decodedData, equals(originalData));
     });
 
@@ -520,7 +532,10 @@ void main() {
       expect(base64String, isA<String>());
 
       // Decode back to bytes
-      final decodedBytes = await base64String.decodeBase64Safely(context: 'round trip test');
+      final decodedBytes = await base64String.decodeBase64Safely(
+        context: 'round trip test',
+        config: config,
+      );
       expect(decodedBytes, equals(bytes));
 
       // Convert back to string
@@ -531,32 +546,32 @@ void main() {
     test('should handle all primitive types round-trip', () async {
       // Test int
       const intVal = 123;
-      var encoded = await JsonSafe.encode(intVal);
-      final decoded = await JsonSafe.decode<int>(encoded);
+      String encoded = await JsonSafe.encode(intVal, config);
+      final decoded = await JsonSafe.decode<int>(encoded, config);
       expect(decoded, equals(intVal));
 
       // Test double
       const doubleVal = 123.456;
-      encoded = await JsonSafe.encode(doubleVal);
-      final decodedDouble = await JsonSafe.decode<double>(encoded);
+      encoded = await JsonSafe.encode(doubleVal, config);
+      final decodedDouble = await JsonSafe.decode<double>(encoded, config);
       expect(decodedDouble, equals(doubleVal));
 
       // Test bool true
       const boolTrueVal = true;
-      encoded = await JsonSafe.encode(boolTrueVal);
-      final decodedBool = await JsonSafe.decode<bool>(encoded);
+      encoded = await JsonSafe.encode(boolTrueVal, config);
+      final decodedBool = await JsonSafe.decode<bool>(encoded, config);
       expect(decodedBool, equals(boolTrueVal));
 
       // Test bool false
       const boolFalseVal = false;
-      encoded = await JsonSafe.encode(boolFalseVal);
-      final decodedBoolFalse = await JsonSafe.decode<bool>(encoded);
+      encoded = await JsonSafe.encode(boolFalseVal, config);
+      final decodedBoolFalse = await JsonSafe.decode<bool>(encoded, config);
       expect(decodedBoolFalse, equals(boolFalseVal));
 
       // Test string
       const stringVal = 'test';
-      encoded = await JsonSafe.encode(stringVal);
-      final decodedString = await JsonSafe.decode<String>(encoded);
+      encoded = await JsonSafe.encode(stringVal, config);
+      final decodedString = await JsonSafe.decode<String>(encoded, config);
       expect(decodedString, equals(stringVal));
     });
 
@@ -570,15 +585,15 @@ void main() {
         'nested': {'inner': 'value', 'number': 100},
       };
 
-      final encoded = await JsonSafe.encode(complex);
-      final decoded = await JsonSafe.decode<Map<String, dynamic>>(encoded);
+      final encoded = await JsonSafe.encode(complex, config);
+      final decoded = await JsonSafe.decode<Map<String, dynamic>>(encoded, config);
 
       expect(decoded['string'], equals('value'));
       expect(decoded['int'], equals(42));
       expect(decoded['double'], equals(3.14));
       expect(decoded['bool'], equals(true));
       expect(decoded['list'], equals([1, 2, 3]));
-      expect((decoded['nested'] as Map)['inner'], equals('value'));
+      expect(decoded['nested'], containsPair('inner', 'value'));
     });
   });
 }

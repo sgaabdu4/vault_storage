@@ -1,0 +1,1 @@
+enum StorageKind { secure, normal }

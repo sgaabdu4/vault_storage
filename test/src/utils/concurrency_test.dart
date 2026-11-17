@@ -3,6 +3,15 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault_storage/src/utils/concurrency.dart';
 
+class _StepFailure implements Exception {
+  const _StepFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 void main() {
   group('mapWithConcurrency', () {
     test('returns results in input order when later tasks finish first', () async {
@@ -20,14 +29,14 @@ void main() {
     });
 
     test('never runs more tasks at once than the limit', () async {
-      var running = 0;
-      var peak = 0;
+      int running = 0;
+      int peak = 0;
       final results = await mapWithConcurrency<int, int>(List.generate(10, (index) => index), 3, (
         value,
       ) async {
         running++;
         peak = running > peak ? running : peak;
-        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(.zero);
         running--;
         return value * 2;
       });
@@ -37,7 +46,7 @@ void main() {
     });
 
     test('returns an empty list for no items without calling the task', () async {
-      var calls = 0;
+      int calls = 0;
       final results = await mapWithConcurrency<int, int>(const [], 4, (value) async {
         calls++;
         return value;
@@ -63,11 +72,11 @@ void main() {
         value,
       ) async {
         started.add(value);
-        if (value == 2) throw StateError('item 2 failed');
+        if (value == 2) throw const _StepFailure('item 2 failed');
         return value;
       });
 
-      await expectLater(run, throwsA(isA<StateError>()));
+      await expectLater(run, throwsA(isA<_StepFailure>()));
       expect(started, [0, 1, 2]);
     });
   });
@@ -88,10 +97,10 @@ void main() {
       final seen = <int>[];
       final run = inOrder<int>([1, 2, 3], (value) async {
         seen.add(value);
-        if (value == 2) throw StateError('step 2 failed');
+        if (value == 2) throw const _StepFailure('step 2 failed');
       }, reason: 'The test needs strictly ordered steps');
 
-      await expectLater(run, throwsA(isA<StateError>()));
+      await expectLater(run, throwsA(isA<_StepFailure>()));
       expect(seen, [1, 2]);
     });
   });

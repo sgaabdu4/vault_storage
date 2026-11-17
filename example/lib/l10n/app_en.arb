@@ -1,0 +1,214 @@
+{
+  "@@locale": "en",
+  "appTitle": "Vault Storage Demo",
+  "threatJailbreak": "Jailbreak/Root detected - device may be compromised",
+  "threatTampering": "App tampering detected - app integrity compromised",
+  "threatDebugging": "Debug environment detected",
+  "threatEmulator": "Running on emulator/simulator",
+  "threatHooks": "Runtime manipulation detected (hooks/injection)",
+  "threatUnofficialStore": "App installed from unofficial store",
+  "threatScreenshot": "Screen capture detected",
+  "threatScreenRecording": "Screen recording detected",
+  "threatSystemVpn": "System VPN detected",
+  "threatPasscode": "Device passcode not set",
+  "threatSecureHardware": "Secure hardware not available",
+  "threatDeveloperMode": "Developer mode enabled",
+  "threatAdbEnabled": "ADB debugging enabled",
+  "threatMultiInstance": "Multiple app instances detected",
+  "failureJailbreak": "Security Warning: Jailbreak detected - app may have limited functionality",
+  "failureTampering": "Security Error: App tampering detected - please reinstall from official source",
+  "failureThreat": "Security threat detected: {threatType} - {message}",
+  "@failureThreat": {
+    "placeholders": {
+      "threatType": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "failureInitialization": "Initialization Error: {error}",
+  "@failureInitialization": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "securityAlertTitle": "Security Alert",
+  "securityIssuesDetected": "Security issues detected:",
+  "securityThreatItem": "• {threat}",
+  "@securityThreatItem": {
+    "placeholders": {
+      "threat": {
+        "type": "String"
+      }
+    }
+  },
+  "securityFunctionalityLimited": "App functionality may be limited.",
+  "ok": "OK",
+  "cancel": "Cancel",
+  "close": "Close",
+  "fieldKey": "Key",
+  "fieldValue": "Value",
+  "fieldFileKey": "File Key",
+  "selectFromKeys": "Select from available keys",
+  "noKeysAvailable": "No keys available",
+  "noKeysStored": "No keys stored yet",
+  "orSeparator": "OR",
+  "enterKeyAndValue": "Enter Key and Value",
+  "enterKeyToRetrieve": "Enter Key to Retrieve",
+  "enterFileKey": "Enter File Key",
+  "enterFileKeyToRetrieve": "Enter File Key to Retrieve",
+  "enterKeyToDelete": "Enter Key to Delete",
+  "cancelled": "Cancelled",
+  "valueSaved": "{kind, select, secure{Secure} other{Normal}} value saved successfully!",
+  "@valueSaved": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "saveError": "Save Error: {error}",
+  "@saveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "getError": "Get Error: {error}",
+  "@getError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fileSaveError": "File Save Error: {error}",
+  "@fileSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fileGetError": "File Get Error: {error}",
+  "@fileGetError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteError": "Delete Error: {error}",
+  "@deleteError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "clearError": "Clear Error: {error}",
+  "@clearError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "storageLocationError": "Error getting storage location: {error}",
+  "@storageLocationError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "valueFound": "Value: {value}",
+  "@valueFound": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "keyNotFound": "Key not found",
+  "openingFilePicker": "Opening file picker...",
+  "noFileSelected": "No file selected",
+  "readingFile": "Reading file...",
+  "savingFile": "Saving file...",
+  "fileSaved": "{kind, select, secure{Secure} other{Normal}} file \"{fileName}\" saved with key \"{key}\"!",
+  "@fileSaved": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "fileName": {
+        "type": "String"
+      },
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "fileContent": "File content: {content}",
+  "@fileContent": {
+    "placeholders": {
+      "content": {
+        "type": "String"
+      }
+    }
+  },
+  "fileNotFound": "File not found",
+  "valueDeleted": "Value deleted successfully!",
+  "secureCleared": "Secure storage cleared successfully!",
+  "normalCleared": "Normal storage cleared successfully!",
+  "storageLocationTitle": "Storage Location",
+  "pathCopied": "Path copied to clipboard!",
+  "copyPath": "Copy Path",
+  "storageSupportDirectoryLabel": "Application Support Directory",
+  "storageKeyFileLabel": "Encrypted Key File",
+  "storageKeyFileFound": "Key file found",
+  "storageKeyFileMissing": "Key file not found",
+  "storageViewHeading": "To view it in File Explorer:",
+  "storageViewStepRun": "Press Win+R.",
+  "storageViewStepPaste": "Paste the Application Support Directory path.",
+  "storageViewStepLook": "Look for flutter_secure_storage.dat.",
+  "storageKeyFileEncrypted": "This file holds your encryption key, encrypted with Windows DPAPI.",
+  "storageKeyFileKeyName": "The key 'hive_encryption_key' is stored inside this file.",
+  "storageKeyFileCreatedLater": "The file is created when you first save secure data.",
+  "storageKeyFileSaveFirst": "Try saving a secure value first.",
+  "saveSecure": "Save Secure",
+  "saveNormal": "Save Normal",
+  "getAuto": "Get (Auto-detect)",
+  "getSecure": "Get Secure",
+  "getNormal": "Get Normal",
+  "saveSecureFile": "Save Secure File",
+  "saveNormalFile": "Save Normal File",
+  "getFile": "Get File",
+  "getSecureFile": "Get Secure File",
+  "getNormalFile": "Get Normal File",
+  "deleteValue": "Delete Value",
+  "clearSecureStorage": "Clear Secure Storage",
+  "clearNormalStorage": "Clear Normal Storage",
+  "showStorageLocation": "🔍 Show Storage Location",
+  "sectionKeyValue": "Key-Value Storage:",
+  "sectionFile": "File Storage:",
+  "sectionDelete": "Delete:",
+  "sectionClear": "Clear Storage:",
+  "sectionDebug": "Debug:",
+  "sectionAvailableKeys": "Available Keys:",
+  "sectionCurrentFileKey": "Current File Key:",
+  "initializingStorage": "Initializing storage...",
+  "availableKeyItem": "• {key}",
+  "@availableKeyItem": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  }
+}

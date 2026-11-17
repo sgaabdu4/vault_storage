@@ -17,10 +17,7 @@ mixin _$BoxConfig {
 
 /// The unique name of the box.
  String get name;/// Whether the box should be encrypted.
-/// When true, uses AES-GCM encryption with the master key.
  bool get encrypted;/// Whether to use lazy loading for this box.
-/// Lazy boxes load values on-demand, which is better for large data or files.
-/// Regular boxes load all keys into memory on open for faster access.
  bool get lazy;
 /// Create a copy of BoxConfig
 /// with the given fields replaced by the non-null parameter values.
@@ -126,10 +123,7 @@ return $default(_that);case _:
 final _that = this;
 switch (_that) {
 case _BoxConfig():
-return $default(_that);case _:
-  throw StateError('Unexpected subclass');
-
-}
+return $default(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -188,10 +182,7 @@ return $default(_that.name,_that.encrypted,_that.lazy);case _:
 @optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  bool encrypted,  bool lazy)  $default,) {final _that = this;
 switch (_that) {
 case _BoxConfig():
-return $default(_that.name,_that.encrypted,_that.lazy);case _:
-  throw StateError('Unexpected subclass');
-
-}
+return $default(_that.name,_that.encrypted,_that.lazy);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -226,11 +217,8 @@ class _BoxConfig implements BoxConfig {
 /// The unique name of the box.
 @override final  String name;
 /// Whether the box should be encrypted.
-/// When true, uses AES-GCM encryption with the master key.
 @override@JsonKey() final  bool encrypted;
 /// Whether to use lazy loading for this box.
-/// Lazy boxes load values on-demand, which is better for large data or files.
-/// Regular boxes load all keys into memory on open for faster access.
 @override@JsonKey() final  bool lazy;
 
 /// Create a copy of BoxConfig

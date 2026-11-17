@@ -2,7 +2,7 @@
 
 Secure, fast key-value and file storage for Flutter. Built on Hive and flutter_secure_storage with AES-GCM encryption, full web support, and background isolates for heavy crypto work.
 
-**v5.0.0**: Requires Dart 3.10 or later and Flutter 3.38 or later. Dependencies are updated to their latest stable compatible versions, and streamed secure-file reads now handle chunk metadata without requiring single-file nonce and MAC fields.
+**v6.0.0**: Nine breaking changes, each with a migration step in the [migration guide](#migration-guide-5x---60) and the CHANGELOG. Requires `freerasp` 9, which needs Android Gradle Plugin 8.3 or newer.
 
 **v4.0.0**: Binary TypeAdapter storage — each entry drops from ~36 bytes of wrapper overhead to 2 bytes, yielding ~30-50% faster key-value reads/writes. Web files stored as `Uint8List` (no base64 round-trip). Fully automatic — no code changes needed. Downgrade from v4.x to v3.x is not supported.
 
@@ -69,6 +69,7 @@ One API replaces four packages. Encryption is built in. Error handling is consis
 - [Security Features](#security-features)
 - [Production Notes](#production-notes)
 - [Getting Started](#getting-started)
+- [Migration Guide: 5.x -> 6.0](#migration-guide-5x---60)
 - [Migration Guide: 1.x -> 2.0](#migration-guide-1x---20)
 - [Quick Start](#quick-start)
 - [Platform Setup](#platform-setup)
@@ -285,13 +286,27 @@ Add to your `pubspec.yaml`:
 ```yaml
 dependencies:
   # ... other dependencies
-  vault_storage: ^4.0.2 # Replace with the latest version
+  vault_storage: ^6.0.0 # Replace with the latest version
 ```
 
 Then run:
 ```bash
 flutter pub get
 ```
+
+## Migration Guide: 5.x -> 6.0
+
+Nine breaking changes. The CHANGELOG lists each one with before and after code.
+
+1. Replace the seven removed error aliases (`StorageError`, `StorageReadError` and so on) with their `Vault` named types, such as `VaultStorageError` and `VaultStorageReadError`.
+2. Replace the global setters on `VaultStorageConfig` with a `const VaultStorageConfig(...)` passed as `VaultStorage.create(config: ...)`.
+3. Stop null checking `VaultSecurityConfig.androidSigningCertHashes` and `threatCallbacks`. Both default to an empty collection.
+4. Implement `IVaultStorage` instead of extending it. It is now an `abstract interface class`.
+5. Build Android apps with Android Gradle Plugin 8.3 or newer. `freerasp` 9 applies the Talsec Gradle plugin. Its Android namespace is now `app.talsec.rasp.flutter`.
+6. Catch `UnsupportedPlatformError` where you caught `UnsupportedError` or `VaultStorageReadError` for web file access. Add a case for it to every `switch` over `VaultStorageError`.
+7. Replace any class that extends or implements `BoxConfig`. It is now `sealed`.
+8. Use `Object?` where you get or open a vault storage box with Hive, such as `Hive.lazyBox<Object?>('my_box')`. Hive treats `dynamic` and `Object?` as different types.
+9. Do not extend or implement `VaultStorage`. It is `abstract final` and only holds `VaultStorage.create`. Implement `IVaultStorage` for fakes.
 
 ## Migration Guide: 1.x -> 2.0
 
@@ -909,10 +924,14 @@ V3.0 reads Lists and Maps 20-50x faster:
 Defaults suit most workloads. Override if needed:
 
 ```dart
-// Optional: customize performance thresholds at startup
-VaultStorageConfig.jsonIsolateThreshold = 15000; // chars
-VaultStorageConfig.base64IsolateThreshold = 100000; // bytes  
-VaultStorageConfig.secureFileStreamingThresholdBytes = 1 * 1024 * 1024; // 1MB
+// Optional: customize performance thresholds when creating the storage
+final storage = VaultStorage.create(
+  config: const VaultStorageConfig(
+    jsonIsolateThreshold: 15000, // chars
+    base64IsolateThreshold: 100000, // bytes
+    secureFileStreamingThresholdBytes: 1 * 1024 * 1024, // 1MB
+  ),
+);
 ```
 
 ### Background Processing
@@ -985,6 +1004,8 @@ To run tests:
 ```bash
 flutter test
 ```
+
+Planned removals of old code are tracked in [TODO.md](TODO.md).
 
 ## Dependencies
 

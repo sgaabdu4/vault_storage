@@ -5,11 +5,17 @@ import 'package:vault_storage/src/entities/box_config.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/security/security_exceptions.dart';
 import 'package:vault_storage/src/security/vault_security_config.dart';
-import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
 import '../mocks.dart';
 import '../test_context.dart';
+
+VaultStorageImpl _storageWithSecurity(TestContext testContext, VaultSecurityConfig config) {
+  final storage = testContext.createStorage(securityConfig: config);
+  storage.boxes.addAll(testContext.vaultStorage.boxes);
+  storage.isVaultStorageReady = true;
+  return storage;
+}
 
 void main() {
   group('Security Environment Validation', () {
@@ -29,33 +35,21 @@ void main() {
       testContext.tearDownCommon();
     });
 
-    /// Helper to create a VaultStorageImpl with security config and mock boxes.
-    VaultStorageImpl createStorageWithSecurity(VaultSecurityConfig config) {
-      final storage = VaultStorageImpl(
-        secureStorage: testContext.mockSecureStorage,
-        uuid: testContext.mockUuid,
-        fileOperations: testContext.mockFileOperations,
-        securityConfig: config,
-      );
-      storage.boxes.addAll(testContext.vaultStorage.boxes);
-      storage.isVaultStorageReady = true;
-      return storage;
-    }
-
     group('clearSecure blocks on insecure environment', () {
       test('should throw SecurityThreatException when blockOnJailbreak is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(const VaultSecurityConfig());
+        final storage = _storageWithSecurity(testContext, const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         expect(() => storage.clearSecure(), throwsA(isA<SecurityThreatException>()));
       });
 
       test('should throw SecurityThreatException when blockOnDebug is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(
+        final storage = _storageWithSecurity(
+          testContext,
           const VaultSecurityConfig(
             blockOnJailbreak: false,
             blockOnTampering: false,
@@ -69,9 +63,10 @@ void main() {
       });
 
       test('should throw SecurityThreatException when blockOnEmulator is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        debugDefaultTargetPlatformOverride = .iOS;
 
-        final storage = createStorageWithSecurity(
+        final storage = _storageWithSecurity(
+          testContext,
           const VaultSecurityConfig(
             blockOnJailbreak: false,
             blockOnTampering: false,
@@ -85,9 +80,10 @@ void main() {
       });
 
       test('should proceed when no blocking flags are set', () async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(
+        final storage = _storageWithSecurity(
+          testContext,
           const VaultSecurityConfig(
             blockOnJailbreak: false,
             blockOnTampering: false,
@@ -107,18 +103,19 @@ void main() {
 
     group('clearAll blocks on insecure environment', () {
       test('should throw SecurityThreatException when blockOnTampering is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(const VaultSecurityConfig());
+        final storage = _storageWithSecurity(testContext, const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         expect(() => storage.clearAll(), throwsA(isA<SecurityThreatException>()));
       });
 
       test('should throw SecurityThreatException when blockOnHooks is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        debugDefaultTargetPlatformOverride = .iOS;
 
-        final storage = createStorageWithSecurity(
+        final storage = _storageWithSecurity(
+          testContext,
           const VaultSecurityConfig(blockOnJailbreak: false, blockOnTampering: false),
         );
         storage.isSecureEnvironment = false;
@@ -129,9 +126,10 @@ void main() {
 
     group('saveSecure blocks on insecure environment', () {
       test('should throw SecurityThreatException when blockOnUnofficialStore is true', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(
+        final storage = _storageWithSecurity(
+          testContext,
           const VaultSecurityConfig(
             blockOnJailbreak: false,
             blockOnTampering: false,
@@ -150,13 +148,13 @@ void main() {
 
     group('saveSecureFile blocks on insecure environment', () {
       test('should throw SecurityThreatException when environment insecure', () {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(const VaultSecurityConfig());
+        final storage = _storageWithSecurity(testContext, const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         expect(
-          () => storage.saveSecureFile(key: 'file', fileBytes: Uint8List.fromList([1, 2, 3])),
+          () => storage.saveSecureFile(key: 'file', fileBytes: .fromList([1, 2, 3])),
           throwsA(isA<SecurityThreatException>()),
         );
       });
@@ -177,9 +175,9 @@ void main() {
 
       test('should skip validation on non-mobile platforms', () async {
         // Tests run on macOS by default, so _isSecuritySupportedOnCurrentPlatform = false
-        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        debugDefaultTargetPlatformOverride = .macOS;
 
-        final storage = createStorageWithSecurity(const VaultSecurityConfig());
+        final storage = _storageWithSecurity(testContext, const VaultSecurityConfig());
         storage.isSecureEnvironment = false;
 
         when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
@@ -191,9 +189,9 @@ void main() {
       });
 
       test('should skip validation when environment is secure', () async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        debugDefaultTargetPlatformOverride = .android;
 
-        final storage = createStorageWithSecurity(const VaultSecurityConfig());
+        final storage = _storageWithSecurity(testContext, const VaultSecurityConfig());
         storage.isSecureEnvironment = true; // Secure environment
 
         when(() => testContext.mockSecureBox.clear()).thenAnswer((_) async => 0);
@@ -222,35 +220,27 @@ void main() {
       testContext.tearDownCommon();
     });
 
-    test('should rethrow StorageInitializationError without wrapping', () async {
-      final storage = VaultStorageImpl(
-        secureStorage: testContext.mockSecureStorage,
-        uuid: testContext.mockUuid,
-        fileOperations: testContext.mockFileOperations,
-      );
+    test('should rethrow VaultStorageInitializationError without wrapping', () async {
+      final storage = testContext.createStorage();
 
-      // Make getOrCreateSecureKey throw StorageInitializationError
+      // Make getOrCreateSecureKey throw VaultStorageInitializationError
       when(
         () => testContext.mockSecureStorage.read(key: any(named: 'key')),
-      ).thenThrow(const StorageInitializationError('Key storage failure'));
+      ).thenThrow(const VaultStorageInitializationError('Key storage failure'));
 
       try {
         await storage.init();
-        fail('Expected StorageInitializationError');
-      } on StorageInitializationError catch (e) {
+        fail('Expected VaultStorageInitializationError');
+      } on VaultStorageInitializationError catch (e) {
         // Should be the original error, not double-wrapped
         expect(e.message, equals('Failed to get/create secure key'));
-        // originalException should be the actual exception, not another StorageInitializationError
-        expect(e.originalException, isA<StorageInitializationError>());
+        // originalException should be the actual exception, not another VaultStorageInitializationError
+        expect(e.originalException, isA<VaultStorageInitializationError>());
       }
     });
 
-    test('should wrap non-StorageError in StorageInitializationError', () async {
-      final storage = VaultStorageImpl(
-        secureStorage: testContext.mockSecureStorage,
-        uuid: testContext.mockUuid,
-        fileOperations: testContext.mockFileOperations,
-      );
+    test('should wrap non-VaultStorageError in VaultStorageInitializationError', () async {
+      final storage = testContext.createStorage();
 
       // Make getOrCreateSecureKey throw a generic exception
       when(
@@ -259,24 +249,22 @@ void main() {
 
       try {
         await storage.init();
-        fail('Expected StorageInitializationError');
-      } on StorageInitializationError catch (e) {
-        // getOrCreateSecureKey wraps this in StorageInitializationError,
-        // which is then rethrown by init() without double-wrapping
+        fail('Expected VaultStorageInitializationError');
+      } on VaultStorageInitializationError catch (e) {
         expect(e.message, equals('Failed to get/create secure key'));
       }
     });
   });
 
   group('Custom box duplicate name detection', () {
-    test('should throw StorageInitializationError for duplicate box names', () {
+    test('should throw VaultStorageInitializationError for duplicate box names', () {
       expect(
         () => VaultStorageImpl.validateCustomBoxConfigs(const [
           BoxConfig(name: 'my_box'),
           BoxConfig(name: 'my_box', encrypted: true),
         ]),
         throwsA(
-          isA<StorageInitializationError>().having(
+          isA<VaultStorageInitializationError>().having(
             (e) => e.message,
             'message',
             allOf(contains('Duplicate custom box name'), contains('my_box')),
@@ -285,11 +273,11 @@ void main() {
       );
     });
 
-    test('should throw StorageInitializationError for reserved box names', () {
+    test('should throw VaultStorageInitializationError for reserved box names', () {
       expect(
         () => VaultStorageImpl.validateCustomBoxConfigs(const [BoxConfig(name: 'secure_box')]),
         throwsA(
-          isA<StorageInitializationError>().having(
+          isA<VaultStorageInitializationError>().having(
             (e) => e.message,
             'message',
             contains('conflicts with a reserved box name'),
@@ -299,12 +287,14 @@ void main() {
     });
 
     test('should accept valid unique non-reserved box names', () {
-      // Should not throw
-      VaultStorageImpl.validateCustomBoxConfigs(const [
-        BoxConfig(name: 'tenant_a'),
-        BoxConfig(name: 'tenant_b', encrypted: true),
-        BoxConfig(name: 'cache', lazy: true),
-      ]);
+      expect(
+        () => VaultStorageImpl.validateCustomBoxConfigs(const [
+          BoxConfig(name: 'tenant_a'),
+          BoxConfig(name: 'tenant_b', encrypted: true),
+          BoxConfig(name: 'cache', lazy: true),
+        ]),
+        returnsNormally,
+      );
     });
   });
 
@@ -354,7 +344,7 @@ void main() {
     });
 
     test('should clear custom boxes during clearAll', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant_1'] = mockCustomBox;
 
       when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
@@ -374,8 +364,8 @@ void main() {
     });
 
     test('should clear multiple custom boxes during clearAll', () async {
-      final mockBox1 = MockBox<dynamic>();
-      final mockBox2 = MockBox<dynamic>();
+      final mockBox1 = MockBox<Object?>();
+      final mockBox2 = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['box_a'] = mockBox1;
       testContext.vaultStorage.customBoxes['box_b'] = mockBox2;
 
@@ -398,7 +388,7 @@ void main() {
     });
 
     test('should clear custom boxes even when includeFiles is false', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant_1'] = mockCustomBox;
 
       when(() => testContext.mockNormalBox.clear()).thenAnswer((_) async => 0);
@@ -442,7 +432,7 @@ void main() {
     });
 
     test('should close custom boxes on dispose', () async {
-      final mockCustomBox = MockBox<dynamic>();
+      final mockCustomBox = MockBox<Object?>();
       testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
 
       when(() => testContext.mockSecureBox.close()).thenAnswer((_) async {});
@@ -455,418 +445,6 @@ void main() {
 
       verify(() => mockCustomBox.close()).called(1);
       expect(testContext.vaultStorage.customBoxes, isEmpty);
-    });
-  });
-
-  group('init() re-entrancy', () {
-    late TestContext testContext;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('should return immediately when already initialized', () async {
-      testContext.vaultStorage.isVaultStorageReady = true;
-
-      // Should return without error
-      await testContext.vaultStorage.init();
-
-      // No interactions with secure storage (init body not executed)
-      verifyNever(() => testContext.mockSecureStorage.read(key: any(named: 'key')));
-    });
-  });
-
-  group('keys() includes custom box keys', () {
-    late TestContext testContext;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('should include keys from custom boxes', () async {
-      final mockCustomBox = MockBox<dynamic>();
-      testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
-
-      when(() => testContext.mockNormalBox.keys).thenReturn(['normal_key']);
-      when(() => testContext.mockSecureBox.keys).thenReturn(['secure_key']);
-      when(() => testContext.mockNormalFilesBox.keys).thenReturn([]);
-      when(() => testContext.mockSecureFilesBox.keys).thenReturn([]);
-      when(() => mockCustomBox.keys).thenReturn(['custom_key']);
-
-      final keys = await testContext.vaultStorage.keys();
-
-      expect(keys, containsAll(['normal_key', 'secure_key', 'custom_key']));
-    });
-
-    test('should include custom box keys when isSecure is specified', () async {
-      final mockCustomBox = MockBox<dynamic>();
-      testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
-
-      when(() => testContext.mockSecureBox.keys).thenReturn(['secure_key']);
-      when(() => testContext.mockSecureFilesBox.keys).thenReturn([]);
-      when(() => mockCustomBox.keys).thenReturn(['custom_key']);
-
-      final keys = await testContext.vaultStorage.keys(isSecure: true);
-
-      expect(keys, containsAll(['secure_key', 'custom_key']));
-    });
-  });
-
-  group('clearNormal/clearSecure rethrow StorageError', () {
-    late TestContext testContext;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('clearNormal should rethrow StorageError without wrapping', () async {
-      when(
-        () => testContext.mockNormalBox.clear(),
-      ).thenThrow(const StorageDeleteError('inner error'));
-
-      expect(
-        () => testContext.vaultStorage.clearNormal(),
-        throwsA(
-          isA<StorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
-        ),
-      );
-    });
-
-    test('clearSecure should rethrow StorageError without wrapping', () async {
-      when(
-        () => testContext.mockSecureBox.clear(),
-      ).thenThrow(const StorageDeleteError('inner error'));
-
-      expect(
-        () => testContext.vaultStorage.clearSecure(),
-        throwsA(
-          isA<StorageDeleteError>().having((e) => e.message, 'message', equals('inner error')),
-        ),
-      );
-    });
-
-    test('clearNormal should wrap non-StorageError in StorageDeleteError', () async {
-      when(() => testContext.mockNormalBox.clear()).thenThrow(Exception('unexpected'));
-
-      expect(
-        () => testContext.vaultStorage.clearNormal(),
-        throwsA(
-          isA<StorageDeleteError>().having(
-            (e) => e.message,
-            'message',
-            equals('Failed to clear normal storage'),
-          ),
-        ),
-      );
-    });
-  });
-
-  group('dispose handles in-flight init', () {
-    late TestContext testContext;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('should dispose cleanly when not initialized and no pending init', () async {
-      testContext.vaultStorage.isVaultStorageReady = false;
-
-      // Should not throw
-      await testContext.vaultStorage.dispose();
-
-      expect(testContext.vaultStorage.isVaultStorageReady, isFalse);
-    });
-
-    test('should survive custom box close error during dispose', () async {
-      final mockCustomBox = MockBox<dynamic>();
-      testContext.vaultStorage.customBoxes['failing'] = mockCustomBox;
-
-      when(() => testContext.mockSecureBox.close()).thenAnswer((_) async {});
-      when(() => testContext.mockNormalBox.close()).thenAnswer((_) async {});
-      when(() => testContext.mockSecureFilesBox.close()).thenAnswer((_) async {});
-      when(() => testContext.mockNormalFilesBox.close()).thenAnswer((_) async {});
-      when(() => mockCustomBox.close()).thenThrow(Exception('close failed'));
-
-      // Should not throw despite custom box close failure
-      await testContext.vaultStorage.dispose();
-
-      expect(testContext.vaultStorage.isVaultStorageReady, isFalse);
-      expect(testContext.vaultStorage.customBoxes, isEmpty);
-    });
-  });
-
-  group('Custom box file operations', () {
-    late TestContext testContext;
-    late MockBox<dynamic> mockCustomBox;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-      mockCustomBox = MockBox<dynamic>();
-      testContext.vaultStorage.customBoxes['tenant'] = mockCustomBox;
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('saveSecureFile to custom box should store base64 data', () async {
-      when(() => mockCustomBox.containsKey(any<dynamic>())).thenReturn(false);
-      when(() => mockCustomBox.put(any<dynamic>(), any<dynamic>())).thenAnswer((_) async {});
-
-      await testContext.vaultStorage.saveSecureFile(
-        key: 'myfile',
-        fileBytes: Uint8List.fromList([1, 2, 3]),
-        originalFileName: 'test.png',
-        metadata: {'author': 'tester'},
-        box: 'tenant',
-      );
-
-      final captured = verify(
-        () => mockCustomBox.put('myfile', captureAny<dynamic>()),
-      ).captured.single;
-      // _putInBoxBase now stores StoredValue directly (v4.x TypeAdapter format)
-      expect(captured, isA<StoredValue>());
-    });
-
-    test('saveSecureFile to non-existent box should throw BoxNotFoundError', () {
-      expect(
-        () => testContext.vaultStorage.saveSecureFile(
-          key: 'myfile',
-          fileBytes: Uint8List.fromList([1, 2, 3]),
-          box: 'unknown_box',
-        ),
-        throwsA(isA<BoxNotFoundError>()),
-      );
-    });
-
-    test('saveNormalFile to custom box should store base64 data', () async {
-      when(() => mockCustomBox.containsKey(any<dynamic>())).thenReturn(false);
-      when(() => mockCustomBox.put(any<dynamic>(), any<dynamic>())).thenAnswer((_) async {});
-
-      await testContext.vaultStorage.saveNormalFile(
-        key: 'myfile',
-        fileBytes: Uint8List.fromList([4, 5, 6]),
-        originalFileName: 'data.bin',
-        metadata: {'category': 'docs'},
-        box: 'tenant',
-      );
-
-      final captured = verify(
-        () => mockCustomBox.put('myfile', captureAny<dynamic>()),
-      ).captured.single;
-      // _putInBoxBase now stores StoredValue directly (v4.x TypeAdapter format)
-      expect(captured, isA<StoredValue>());
-    });
-
-    test('saveNormalFile to non-existent box should throw BoxNotFoundError', () {
-      expect(
-        () => testContext.vaultStorage.saveNormalFile(
-          key: 'myfile',
-          fileBytes: Uint8List.fromList([1, 2, 3]),
-          box: 'unknown_box',
-        ),
-        throwsA(isA<BoxNotFoundError>()),
-      );
-    });
-
-    test('getFile from custom box should return decoded bytes', () async {
-      when(() => mockCustomBox.containsKey('myfile')).thenReturn(true);
-      // For Box<dynamic>, _getFromBoxBase calls box.get(key) synchronously.
-      // Return a plain JSON string (legacy format) with the custom box structure
-      when(
-        () => mockCustomBox.get('myfile'),
-      ).thenReturn('{"base64Data":"AQID","extension":"bin","isCustomBox":true}');
-
-      final result = await testContext.vaultStorage.getFile('myfile', box: 'tenant');
-
-      expect(result, isNotNull);
-      expect(result, equals(Uint8List.fromList([1, 2, 3])));
-    });
-
-    test('getFile from non-existent custom box should throw BoxNotFoundError', () {
-      expect(
-        () => testContext.vaultStorage.getFile('myfile', box: 'unknown_box'),
-        throwsA(isA<BoxNotFoundError>()),
-      );
-    });
-
-    test('getFile from custom box returns null when key not found', () async {
-      when(() => mockCustomBox.containsKey('missing')).thenReturn(false);
-
-      final result = await testContext.vaultStorage.getFile('missing', box: 'tenant');
-
-      expect(result, isNull);
-    });
-
-    test('getFile from custom box throws StorageReadError for invalid metadata', () async {
-      when(() => mockCustomBox.containsKey('bad')).thenReturn(true);
-      // Return data without 'isCustomBox: true' (plain JSON string, legacy format)
-      when(() => mockCustomBox.get('bad')).thenReturn('{"someField":"data"}');
-
-      expect(
-        () => testContext.vaultStorage.getFile('bad', box: 'tenant'),
-        throwsA(
-          isA<StorageReadError>().having(
-            (e) => e.message,
-            'message',
-            contains('Invalid custom box file metadata'),
-          ),
-        ),
-      );
-    });
-  });
-
-  group('getFile auto-search', () {
-    late TestContext testContext;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('should return null when key not found in any box', () async {
-      when(() => testContext.mockNormalFilesBox.containsKey('missing')).thenReturn(false);
-      when(() => testContext.mockSecureFilesBox.containsKey('missing')).thenReturn(false);
-
-      final result = await testContext.vaultStorage.getFile('missing');
-
-      expect(result, isNull);
-    });
-
-    test('should throw AmbiguousKeyError when file in multiple default boxes', () async {
-      // Normal files box has the key
-      when(() => testContext.mockNormalFilesBox.containsKey('ambiguous')).thenReturn(true);
-      when(
-        () => testContext.mockNormalFilesBox.get('ambiguous'),
-      ).thenAnswer((_) async => '{"fileId":"1","filePath":"/f","isSecure":false}');
-
-      // Secure files box also has the key
-      when(() => testContext.mockSecureFilesBox.containsKey('ambiguous')).thenReturn(true);
-      when(
-        () => testContext.mockSecureFilesBox.get('ambiguous'),
-      ).thenAnswer((_) async => '{"fileId":"2","filePath":"/g","isSecure":true}');
-
-      expect(
-        () => testContext.vaultStorage.getFile('ambiguous'),
-        throwsA(isA<AmbiguousKeyError>()),
-      );
-    });
-  });
-
-  group('Type coercion', () {
-    late TestContext testContext;
-
-    setUpAll(() {
-      MocksHelper.registerFallbackValues();
-    });
-
-    setUp(() {
-      testContext = TestContext();
-      testContext.setUpCommon();
-    });
-
-    tearDown(() {
-      testContext.tearDownCommon();
-    });
-
-    test('should throw StorageReadError for incompatible type', () async {
-      // Store a bool value directly in normal box
-      when(() => testContext.mockNormalBox.containsKey('typed')).thenReturn(true);
-      when(() => testContext.mockNormalBox.get('typed')).thenReturn(true);
-
-      expect(
-        () => testContext.vaultStorage.get<List<int>>('typed', isSecure: false),
-        throwsA(
-          isA<StorageReadError>().having((e) => e.message, 'message', contains('Type mismatch')),
-        ),
-      );
-    });
-
-    test('should coerce int from num', () async {
-      when(() => testContext.mockNormalBox.containsKey('num_val')).thenReturn(true);
-      when(() => testContext.mockNormalBox.get('num_val')).thenReturn(42.0);
-
-      final result = await testContext.vaultStorage.get<int>('num_val', isSecure: false);
-
-      expect(result, equals(42));
-    });
-
-    test('should coerce double from int', () async {
-      when(() => testContext.mockNormalBox.containsKey('int_val')).thenReturn(true);
-      when(() => testContext.mockNormalBox.get('int_val')).thenReturn(42);
-
-      final result = await testContext.vaultStorage.get<double>('int_val', isSecure: false);
-
-      expect(result, equals(42.0));
-    });
-  });
-
-  group('AmbiguousKeyError', () {
-    test('should store key and foundInBoxes', () {
-      // Use non-const to ensure runtime constructor execution for coverage
-      // ignore: prefer_const_constructors
-      final error = AmbiguousKeyError('test_key', ['box1', 'box2'], 'Key found in multiple boxes');
-
-      expect(error.key, equals('test_key'));
-      expect(error.foundInBoxes, equals(['box1', 'box2']));
-      expect(error.message, equals('Key found in multiple boxes'));
-      expect(error.originalException, isNull);
-    });
-
-    test('should format toString correctly', () {
-      // ignore: prefer_const_constructors
-      final error = AmbiguousKeyError('key', ['normal', 'secure'], 'Ambiguous key');
-
-      expect(error.toString(), equals('AmbiguousKeyError: Ambiguous key'));
     });
   });
 }

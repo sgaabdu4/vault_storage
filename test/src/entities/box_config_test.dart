@@ -20,30 +20,30 @@ void main() {
     });
 
     test('should support copyWith', () {
-      const original = BoxConfig(name: 'original');
+      const base = BoxConfig(name: 'original');
 
-      final updated = original.copyWith(encrypted: true, lazy: true);
+      final changed = base.copyWith(encrypted: true, lazy: true);
 
-      expect(updated.name, equals('original'));
-      expect(updated.encrypted, isTrue);
-      expect(updated.lazy, isTrue);
+      expect(changed.name, equals('original'));
+      expect(changed.encrypted, isTrue);
+      expect(changed.lazy, isTrue);
 
       // Original should be unchanged
-      expect(original.encrypted, isFalse);
-      expect(original.lazy, isFalse);
+      expect(base.encrypted, isFalse);
+      expect(base.lazy, isFalse);
     });
 
     test('should support copyWith with name change', () {
-      const original = BoxConfig(name: 'original');
-      final updated = original.copyWith(name: 'updated');
+      const base = BoxConfig(name: 'original');
+      final changed = base.copyWith(name: 'updated');
 
-      expect(updated.name, equals('updated'));
-      expect(original.name, equals('original'));
+      expect(changed.name, equals('updated'));
+      expect(base.name, equals('original'));
     });
 
     test('should support equality', () {
       const config1 = BoxConfig(name: 'test', encrypted: true, lazy: true);
-      const config2 = BoxConfig(name: 'test', encrypted: true, lazy: true);
+      final config2 = config1.copyWith(name: 'test');
       const config3 = BoxConfig(name: 'different', encrypted: true, lazy: true);
 
       expect(config1, equals(config2));
@@ -52,7 +52,7 @@ void main() {
 
     test('should support hashCode', () {
       const config1 = BoxConfig(name: 'test');
-      const config2 = BoxConfig(name: 'test');
+      final config2 = config1.copyWith(name: 'test');
       const config3 = BoxConfig(name: 'different');
 
       expect(config1.hashCode, equals(config2.hashCode));

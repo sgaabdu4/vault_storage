@@ -47,6 +47,7 @@ example/pubspec.lock
 example/README.md
 
 # Repository-only files
+test/fixtures/
 .codebase-memory/
 docs/
 .github/

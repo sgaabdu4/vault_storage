@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'browser_check_failure.dart';
 import 'browser_coverage_mapping.dart';
+import 'dev_tools.dart';
 
 final _devToolsPattern = RegExp(r'DevTools listening on (ws://\S+)');
 
@@ -10,7 +12,7 @@ Future<void> main() async {
   final base = File('coverage/lcov.base.info');
   if (base.existsSync()) base.deleteSync();
   await base.parent.create(recursive: true);
-  final javascript = File('coverage/browser-case.js');
+  final bundle = File('coverage/browser-case.js');
   final compiled = await Process.run('dart', [
     'compile',
     'js',
@@ -19,32 +21,34 @@ Future<void> main() async {
     '-o',
     'coverage/browser-case.js',
   ]);
-  if (compiled.exitCode != 0) throw StateError('${compiled.stdout}\n${compiled.stderr}');
+  if (compiled.exitCode != 0) throw BrowserCheckFailure('${compiled.stdout}\n${compiled.stderr}');
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-  final requests = server.listen((request) async {
-    if (request.uri.path == '/case.js') {
-      request.response.headers.contentType = ContentType('application', 'javascript');
-      request.response.write(await javascript.readAsString());
-    } else {
-      request.response.headers.contentType = ContentType.html;
-      request.response.write('<!doctype html><body><script src="/case.js"></script></body>');
-    }
-    await request.response.close();
-  });
+  final served = server.asyncMap((request) => _serve(request, bundle)).drain<void>();
   final profile = await Directory.systemTemp.createTemp('vault-browser-coverage-');
   try {
-    await collect(javascript, base, profile, server.port);
+    await collect(bundle, base, profile, server.port);
     stdout.writeln(
       'Browser downloads: bytes, MIME types, filename, anchor cleanup and URL revocation passed.',
     );
   } finally {
-    await requests.cancel();
     await server.close(force: true);
+    await served;
     await profile.delete(recursive: true);
   }
 }
 
-Future<void> collect(File javascript, File output, Directory profile, int port) async {
+Future<void> _serve(HttpRequest request, File bundle) async {
+  if (request.uri.path == '/case.js') {
+    request.response.headers.contentType = ContentType('application', 'javascript');
+    request.response.write(await bundle.readAsString());
+  } else {
+    request.response.headers.contentType = .html;
+    request.response.write('<!doctype html><body><script src="/case.js"></script></body>');
+  }
+  await request.response.close();
+}
+
+Future<void> collect(File bundle, File output, Directory profile, int port) async {
   const arguments = [
     '--headless=new',
     '--remote-debugging-port=0',
@@ -64,8 +68,9 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
   final errors = chrome.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((
     line,
   ) {
-    final match = _devToolsPattern.firstMatch(line);
-    if (match != null && !endpoint.isCompleted) endpoint.complete(Uri.parse(match[1]!));
+    if (_devToolsPattern.firstMatch(line)?[1] case final String url when !endpoint.isCompleted) {
+      endpoint.complete(.parse(url));
+    }
   });
   final logs = chrome.stdout.drain<void>();
   DevTools? tools;
@@ -77,17 +82,18 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
     await tools.call('Page.navigate', {'url': 'http://127.0.0.1:$port/'});
     await waitForResult(tools);
     final report = await tools.call('Profiler.takePreciseCoverage');
-    final script = (report['result']! as List<Object?>).cast<Map<String, Object?>>().singleWhere(
-      (entry) => entry['url'] == 'http://127.0.0.1:$port/case.js',
+    await writeDartCoverage(
+      bundle,
+      scriptFunctions(report, 'http://127.0.0.1:$port/case.js'),
+      output,
     );
-    await writeDartCoverage(javascript, script['functions']! as List<Object?>, output);
   } finally {
     await tools?.close();
     chrome.kill();
     await chrome.exitCode.timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-        chrome.kill(ProcessSignal.sigkill);
+        chrome.kill(.sigkill);
         return -1;
       },
     );
@@ -99,59 +105,52 @@ Future<void> collect(File javascript, File output, Directory profile, int port) 
 Future<DevTools> connectPage(int port) async {
   final client = HttpClient();
   try {
-    final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json/list'));
+    final request = await client.getUrl(.parse('http://127.0.0.1:$port/json/list'));
     final response = await request.close();
-    final pages = jsonDecode(await utf8.decoder.bind(response).join()) as List<Object?>;
-    final page = pages.cast<Map<String, Object?>>().firstWhere((value) => value['type'] == 'page');
-    return DevTools(await WebSocket.connect(page['webSocketDebuggerUrl']! as String));
+    final pages = jsonDecode(await utf8.decoder.bind(response).join());
+    final socketUrl = switch (pages) {
+      final List<Object?> list => list.firstWhere(
+        (candidate) => candidate is Map<String, Object?> && candidate['type'] == 'page',
+        orElse: () => null,
+      ),
+      _ => null,
+    };
+    if (socketUrl case {'webSocketDebuggerUrl': final String url}) {
+      return DevTools(await WebSocket.connect(url));
+    }
+    throw const BrowserCheckFailure('Chrome has no page to attach to');
   } finally {
     client.close(force: true);
   }
 }
 
 Future<void> waitForResult(DevTools tools) async {
-  for (var attempt = 0; attempt < 100; attempt++) {
-    final result = await tools.call('Runtime.evaluate', {
+  for (int attempt = 0; attempt < 100; attempt++) {
+    final evaluation = await tools.call('Runtime.evaluate', {
       'expression': 'document.body && document.body.getAttribute("data-result")',
       'returnByValue': true,
     });
-    final value = (result['result']! as Map<String, Object?>)['value'];
+    final value = switch (evaluation) {
+      {'result': {'value': final Object? value}} => value,
+      _ => null,
+    };
     if (value == 'passed') return;
-    if (value is String && value.startsWith('failed:')) throw StateError(value);
+    if (value is String && value.startsWith('failed:')) throw BrowserCheckFailure(value);
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
-  throw StateError('Browser download checks did not complete');
+  throw const BrowserCheckFailure('Browser download checks did not complete');
 }
 
-class DevTools {
-  DevTools(this.socket) {
-    subscription = socket.listen((Object? message) {
-      final data = jsonDecode(message! as String) as Map<String, Object?>;
-      final response = pending.remove(data['id']);
-      if (response == null) return;
-      if (data.containsKey('error')) {
-        response.completeError(StateError('${data['error']}'));
-      } else {
-        response.complete(data['result']! as Map<String, Object?>);
+List<Object?> scriptFunctions(DevToolsResult report, String address) {
+  if (report case {'result': final List<Object?> scripts}) {
+    for (final script in scripts) {
+      if (script case {
+        'url': final String scriptUrl,
+        'functions': final List<Object?> functions,
+      } when scriptUrl == address) {
+        return functions;
       }
-    });
+    }
   }
-
-  final WebSocket socket;
-  final pending = <int, Completer<Map<String, Object?>>>{};
-  late final StreamSubscription<Object?> subscription;
-  var nextId = 0;
-
-  Future<Map<String, Object?>> call(String method, [Map<String, Object?> params = const {}]) {
-    final id = ++nextId;
-    final response = Completer<Map<String, Object?>>();
-    pending[id] = response;
-    socket.add(jsonEncode({'id': id, 'method': method, 'params': params}));
-    return response.future.timeout(const Duration(seconds: 20));
-  }
-
-  Future<void> close() async {
-    await subscription.cancel();
-    await socket.close();
-  }
+  throw BrowserCheckFailure('Chrome reported no coverage for $address');
 }

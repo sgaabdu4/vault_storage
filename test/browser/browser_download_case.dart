@@ -4,32 +4,36 @@ import 'dart:typed_data';
 import 'package:vault_storage/src/storage/web_download_helper.dart';
 import 'package:web/web.dart' as web;
 
+import 'browser_check_failure.dart';
+
 Future<void> main() async {
   try {
     await verifyDownload(null, 'application/octet-stream');
     await verifyDownload('text/plain', 'text/plain');
-    web.document.body!.setAttribute('data-result', 'passed');
+    _report('passed');
   } catch (error) {
-    web.document.body!.setAttribute('data-result', 'failed: $error');
+    _report('failed: $error');
   }
 }
+
+void _report(String result) => web.document.body?.setAttribute('data-result', result);
 
 Future<void> verifyDownload(String? mimeType, String expectedType) async {
   const name = 'synthetic-download.txt';
   final bytes = Uint8List.fromList([72, 101, 108, 108, 111]);
   final before = web.document.querySelectorAll('a').length;
   Future<web.Response>? response;
-  String? blobUrl;
+  String blobUrl = '';
   final listener = ((web.Event event) {
-    final target = event.target;
-    if (target == null || !target.isA<web.HTMLAnchorElement>()) return;
-    final anchor = target as web.HTMLAnchorElement;
+    final anchor = web.document.querySelector('a[download]');
+    if (anchor == null) return;
     event.preventDefault();
-    if (anchor.download != name || anchor.style.display != 'none') {
-      throw StateError('Download metadata changed');
+    final display = anchor.getAttribute('style') ?? '';
+    if (anchor.getAttribute('download') != name || !display.contains('display: none')) {
+      throw const BrowserCheckFailure('Download metadata changed');
     }
-    blobUrl = anchor.href;
-    response = web.window.fetch(anchor.href.toJS).toDart;
+    blobUrl = anchor.getAttribute('href') ?? '';
+    response = web.window.fetch(blobUrl.toJS).toDart;
   }).toJS;
   web.document.addEventListener('click', listener);
   try {
@@ -37,21 +41,22 @@ Future<void> verifyDownload(String? mimeType, String expectedType) async {
   } finally {
     web.document.removeEventListener('click', listener);
   }
-  if (response == null || web.document.querySelectorAll('a').length != before) {
-    throw StateError('Download was not dispatched or the anchor leaked');
-  }
-  final result = await response!;
+  final result = switch (response) {
+    final Future<web.Response> pending when web.document.querySelectorAll('a').length == before =>
+      await pending,
+    _ => throw const BrowserCheckFailure('Download was not dispatched or the anchor leaked'),
+  };
   final actual = (await result.arrayBuffer().toDart).toDart.asUint8List();
   if (result.headers.get('content-type') != expectedType ||
       actual.length != bytes.length ||
       List.generate(bytes.length, (index) => actual[index] == bytes[index]).contains(false)) {
-    throw StateError('Downloaded bytes or MIME type changed');
+    throw const BrowserCheckFailure('Downloaded bytes or MIME type changed');
   }
-  var revoked = false;
+  bool revoked = false;
   try {
-    await web.window.fetch(blobUrl!.toJS).toDart;
+    await web.window.fetch(blobUrl.toJS).toDart;
   } catch (_) {
     revoked = true;
   }
-  if (!revoked) throw StateError('Object URL was not revoked');
+  if (!revoked) throw const BrowserCheckFailure('Object URL was not revoked');
 }

@@ -1,14 +1,13 @@
 /// Mock implementation for `path_provider` on the web.
-/// These functions should not be called on the web, and will throw if they are.
 library;
 
-abstract interface class Directory {
-  String get path;
-}
+import 'package:vault_storage/src/errors/storage_error.dart';
+import 'package:vault_storage/src/mock/file_io_mock.dart';
 
 Future<Directory> getApplicationDocumentsDirectory() async {
-  throw UnsupportedError('getApplicationDocumentsDirectory is not supported on the web.');
+  throw const UnsupportedPlatformError(
+    'getApplicationDocumentsDirectory is not supported on the web.',
+  );
 }
 
-// Add other functions from path_provider here if you use them,
-// all throwing UnsupportedError.
+// Add other path_provider functions here if you use them.

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vault_storage/src/errors/storage_error.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 
 void main() {
@@ -42,8 +43,8 @@ void main() {
 
     test('should handle deeply nested structures without stack overflow', () {
       // Create a deeply nested list: [[[[...]]]]
-      dynamic deepList = 1;
-      for (var i = 0; i < 10000; i++) {
+      Object? deepList = 1;
+      for (int i = 0; i < 10000; i++) {
         deepList = [deepList];
       }
 
@@ -60,5 +61,12 @@ void main() {
       final mixed = [1, 2, DateTime.now()];
       expect(StorageStrategyHelper.determineStrategy(mixed), equals(StorageStrategy.json));
     });
+  });
+
+  test('a wrapped map without a strategy index is a serialization error', () {
+    expect(
+      () => StoredValue.fromHiveMap(const <Object?, Object?>{'value': 1}),
+      throwsA(isA<VaultStorageSerializationError>()),
+    );
   });
 }

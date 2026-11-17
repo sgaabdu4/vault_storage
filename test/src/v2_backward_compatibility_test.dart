@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
-import 'package:vault_storage/src/extensions/storage_extensions.dart';
+import 'package:vault_storage/src/extensions/json_safe.dart';
 
 /// Tests for v2.x backward compatibility
-///
-/// v2.x stored all values as JSON-encoded strings without type markers.
-/// v3.0 must properly decode these legacy formats and coerce to correct types.
 void main() {
+  const config = VaultStorageConfig();
+
   group('v2.x Legacy Format Compatibility', () {
     test('should decode v2.x int stored as JSON string', () async {
       // v2.x format: json.encode(1234567890) = "1234567890"
       const v2xIntValue = '"1234567890"';
 
-      final result = await JsonSafe.decode<int>(v2xIntValue);
+      final result = await JsonSafe.decode<int>(v2xIntValue, config);
 
       expect(result, 1234567890);
       expect(result, isA<int>());
@@ -22,7 +22,7 @@ void main() {
       // v2.x format: json.encode(3.14159) = "3.14159"
       const v2xDoubleValue = '"3.14159"';
 
-      final result = await JsonSafe.decode<double>(v2xDoubleValue);
+      final result = await JsonSafe.decode<double>(v2xDoubleValue, config);
 
       expect(result, 3.14159);
       expect(result, isA<double>());
@@ -33,8 +33,8 @@ void main() {
       const v2xBoolValueTrue = '"true"';
       const v2xBoolValueFalse = '"false"';
 
-      final resultTrue = await JsonSafe.decode<bool>(v2xBoolValueTrue);
-      final resultFalse = await JsonSafe.decode<bool>(v2xBoolValueFalse);
+      final resultTrue = await JsonSafe.decode<bool>(v2xBoolValueTrue, config);
+      final resultFalse = await JsonSafe.decode<bool>(v2xBoolValueFalse, config);
 
       expect(resultTrue, true);
       expect(resultTrue, isA<bool>());
@@ -46,7 +46,7 @@ void main() {
       // v2.x format: json.encode("hello world") = "\"hello world\""
       const v2xStringValue = '"hello world"';
 
-      final result = await JsonSafe.decode<String>(v2xStringValue);
+      final result = await JsonSafe.decode<String>(v2xStringValue, config);
 
       expect(result, 'hello world');
       expect(result, isA<String>());
@@ -56,17 +56,17 @@ void main() {
       // v2.x format: json.encode([1, 2, 3]) = "[1,2,3]"
       const v2xListValue = '[1,2,3]';
 
-      final result = await JsonSafe.decode<List<dynamic>>(v2xListValue);
+      final result = await JsonSafe.decode<List<Object?>>(v2xListValue, config);
 
       expect(result, [1, 2, 3]);
-      expect(result, isA<List<dynamic>>());
+      expect(result, isA<List<Object?>>());
     });
 
     test('should decode v2.x Map stored as JSON string', () async {
       // v2.x format: json.encode({"key": "value"}) = '{"key":"value"}'
       const v2xMapValue = '{"key":"value"}';
 
-      final result = await JsonSafe.decode<Map<String, dynamic>>(v2xMapValue);
+      final result = await JsonSafe.decode<Map<String, dynamic>>(v2xMapValue, config);
 
       expect(result, {'key': 'value'});
       expect(result, isA<Map<String, dynamic>>());
@@ -77,8 +77,8 @@ void main() {
       const intAsDouble = '42.0';
       const doubleAsInt = '42';
 
-      final intResult = await JsonSafe.decode<int>(intAsDouble);
-      final doubleResult = await JsonSafe.decode<double>(doubleAsInt);
+      final intResult = await JsonSafe.decode<int>(intAsDouble, config);
+      final doubleResult = await JsonSafe.decode<double>(doubleAsInt, config);
 
       expect(intResult, 42);
       expect(intResult, isA<int>());
@@ -89,7 +89,7 @@ void main() {
     test('should handle null values from v2.x', () async {
       const v2xNullValue = 'null';
 
-      final result = await JsonSafe.decode<String?>(v2xNullValue);
+      final result = await JsonSafe.decode<String?>(v2xNullValue, config);
 
       expect(result, isNull);
     });
@@ -100,7 +100,7 @@ void main() {
       // v3.0 format: __VST__INT:1234567890
       const v3IntValue = '__VST__INT:1234567890';
 
-      final result = await JsonSafe.decode<int>(v3IntValue);
+      final result = await JsonSafe.decode<int>(v3IntValue, config);
 
       expect(result, 1234567890);
       expect(result, isA<int>());
@@ -110,7 +110,7 @@ void main() {
       // v3.0 format: __VST__DBL:3.14159
       const v3DoubleValue = '__VST__DBL:3.14159';
 
-      final result = await JsonSafe.decode<double>(v3DoubleValue);
+      final result = await JsonSafe.decode<double>(v3DoubleValue, config);
 
       expect(result, 3.14159);
       expect(result, isA<double>());
@@ -121,8 +121,8 @@ void main() {
       const v3BoolValueTrue = '__VST__BOOL:true';
       const v3BoolValueFalse = '__VST__BOOL:false';
 
-      final resultTrue = await JsonSafe.decode<bool>(v3BoolValueTrue);
-      final resultFalse = await JsonSafe.decode<bool>(v3BoolValueFalse);
+      final resultTrue = await JsonSafe.decode<bool>(v3BoolValueTrue, config);
+      final resultFalse = await JsonSafe.decode<bool>(v3BoolValueFalse, config);
 
       expect(resultTrue, true);
       expect(resultFalse, false);
@@ -132,7 +132,7 @@ void main() {
       // v3.0 format: __VST__STR:hello world
       const v3StringValue = '__VST__STR:hello world';
 
-      final result = await JsonSafe.decode<String>(v3StringValue);
+      final result = await JsonSafe.decode<String>(v3StringValue, config);
 
       expect(result, 'hello world');
       expect(result, isA<String>());
@@ -145,8 +145,8 @@ void main() {
       const intAsDouble = '42.0';
       const doubleAsInt = '42';
 
-      final intResult = await JsonSafe.decode<int>(intAsDouble);
-      final doubleResult = await JsonSafe.decode<double>(doubleAsInt);
+      final intResult = await JsonSafe.decode<int>(intAsDouble, config);
+      final doubleResult = await JsonSafe.decode<double>(doubleAsInt, config);
 
       expect(intResult, 42);
       expect(intResult, isA<int>());
@@ -159,7 +159,7 @@ void main() {
       const v3IntValue = '__VST__INT:1234567890';
 
       // User mistakenly reads as String (e.g., changed their code)
-      final result = await JsonSafe.decode<String>(v3IntValue);
+      final result = await JsonSafe.decode<String>(v3IntValue, config);
 
       expect(result, '1234567890');
       expect(result, isA<String>());
@@ -170,7 +170,7 @@ void main() {
       const v3StringValue = '__VST__STR:123';
 
       // User wants to read as int (e.g., changed data format)
-      final result = await JsonSafe.decode<int>(v3StringValue);
+      final result = await JsonSafe.decode<int>(v3StringValue, config);
 
       expect(result, 123);
       expect(result, isA<int>());
@@ -181,8 +181,8 @@ void main() {
       const dateTimeString = '"2025-10-27T09:21:58.047024"';
 
       expect(
-        () async => JsonSafe.decode<int>(dateTimeString),
-        throwsA(isA<StorageSerializationError>()),
+        () async => JsonSafe.decode<int>(dateTimeString, config),
+        throwsA(isA<VaultStorageSerializationError>()),
       );
     });
   });
