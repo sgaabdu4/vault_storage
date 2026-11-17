@@ -11,6 +11,11 @@ import '../test_context.dart';
 
 const _secret = 'hunter2-secret';
 const _config = VaultStorageConfig();
+const _hint = 'Consider clearing corrupted data.';
+
+String _decodeFailure(String inner, String cause) =>
+    'VaultStorageSerializationError: Failed to decode value (caused by: '
+    'VaultStorageSerializationError: $inner (caused by: FormatException: $cause))';
 
 Future<String> _errorText(Future<Object?> Function() action) async {
   try {
@@ -83,6 +88,13 @@ void main() {
       final text = await _errorText(() => JsonSafe.decode<int>(encoded, _config));
 
       expect(text, isNot(contains(_secret)));
+      expect(
+        text,
+        _decodeFailure(
+          'Type mismatch: Cannot parse the stored text as int. $_hint',
+          'Invalid number',
+        ),
+      );
     });
 
     test('a decoded text that cannot parse as double leaves its content out', () async {
@@ -91,6 +103,13 @@ void main() {
       final text = await _errorText(() => JsonSafe.decode<double>(encoded, _config));
 
       expect(text, isNot(contains(_secret)));
+      expect(
+        text,
+        _decodeFailure(
+          'Type mismatch: Cannot parse the stored text as double. $_hint',
+          'Invalid number',
+        ),
+      );
     });
 
     test('text that is not valid JSON leaves its content out', () async {
@@ -99,6 +118,10 @@ void main() {
       );
 
       expect(text, isNot(contains(_secret)));
+      expect(
+        text,
+        'VaultStorageSerializationError: Failed to decode value (caused by: FormatException: Invalid JSON)',
+      );
     });
   });
 }

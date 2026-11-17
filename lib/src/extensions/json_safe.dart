@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/errors/storage_error.dart';
 
+const String _invalidJson = 'Invalid JSON';
+const String _invalidNumber = 'Invalid number';
+
 /// Utility class for safe JSON encoding and decoding with isolate support
 abstract final class JsonSafe {
   static const String _corruptedDataHint = 'Consider clearing corrupted data.';
@@ -98,7 +101,7 @@ abstract final class JsonSafe {
       return _coerceType<T>(decoded);
     } catch (e, stackTrace) {
       Error.throwWithStackTrace(
-        VaultStorageSerializationError('Failed to decode value', _withoutSource(e)),
+        VaultStorageSerializationError('Failed to decode value', _withoutSource(e, _invalidJson)),
         stackTrace,
       );
     }
@@ -128,7 +131,7 @@ abstract final class JsonSafe {
         Error.throwWithStackTrace(
           VaultStorageSerializationError(
             'Type mismatch: Cannot parse the stored text as int. $_corruptedDataHint',
-            _withoutSource(e),
+            _withoutSource(e, _invalidNumber),
           ),
           stackTrace,
         );
@@ -146,7 +149,7 @@ abstract final class JsonSafe {
         Error.throwWithStackTrace(
           VaultStorageSerializationError(
             'Type mismatch: Cannot parse the stored text as double. $_corruptedDataHint',
-            _withoutSource(e),
+            _withoutSource(e, _invalidNumber),
           ),
           stackTrace,
         );
@@ -194,8 +197,8 @@ extension JsonEncodingExtension on Object? {
   Future<String> encodeJsonSafely(VaultStorageConfig config) => JsonSafe.encode(this, config);
 }
 
-Object _withoutSource(Object error) =>
-    error is FormatException ? FormatException(error.message, null, error.offset) : error;
+Object _withoutSource(Object error, String reason) =>
+    error is FormatException ? FormatException(reason) : error;
 
 // Top-level isolate functions for JSON operations
 String _encodeInIsolate(Object? value) {
@@ -215,7 +218,10 @@ Object? _decodeInIsolate(String jsonString) {
     return json.decode(jsonString);
   } catch (e, stackTrace) {
     Error.throwWithStackTrace(
-      VaultStorageSerializationError('Failed to decode JSON string', _withoutSource(e)),
+      VaultStorageSerializationError(
+        'Failed to decode JSON string',
+        _withoutSource(e, _invalidJson),
+      ),
       stackTrace,
     );
   }
