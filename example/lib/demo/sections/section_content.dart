@@ -2,7 +2,7 @@ import 'package:example/demo/demo_keys.dart';
 import 'package:example/demo/sections/section_kind.dart';
 import 'package:example/demo/sections/section_row.dart';
 import 'package:example/demo/storage_kind.dart';
-import 'package:example/l10n/app_localizations.dart';
+import 'package:example/l10n/app_localizations.g.dart';
 import 'package:material_ui/material_ui.dart';
 
 class SectionContent {

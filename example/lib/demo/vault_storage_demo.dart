@@ -16,7 +16,7 @@ import 'package:example/demo/storage_initialization.dart';
 import 'package:example/demo/storage_kind.dart';
 import 'package:example/design/spacing.dart';
 import 'package:example/initialization_failure.dart';
-import 'package:example/l10n/app_localizations.dart';
+import 'package:example/l10n/app_localizations.g.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';

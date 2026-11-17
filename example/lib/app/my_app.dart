@@ -1,6 +1,6 @@
 import 'package:example/demo/vault_storage_demo.dart';
 import 'package:example/design/app_theme.dart';
-import 'package:example/l10n/app_localizations.dart';
+import 'package:example/l10n/app_localizations.g.dart';
 import 'package:material_ui/material_ui.dart';
 
 class MyApp extends StatelessWidget {

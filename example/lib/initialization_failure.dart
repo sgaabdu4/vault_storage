@@ -1,4 +1,4 @@
-import 'package:example/l10n/app_localizations.dart';
+import 'package:example/l10n/app_localizations.g.dart';
 import 'package:vault_storage/vault_storage.dart';
 
 String initializationFailure(AppLocalizations l10n, Object error) => switch (error) {

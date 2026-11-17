@@ -1,5 +1,5 @@
 import 'package:example/design/spacing.dart';
-import 'package:example/l10n/app_localizations.dart';
+import 'package:example/l10n/app_localizations.g.dart';
 import 'package:material_ui/material_ui.dart';
 
 class SecurityAlertDialog extends StatelessWidget {
