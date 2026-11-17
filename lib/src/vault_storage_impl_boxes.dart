@@ -22,19 +22,19 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
     return switch (stored) {
       null => null,
       final String legacyJson => await legacyJson.decodeJsonSafely<T>(_config),
-      final StoredValue value => await _decodeStored<T>(value),
+      final StoredValue value => await _decodeStored<T>(key, value),
       final Map<Object?, Object?> wrapped when StoredValue.isWrapped(wrapped) =>
-        await _decodeStored<T>(.fromHiveMap(wrapped)),
-      _ => _coerceToType<T>(stored),
+        await _decodeStored<T>(key, .fromHiveMap(wrapped)),
+      _ => _coerceToType<T>(key, stored),
     };
   }
 
-  Future<T?> _decodeStored<T>(StoredValue stored) async {
-    if (stored.strategy == .native) return _coerceToType<T>(stored.value);
+  Future<T?> _decodeStored<T>(String key, StoredValue stored) async {
+    if (stored.strategy == .native) return _coerceToType<T>(key, stored.value);
     return _jsonText(stored.value).decodeJsonSafely<T>(_config);
   }
 
-  T _coerceToType<T>(Object? value) {
+  T _coerceToType<T>(String key, Object? value) {
     if (value is T) return value;
 
     final converted = switch (value) {
@@ -48,14 +48,13 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
     };
     if (converted is T) return converted;
 
-    throw _typeMismatch<T>(value);
+    throw _typeMismatch<T>(key, value);
   }
 
-  VaultStorageReadError _typeMismatch<T>(Object? value) {
-    final stored = _describe(value);
-    final subject = 'Type mismatch: Cannot convert stored value to type $T.';
-    final detail = 'Stored: "$stored" (${value.runtimeType}), Expected: $T.';
-    return VaultStorageReadError('$subject $detail $_corruptedKeyHint');
+  VaultStorageReadError _typeMismatch<T>(String key, Object? value) {
+    final subject =
+        'Type mismatch for "$key": cannot convert the stored ${value.runtimeType} to $T.';
+    return VaultStorageReadError('$subject $_corruptedKeyHint');
   }
 
   /// Set value in a specific box

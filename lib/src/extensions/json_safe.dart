@@ -98,7 +98,7 @@ abstract final class JsonSafe {
       return _coerceType<T>(decoded);
     } catch (e, stackTrace) {
       Error.throwWithStackTrace(
-        VaultStorageSerializationError('Failed to decode value', e),
+        VaultStorageSerializationError('Failed to decode value', _withoutSource(e)),
         stackTrace,
       );
     }
@@ -127,8 +127,8 @@ abstract final class JsonSafe {
       } catch (e, stackTrace) {
         Error.throwWithStackTrace(
           VaultStorageSerializationError(
-            'Type mismatch: Cannot parse "$value" as int. $_corruptedDataHint',
-            e,
+            'Type mismatch: Cannot parse the stored text as int. $_corruptedDataHint',
+            _withoutSource(e),
           ),
           stackTrace,
         );
@@ -145,8 +145,8 @@ abstract final class JsonSafe {
       } catch (e, stackTrace) {
         Error.throwWithStackTrace(
           VaultStorageSerializationError(
-            'Type mismatch: Cannot parse "$value" as double. $_corruptedDataHint',
-            e,
+            'Type mismatch: Cannot parse the stored text as double. $_corruptedDataHint',
+            _withoutSource(e),
           ),
           stackTrace,
         );
@@ -155,11 +155,10 @@ abstract final class JsonSafe {
     throw _typeMismatch<double>(value);
   }
 
-  static VaultStorageSerializationError _typeMismatch<T>(
-    Object? value,
-  ) => VaultStorageSerializationError(
-    'Type mismatch: Cannot convert "${value ?? 'null'}" (${value.runtimeType}) to type $T. $_corruptedDataHint',
-  );
+  static VaultStorageSerializationError _typeMismatch<T>(Object? value) =>
+      VaultStorageSerializationError(
+        'Type mismatch: Cannot convert ${value.runtimeType} to type $T. $_corruptedDataHint',
+      );
 
   /// Encodes complex objects (non-primitives) with isolate optimization
   static Future<String> _encodeComplex(Object? value, VaultStorageConfig config) async {
@@ -195,6 +194,9 @@ extension JsonEncodingExtension on Object? {
   Future<String> encodeJsonSafely(VaultStorageConfig config) => JsonSafe.encode(this, config);
 }
 
+Object _withoutSource(Object error) =>
+    error is FormatException ? FormatException(error.message, null, error.offset) : error;
+
 // Top-level isolate functions for JSON operations
 String _encodeInIsolate(Object? value) {
   try {
@@ -213,7 +215,7 @@ Object? _decodeInIsolate(String jsonString) {
     return json.decode(jsonString);
   } catch (e, stackTrace) {
     Error.throwWithStackTrace(
-      VaultStorageSerializationError('Failed to decode JSON string', e),
+      VaultStorageSerializationError('Failed to decode JSON string', _withoutSource(e)),
       stackTrace,
     );
   }
