@@ -4,13 +4,16 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:vault_storage/src/constants/storage_keys.dart';
 import 'package:vault_storage/src/entities/box_config.dart';
 import 'package:vault_storage/src/interface/i_secure_key_store.dart';
 import 'package:vault_storage/src/storage/file_operations.dart';
+import 'package:vault_storage/src/storage/storage_strategy.dart';
 import 'package:vault_storage/src/storage/uuid_id_generator.dart';
+import 'package:vault_storage/src/storage/vault_storage_adapter_registry.dart';
 import 'package:vault_storage/src/vault_storage_impl.dart';
 
-const _docs = '/tmp/vault_storage_fixture_5x/docs';
+const _writtenPath = '/tmp/vault_storage_fixture_5x/docs';
 const _fixture = 'test/fixtures/v5';
 const _twoMiBAndMore = 2107000;
 
@@ -40,18 +43,46 @@ void _copyDirectory(Directory source, Directory target) {
   }
 }
 
+Future<void> _pointFilesAt(String docs, String? masterKey) async {
+  VaultStorageAdapterRegistry.ensureRegistered();
+  Hive.init('$docs/hive');
+  final cipher = HiveAesCipher(base64Url.decode(masterKey ?? ''));
+  for (final name in [StorageKeys.normalFilesBox, StorageKeys.secureFilesBox]) {
+    final box = await Hive.openLazyBox<Object?>(
+      name,
+      encryptionCipher: name == StorageKeys.secureFilesBox ? cipher : null,
+    );
+    for (final key in box.keys) {
+      if (await box.get(key) case StoredValue(value: final Map<Object?, Object?> metadata)) {
+        final path = metadata['filePath'];
+        if (path is String) {
+          await box.put(
+            key,
+            StoredValue({...metadata, 'filePath': path.replaceFirst(_writtenPath, docs)}, .native),
+          );
+        }
+      }
+    }
+    await box.close();
+  }
+  await Hive.close();
+}
+
 void main() {
   group('data written by vault_storage 5.x', () {
     late VaultStorageImpl storage;
+    late Directory folder;
+    final usedFolders = <String>[];
 
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
-      final docs = Directory(_docs);
-      if (docs.existsSync()) docs.deleteSync(recursive: true);
+      folder = await Directory.systemTemp.createTemp('vault_v5_');
+      final docs = Directory('${folder.path}/docs');
       _copyDirectory(Directory('$_fixture/docs'), docs);
+      usedFolders.add(docs.path);
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('plugins.flutter.io/path_provider'),
-        (call) async => call.method == 'getApplicationDocumentsDirectory' ? _docs : null,
+        (call) async => call.method == 'getApplicationDocumentsDirectory' ? docs.path : null,
       );
       final keys = switch (jsonDecode(File('$_fixture/keys.json').readAsStringSync())) {
         {'master': final String master, 'files': final Map<String, dynamic> files} =>
@@ -62,6 +93,7 @@ void main() {
           },
         _ => fail('keys.json holds no master key'),
       };
+      await _pointFilesAt(docs.path, keys['hive_encryption_key']);
       storage = VaultStorageImpl(
         secureStorage: _FixtureKeyStore(keys),
         uuid: const UuidIdGenerator(),
@@ -79,10 +111,16 @@ void main() {
     tearDown(() async {
       await storage.dispose();
       await Hive.close();
+      await folder.delete(recursive: true);
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('plugins.flutter.io/path_provider'),
         null,
       );
+    });
+
+    test('works in a folder of its own for each run', () {
+      expect(usedFolders, hasLength(usedFolders.toSet().length));
+      expect(usedFolders.last, isNot(_writtenPath));
     });
 
     test('reads the plain values', () async {
