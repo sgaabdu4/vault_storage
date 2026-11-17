@@ -1,14 +1,15 @@
 ## [6.0.0] - 2026-11-16
 ### Breaking changes
-This release has eight breaking changes. Each one has a migration step below.
+This release has nine breaking changes. Each one has a migration step below.
 1. Removed the seven deprecated error aliases from `lib/src/errors/storage_error.dart`.
 2. `VaultStorageConfig` is now an immutable value passed to `VaultStorage.create(config: ...)`. The five global setters are gone.
 3. `VaultSecurityConfig.androidSigningCertHashes` and `threatCallbacks` are no longer nullable. Both default to an empty collection.
 4. `IVaultStorage` is now an `abstract interface class`. Implementing it still works. Extending it from another library does not.
 5. `freerasp` moved from ^8.2.2 to ^9.0.0. Android builds now need the Talsec Gradle plugin, which needs Android Gradle Plugin 8.3 or newer. The plugin's Android namespace changed from `com.aheaditec.freerasp` to `app.talsec.rasp.flutter`.
-6. New `UnsupportedPlatformError`, a subtype of the sealed `VaultStorageError`. A `switch` over every error type must add a case. The web stubs now throw it where they threw `UnsupportedError`.
+6. New `UnsupportedPlatformError`, a subtype of the sealed `VaultStorageError`. A `switch` over every error type must add a case. The web stubs now throw it where they threw `UnsupportedError`. On web, `getFile` used to surface this as a `VaultStorageReadError`. It now throws `UnsupportedPlatformError`.
 7. `BoxConfig` is now `sealed`. It cannot be extended or implemented outside this package.
 8. The boxes open as `Box<Object?>` and `LazyBox<Object?>`, not `dynamic`. Hive treats the two as different types.
+9. `VaultStorage` is now `abstract final`. `implements VaultStorage` and `extends VaultStorage` no longer compile. It only holds `VaultStorage.create`.
 
 ### Migrating from 5.x
 Each heading names the item number from the list above.
@@ -89,7 +90,7 @@ Old form on web:
 ```dart
 try {
   await storage.getFile('report');
-} on UnsupportedError {
+} on VaultStorageReadError {
   // file access is not available
 }
 ```
@@ -128,8 +129,15 @@ final box = Hive.lazyBox<Object?>('my_box');
 
 The same applies to `Hive.box<dynamic>`, `Hive.openBox<dynamic>` and `Hive.openLazyBox<dynamic>`. If your app opens a box with a name that you also pass in `customBoxes`, open it as `Object?` before `init()`, or Hive throws `The box is already open and of type ...`. `hive_ce` is now a development dependency of this package, so add it to your own `pubspec.yaml` if you import it.
 
+#### 9. VaultStorage
+Use `VaultStorage.create(...)` to get an `IVaultStorage`. To fake the storage in tests, implement `IVaultStorage`, not `VaultStorage`:
+
+```dart
+class FakeStorage implements IVaultStorage { /* ... */ }
+```
+
 ### Fixed
-- A streamed secure file of 2 MiB or more now reads back on web after its box reloads. The chunk metadata came back with untyped nested maps and the read failed with a range error.
+- A streamed secure file of 2 MiB or more now reads back on web after its box reloads. In 5.x the read failed with a type error, because the chunk metadata came back with untyped nested maps.
 - Type mismatch and decode errors no longer put the stored value in the message or in the cause. Secure box values stayed out of logs only by luck before. The message now holds the key and the types.
 - `getFile` throws `VaultStorageSerializationError`, as in 5.x, for broken file metadata when it searches every box.
 
