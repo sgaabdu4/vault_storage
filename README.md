@@ -296,12 +296,16 @@ flutter pub get
 
 ## Migration Guide: 5.x -> 6.0
 
-Four breaking changes. The CHANGELOG lists each one with before and after code.
+Eight breaking changes. The CHANGELOG lists each one with before and after code.
 
 1. Replace the seven removed error aliases (`StorageError`, `StorageReadError` and so on) with their `Vault` named types, such as `VaultStorageError` and `VaultStorageReadError`.
 2. Replace the global setters on `VaultStorageConfig` with a `const VaultStorageConfig(...)` passed as `VaultStorage.create(config: ...)`.
 3. Stop null checking `VaultSecurityConfig.androidSigningCertHashes` and `threatCallbacks`. Both default to an empty collection.
 4. Implement `IVaultStorage` instead of extending it. It is now an `abstract interface class`.
+5. Build Android apps with Android Gradle Plugin 8.3 or newer. `freerasp` 9 applies the Talsec Gradle plugin. Its Android namespace is now `app.talsec.rasp.flutter`.
+6. Catch `UnsupportedPlatformError` where you caught `UnsupportedError` on web. Add a case for it to every `switch` over `VaultStorageError`.
+7. Replace any class that extends or implements `BoxConfig`. It is now `sealed`.
+8. Use `Object?` where you get or open a vault storage box with Hive, such as `Hive.lazyBox<Object?>('my_box')`. Hive treats `dynamic` and `Object?` as different types.
 
 ## Migration Guide: 1.x -> 2.0
 
