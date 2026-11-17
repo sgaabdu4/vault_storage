@@ -1,0 +1,145 @@
+// Run at commit c25a4413 (vault_storage 5.x), saved there as test/generate_v5_fixture_test.dart: flutter test --dart-define=FIXTURE_OUT=<dir> test/generate_v5_fixture_test.dart
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:vault_storage/src/entities/box_config.dart';
+import 'package:vault_storage/src/vault_storage_impl.dart';
+
+import 'mocks.dart';
+
+const _docs = '/tmp/vault_storage_fixture_5x/docs';
+const _out = String.fromEnvironment('FIXTURE_OUT');
+
+Uint8List _bytes(int length) =>
+    Uint8List.fromList(List.generate(length, (index) => (index * 7 + 3) & 0xFF));
+
+void main() {
+  test('writes the 5.x fixture', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    MocksHelper.registerFallbackValues();
+    final docs = Directory(_docs);
+    if (docs.existsSync()) docs.deleteSync(recursive: true);
+    docs.createSync(recursive: true);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (call) async => call.method == 'getApplicationDocumentsDirectory' ? _docs : null,
+    );
+
+    final keys = <String, String?>{};
+    final secureStorage = MockFlutterSecureStorage();
+    when(() => secureStorage.read(key: any(named: 'key'))).thenAnswer(
+      (invocation) async => keys[invocation.namedArguments[#key] as String],
+    );
+    when(
+      () => secureStorage.write(key: any(named: 'key'), value: any(named: 'value')),
+    ).thenAnswer((invocation) async {
+      keys[invocation.namedArguments[#key] as String] =
+          invocation.namedArguments[#value] as String?;
+    });
+    when(() => secureStorage.delete(key: any(named: 'key'))).thenAnswer((_) async {});
+
+    final storage = VaultStorageImpl(
+      secureStorage: secureStorage,
+      storageDirectory: 'hive',
+      customBoxes: const [
+        BoxConfig(name: 'plain_box'),
+        BoxConfig(name: 'encrypted_box', encrypted: true),
+        BoxConfig(name: 'lazy_box', encrypted: true, lazy: true),
+      ],
+    );
+    await storage.init();
+
+    await storage.saveNormal(key: 'text', value: 'hello 5.x');
+    await storage.saveNormal(key: 'count', value: 42);
+    await storage.saveNormal(key: 'ratio', value: 3.5);
+    await storage.saveNormal(key: 'flag', value: true);
+    await storage.saveNormal(key: 'list', value: [1, 2, 3]);
+    await storage.saveNormal(
+      key: 'map',
+      value: {
+        'a': 1,
+        'nested': {
+          'b': [true, null],
+        },
+      },
+    );
+    await storage.saveNormal(key: 'long_text', value: 'x' * 1500);
+    await storage.saveSecure(key: 'secret', value: 'secret-5x');
+    await storage.saveSecure(key: 'pin', value: 1234);
+    await storage.saveSecure(key: 'credentials', value: {'user': 'u', 'pass': 'p'});
+    await storage.saveNormal(key: 'theme', value: 'dark', box: 'plain_box');
+    await storage.saveSecure(
+      key: 'token',
+      value: {
+        'id': 'tok-5x',
+        'scopes': ['a', 'b'],
+      },
+      box: 'encrypted_box',
+    );
+    await storage.saveNormal(
+      key: 'record',
+      value: {
+        'x': [1, 2],
+      },
+      box: 'lazy_box',
+    );
+
+    await storage.saveNormalFile(
+      key: 'normal_small',
+      fileBytes: _bytes(300),
+      originalFileName: 'small.bin',
+      metadata: {'owner': 'fixture'},
+    );
+    await storage.saveNormalFile(
+      key: 'normal_big',
+      fileBytes: _bytes(2107000),
+      originalFileName: 'big.bin',
+    );
+    await storage.saveSecureFile(
+      key: 'secure_small',
+      fileBytes: _bytes(300),
+      originalFileName: 'small.bin',
+    );
+    await storage.saveSecureFile(
+      key: 'secure_big',
+      fileBytes: _bytes(2107000),
+      originalFileName: 'big.bin',
+    );
+    await storage.saveNormalFile(
+      key: 'custom_file',
+      fileBytes: _bytes(300),
+      originalFileName: 'custom.bin',
+      box: 'lazy_box',
+    );
+
+    await storage.dispose();
+    await Hive.close();
+
+    final out = Directory(_out);
+    if (out.existsSync()) out.deleteSync(recursive: true);
+    out.createSync(recursive: true);
+    for (final entity in docs.listSync(recursive: true).whereType<File>()) {
+      if (entity.path.endsWith('.lock')) continue;
+      final target = File('${out.path}/docs${entity.path.substring(docs.path.length)}');
+      target.parent.createSync(recursive: true);
+      entity.copySync(target.path);
+    }
+    const fileKeyPrefix = 'file_key_';
+    File('${out.path}/keys.json').writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert({
+        'master': keys['hive_encryption_key'],
+        'files': {
+          for (final entry in keys.entries)
+            if (entry.key.startsWith(fileKeyPrefix))
+              entry.key.substring(fileKeyPrefix.length): entry.value,
+        },
+      }),
+    );
+  });
+}

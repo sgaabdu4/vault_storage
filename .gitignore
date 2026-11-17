@@ -55,3 +55,6 @@ __pycache__/
 # Local session cache used by the current Hard Eng runtime.
 .hard-eng/
 .claude/worktrees/
+
+# Fixture written by vault_storage 5.x
+!test/fixtures/v5/**/*_box.hive
