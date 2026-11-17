@@ -7,6 +7,22 @@ import 'package:vault_storage/src/storage/storage_strategy.dart';
 import '../mocks.dart';
 import '../test_context.dart';
 
+Future<void> _expectSerializationErrorForBrokenMetadata(
+  TestContext testContext, {
+  required bool isSecure,
+}) async {
+  final files = isSecure ? testContext.mockSecureFilesBox : testContext.mockNormalFilesBox;
+  final other = isSecure ? testContext.mockNormalFilesBox : testContext.mockSecureFilesBox;
+  when(() => files.containsKey('broken')).thenReturn(true);
+  when(() => files.get('broken')).thenAnswer((_) async => 'not json');
+  when(() => other.containsKey('broken')).thenReturn(false);
+
+  await expectLater(
+    testContext.vaultStorage.getFile('broken'),
+    throwsA(isA<VaultStorageSerializationError>()),
+  );
+}
+
 void main() {
   group('init() re-entrancy', () {
     late TestContext testContext;
@@ -329,6 +345,14 @@ void main() {
       final result = await testContext.vaultStorage.getFile('missing');
 
       expect(result, isNull);
+    });
+
+    test('throws VaultStorageSerializationError for broken normal file metadata', () {
+      return _expectSerializationErrorForBrokenMetadata(testContext, isSecure: false);
+    });
+
+    test('throws VaultStorageSerializationError for broken secure file metadata', () {
+      return _expectSerializationErrorForBrokenMetadata(testContext, isSecure: true);
     });
 
     test('should throw AmbiguousKeyError when file in multiple default boxes', () async {
