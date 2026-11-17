@@ -41,9 +41,7 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
       final num number when T == int => number.toInt(),
       final num number when T == double => number.toDouble(),
       final Object object when T == String => object.toString(),
-      final Map<Object?, Object?> map => <String, dynamic>{
-        for (final entry in map.entries) _describe(entry.key): entry.value,
-      },
+      final Map<Object?, Object?> map => _withStringKeys(map),
       _ => null,
     };
     if (converted is T) return converted;
@@ -163,6 +161,18 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
 String _describe(Object? value) => switch (value) {
   null => 'null',
   final Object present => present.toString(),
+};
+
+Map<String, Object?> _withStringKeys(Map<Object?, Object?> map) => <String, Object?>{
+  for (final entry in map.entries) _describe(entry.key): _nestedWithStringKeys(entry.value),
+};
+
+Object? _nestedWithStringKeys(Object? value) => switch (value) {
+  final Map<Object?, Object?> map => _withStringKeys(map),
+  final List<Object?> list when list is! TypedData => [
+    for (final item in list) _nestedWithStringKeys(item),
+  ],
+  _ => value,
 };
 
 Iterable<String> _stringKeys(BoxBase<Object?>? box) => switch (box) {

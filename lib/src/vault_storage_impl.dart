@@ -1,3 +1,5 @@
+import 'dart:typed_data' show TypedData;
+
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:vault_storage/src/constants/storage_keys.dart';
