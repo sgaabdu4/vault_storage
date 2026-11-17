@@ -43,6 +43,12 @@ class VaultStorageImpl implements IVaultStorage {
   final VaultStorageConfig _config;
 
   @visibleForTesting
+  VaultStorageConfig get config => _config;
+
+  @visibleForTesting
+  IFileOperations get fileOperations => _fileOperations;
+
+  @visibleForTesting
   final bool isAdapterRegistered = _registerAdapters();
 
   @visibleForTesting

@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive_ce.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:vault_storage/src/storage/file_operations.dart';
 import 'package:vault_storage/src/storage/stored_value_adapter.dart';
+import 'package:vault_storage/src/vault_storage_impl.dart';
 import 'package:vault_storage/vault_storage.dart';
 
 import 'mocks.dart';
@@ -18,6 +20,33 @@ void main() {
 
       expect(storage, isA<IVaultStorage>());
       expect(Hive.isAdapterRegistered(StoredValueAdapter.storedValueTypeId), isTrue);
+    });
+
+    test('passes the given config to the storage and to its file operations', () {
+      const custom = VaultStorageConfig(
+        jsonIsolateThreshold: 11,
+        primitiveStringThreshold: 12,
+        base64IsolateThreshold: 13,
+        secureFileStreamingThresholdBytes: 14,
+        secureFileStreamingChunkSizeBytes: 15,
+      );
+
+      final storage = VaultStorage.create(config: custom);
+
+      expect(
+        storage,
+        isA<VaultStorageImpl>()
+            .having((impl) => impl.config, 'config', same(custom))
+            .having(
+              (impl) => impl.fileOperations,
+              'fileOperations',
+              isA<FileOperations>().having(
+                (operations) => operations.config,
+                'config',
+                same(custom),
+              ),
+            ),
+      );
     });
 
     test('should create instance without security config', () {
