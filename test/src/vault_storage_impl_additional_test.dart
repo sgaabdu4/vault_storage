@@ -29,6 +29,28 @@ void main() {
       testContext.tearDownCommon();
     });
 
+    group('Map keys of stored app data', () {
+      test('keeps the non-text keys of a nested map as 5.x did', () async {
+        when(() => testContext.mockNormalBox.containsKey('byId')).thenReturn(true);
+        when(() => testContext.mockNormalBox.get('byId')).thenReturn(<Object?, Object?>{
+          'byId': <Object?, Object?>{1: 'a'},
+        });
+
+        final result = await testContext.vaultStorage.get<Map<String, dynamic>>(
+          'byId',
+          isSecure: false,
+        );
+
+        expect(result, {
+          'byId': {1: 'a'},
+        });
+        expect(
+          result?['byId'],
+          isA<Map<Object?, Object?>>().having((nested) => nested.keys.single, 'key', isA<int>()),
+        );
+      });
+    });
+
     group('Custom Boxes - Initialization', () {
       test('should handle custom storage directory', () async {
         final storage = testContext.createStorage(storageDirectory: 'my_custom_dir');

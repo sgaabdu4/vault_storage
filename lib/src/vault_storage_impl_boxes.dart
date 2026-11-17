@@ -41,7 +41,7 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
       final num number when T == int => number.toInt(),
       final num number when T == double => number.toDouble(),
       final Object object when T == String => object.toString(),
-      final Map<Object?, Object?> map => _withStringKeys(map),
+      final Map<Object?, Object?> map => _withStringKeys(map, deep: false),
       _ => null,
     };
     if (converted is T) return converted;
@@ -106,7 +106,7 @@ extension VaultStorageBoxAccess on VaultStorageImpl {
       final result = await _getFromBoxBase<Map<String, dynamic>>(box, key);
       return switch (result) {
         final Map<String, dynamic> stored => <String, dynamic>{
-          ...stored,
+          ..._withStringKeys(stored, deep: true),
           StoredFileKeys.isSecure: isSecure,
         },
         null => const <String, dynamic>{},
@@ -163,12 +163,14 @@ String _describe(Object? value) => switch (value) {
   final Object present => present.toString(),
 };
 
-Map<String, Object?> _withStringKeys(Map<Object?, Object?> map) => <String, Object?>{
-  for (final entry in map.entries) _describe(entry.key): _nestedWithStringKeys(entry.value),
-};
+Map<String, Object?> _withStringKeys(Map<Object?, Object?> map, {required bool deep}) =>
+    <String, Object?>{
+      for (final entry in map.entries)
+        _describe(entry.key): deep ? _nestedWithStringKeys(entry.value) : entry.value,
+    };
 
 Object? _nestedWithStringKeys(Object? value) => switch (value) {
-  final Map<Object?, Object?> map => _withStringKeys(map),
+  final Map<Object?, Object?> map => _withStringKeys(map, deep: true),
   final List<Object?> list when list is! TypedData => [
     for (final item in list) _nestedWithStringKeys(item),
   ],
