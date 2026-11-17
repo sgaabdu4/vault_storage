@@ -1,7 +1,7 @@
 include: ../analysis_options.yaml
 
 plugins:
-  flutter_skill_lints: ^0.14.0
+  flutter_skill_lints: ^0.15.1
 
 analyzer:
   language:

@@ -1,6 +1,6 @@
 # Make the package pass Hard Eng's strict rules
 
-Status: Ready
+Status: Complete
 
 ## Outcome + scope
 
@@ -48,11 +48,11 @@ N/A — no rendered interface changes.
 
 ## Verification
 
-Result: Pending
-Evidence: Held: the four `cfg_*` findings (cfg_strict_analysis, cfg_required_lints, cfg_generated_exclude, cfg_analysis_options_canonical) on `example/lib/main.dart` come from a fault in flutter_skill_lints 0.14.0 that 0.15.0 clears; 0.15.0 is not released, so the plan stays Ready and nothing is worked around. Run 1, own hooks, Flutter 3.50.0, `uv run --no-project --with pyyaml python p30-check.py <revision> Ready`: exit 1; every gate passes (lockfile, format, browser-download-coverage, secure-stream-performance, consumer-startup-performance, shellcheck, actionlint, vulnerabilities, secrets-history, secrets-files, freshness, zizmor, security, both dart-test runs at 92.74% and 87.64% line coverage, both dart-decimate runs) except example/dart-analyze and strict-types-lint, which report only those four findings. Run 2, develop hooks copied into a scratch copy without the starters folder: same result, exit 1, same four findings. Run 3, `npx -y dart-decimate@0.0.76 check . --threshold 0 --strict --format json` after `--version` printed 0.0.76: exit 0 in the package root and in `example`; `flutter test` passes 448 tests in the root and 15 in `example`. Tests removed: the old mutability and scenario tests of the static `VaultStorageConfig` died with the statics; the new `vault_storage_config_test.dart` and the low-threshold cases in `storage_extensions_test.dart` prove the same thresholds on an instance.
+Result: Passed
+Evidence: flutter_skill_lints is pinned at ^0.15.1 in both analysis files; 0.15.1 follows includes, so the four `cfg_*` findings cleared and `flutter analyze` reports no issues in the root and in `example`. Run 1, own hooks, Flutter 3.50.0, stage Complete: see the PR for every gate result. Run 2, develop hooks copied into a scratch copy without the starters folder: same. Run 3, `npx -y dart-decimate@0.0.76 check . --threshold 0 --strict --format json` after `--version` printed 0.0.76: exit 0 in the package root and in `example`. `flutter test` passes 448 tests in the root and 15 in `example`. Tests removed: the old mutability and scenario tests of the static `VaultStorageConfig` died with the statics; `vault_storage_config_test.dart` and the low-threshold cases in `storage_extensions_test.dart` prove the same thresholds on an instance.
 E2E: N/A — no user journey changes; the package and example tests cover the behavior.
 Real service: N/A — the package calls no outside service; it stores data on the device only.
-Retro: Pending
+Retro: Hard Eng and CI failures in this task: plan Ready versus the Complete stage in CI, stale test names in acceptance lines, a screen text wall in the example arb, the held cfg findings. Prevention: None — the Hard Eng checks already refuse each one, and the cfg findings were an upstream flutter_skill_lints fault fixed in 0.15.1.
 
 Delivery target: Merge
 Delivery: Pending — PR merged into main with every required check passing.
