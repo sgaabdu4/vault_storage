@@ -4,6 +4,8 @@ import 'package:vault_storage/src/constants/vault_storage_config.dart';
 import 'package:vault_storage/src/errors/errors.dart';
 import 'package:vault_storage/src/extensions/json_safe.dart';
 
+import 'package:vault_storage/src/extensions/storage_extensions.dart';
+import 'package:vault_storage/src/storage/file_operations.dart';
 import 'package:vault_storage/src/storage/storage_strategy.dart';
 
 import '../mocks.dart';
@@ -122,6 +124,53 @@ void main() {
         text,
         'VaultStorageSerializationError: Failed to decode value (caused by: FormatException: Invalid JSON)',
       );
+    });
+
+    test('a corrupt stored file key leaves its content out of the error', () async {
+      when(
+        () => testContext.mockSecureStorage.read(key: 'file_key_1'),
+      ).thenAnswer((_) async => _secret);
+
+      final text = await _errorText(
+        () => FileOperations().getSecureFile(
+          fileMetadata: {
+            'fileId': '1',
+            'secureKeyName': 'file_key_1',
+            'streaming': true,
+            'chunkCount': 0,
+          },
+          isWeb: true,
+          secureStorage: testContext.mockSecureStorage,
+          getBox: testContext.getBox,
+        ),
+      );
+
+      expect(text, isNot(contains(_secret)));
+      expect(
+        text,
+        'Base64DecodeError: Failed to decode base64 for encryption key '
+        '(caused by: FormatException: Invalid base64)',
+      );
+    });
+
+    test('a corrupt stored text of any size leaves its content out of the error', () async {
+      final small = await _errorText(
+        () async => _secret.decodeBase64Safely(context: 'x', config: _config),
+      );
+      final large = await _errorText(
+        () async => ('$_secret!' * 20).decodeBase64Safely(
+          context: 'x',
+          config: const VaultStorageConfig(base64IsolateThreshold: 10),
+        ),
+      );
+
+      for (final text in [small, large]) {
+        expect(
+          text,
+          'Base64DecodeError: Failed to decode base64 for x '
+          '(caused by: FormatException: Invalid base64)',
+        );
+      }
     });
   });
 }

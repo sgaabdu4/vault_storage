@@ -12,6 +12,11 @@ Uint8List _decodeBase64Lenient(String data) {
   }
 }
 
+Base64DecodeError _decodeError(String context, Object error) => Base64DecodeError(
+  context,
+  error is FormatException ? const FormatException('Invalid base64') : error,
+);
+
 Uint8List _decodeBase64InIsolate(String data) => _decodeBase64Lenient(data);
 
 String _encodeBase64InIsolate(Uint8List data) => base64Url.encode(data);
@@ -20,7 +25,7 @@ Future<Uint8List> _decodeLargeBase64(String data, String label) async {
   try {
     return await compute(_decodeBase64InIsolate, data);
   } catch (e, stackTrace) {
-    Error.throwWithStackTrace(Base64DecodeError(label, e), stackTrace);
+    Error.throwWithStackTrace(_decodeError(label, e), stackTrace);
   }
 }
 
@@ -50,7 +55,7 @@ extension Base64DecodingExtension on String {
     try {
       return _decodeBase64Lenient(this);
     } catch (e, stackTrace) {
-      Error.throwWithStackTrace(Base64DecodeError(context, e), stackTrace);
+      Error.throwWithStackTrace(_decodeError(context, e), stackTrace);
     }
   }
 }
