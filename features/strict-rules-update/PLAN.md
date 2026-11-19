@@ -1,6 +1,6 @@
 # Strict rules update repair
 
-Status: Ready
+Status: Complete
 
 ## Outcome + scope
 
@@ -47,8 +47,8 @@ N/A — no UI change.
 
 ## Verification
 
-Result: Pending
-Evidence: Pending the released check.
+Result: Passed
+Evidence: `python3 .hooks/hard-eng.py check --base origin/main --plan-stage Ready` exits 0 on this branch with the released Hard Eng b0194d77.
 E2E: N/A — no user journey changes.
 Real service: N/A — no changed code calls an outside service.
 Retro: Failed check: the example exclude and the string lint → the exclude is gone and the strings are joined (the released check stays the prevention).
