@@ -10,6 +10,7 @@ analyzer:
   - '**/*.gr.dart'
   - '**/*.arb'
   - build/**
+  - example/**
 plugins:
   flutter_skill_lints: ^0.15.1
 formatter:
