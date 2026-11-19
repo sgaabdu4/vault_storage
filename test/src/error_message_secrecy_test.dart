@@ -15,9 +15,10 @@ const _secret = 'hunter2-secret';
 const _config = VaultStorageConfig();
 const _hint = 'Consider clearing corrupted data.';
 
-String _decodeFailure(String inner, String cause) =>
-    'VaultStorageSerializationError: Failed to decode value (caused by: '
-    'VaultStorageSerializationError: $inner (caused by: FormatException: $cause))';
+String _decodeFailure(String inner, String cause) => [
+  'VaultStorageSerializationError: Failed to decode value (caused by: ',
+  'VaultStorageSerializationError: $inner (caused by: FormatException: $cause))',
+].join();
 
 Future<String> _errorText(Future<Object?> Function() action) async {
   try {
@@ -148,8 +149,10 @@ void main() {
       expect(text, isNot(contains(_secret)));
       expect(
         text,
-        'Base64DecodeError: Failed to decode base64 for encryption key '
-        '(caused by: FormatException: Invalid base64)',
+        [
+          'Base64DecodeError: Failed to decode base64 for encryption key ',
+          '(caused by: FormatException: Invalid base64)',
+        ].join(),
       );
     });
 
@@ -167,8 +170,10 @@ void main() {
       for (final text in [small, large]) {
         expect(
           text,
-          'Base64DecodeError: Failed to decode base64 for x '
-          '(caused by: FormatException: Invalid base64)',
+          [
+            'Base64DecodeError: Failed to decode base64 for x ',
+            '(caused by: FormatException: Invalid base64)',
+          ].join(),
         );
       }
     });
