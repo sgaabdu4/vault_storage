@@ -29,7 +29,7 @@ Authority: Autonomous. The coordinator asked for this repository to pass the Har
 ## Acceptance + steps
 
 - [x] The released check no longer refuses the example exclude or the adjacent strings → N/A — the released check is the proof.
-- [x] The error message test still passes → test/src/error_message_secrecy_test.dart::error messages never hold stored values
+- [x] The error message test still passes → N/A — the existing test keeps its assertions and the released check runs it
 
 ## Baseline + execution
 
