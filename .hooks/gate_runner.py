@@ -20,12 +20,13 @@ from ci_jobs import (
     LanguageFilter,
     add_language_filters,
     add_shard_option,
+    add_walls_command,
     language_filter,
     language_groups,
 )
 from dart_boundaries import validate_dart_boundaries, validate_dart_typing
 from debt import OUTPUTS, remember, ruff_check
-from dependency_graph import SOURCE_SUFFIXES, child_groups
+from dependency_graph import SOURCE_SUFFIXES, biome_children
 from gate_config import (
     Gate,
     Group,
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).resolve().parents[1]
 FAILED_GATES: list[str] = []
+CONFIGURED: list[Group] = []
 CHANGED_DART: dict[str, list[str]] = {}
 RECORDING = threading.Event()
 TEST_REPORTS = {"python-tests", "lcov-tests", "dart-tests", "xcode-tests"}
@@ -72,12 +74,12 @@ def validate_typing(
     directory: Path,
     language: str | None,
     sources: list[str] | tuple[str, ...] = (),
-    package_root: Path | None = None,
+    children: frozenset[str] = frozenset(),
 ) -> None:
     if language == "python":
         validate_pyrefly(directory, ROOT)
     elif language == "dart":
-        validate_dart_typing(directory, sources, package_root)
+        validate_dart_typing(directory, sources, None, children)
 
 
 def reject_test_filters(
@@ -177,7 +179,7 @@ def prepare_command(
         from project_setup import javascript_files
 
         files = javascript_files(
-            ROOT / group["path"], biome_children(group, gate, groups or [])
+            ROOT / group["path"], biome_children(ROOT, group, gate, groups or [])
         )
         if not files:
             return []
@@ -191,7 +193,10 @@ def prepare_command(
     if gate.get("role") == "types":
         directory = ROOT / group["path"]
         language = group.get("language")
-        validate_typing(directory, language, group.get("sources", []))
+        from dart_boundaries import nested_package_patterns
+
+        children = nested_package_patterns(group, CONFIGURED or groups or [])
+        validate_typing(directory, language, group.get("sources", []), children)
         if language == "python":
             from project_setup import python_interpreter
 
@@ -533,9 +538,10 @@ def run_limited_gate(
                     emit_dart_test_failure(result, tests, kind, report_path)
             validate_scanner_log(scanner, log)
         shard_reports(group, gate)
+        unfixed = False
         if scanner and report_path is not None:
             report_args = (gate, report_path, command, directory, timeout)
-            scanner_result(result.returncode == 0, scanner, *report_args)
+            unfixed = scanner_result(result.returncode, scanner, *report_args)
         from process_group import parallel_hint, stopped_note
         from reports import check_coverage, completed_tests
 
@@ -551,13 +557,13 @@ def run_limited_gate(
             check_coverage(coverage_path, kind, directory, expected_sources)
         stop = stopped_note(result.returncode)
         print(
-            f"{'PASS' if result.returncode == 0 else 'FAIL'} {gate['name']} "
+            f"{'PASS' if result.returncode == 0 or unfixed else 'FAIL'} {gate['name']} "
             f"(exit {result.returncode}; elapsed {time.monotonic() - started:.3f}s)"
             f" @ {group['path']}"
             + (stop or parallel_hint(result.returncode, tests, command, report_path)),
             flush=True,
         )
-        return result.returncode != 0
+        return result.returncode != 0 and not unfixed
     except (
         ImportError,
         OSError,
@@ -588,31 +594,6 @@ def check_lock(root: Path) -> Generator[IO[str]]:
         yield lock
 
 
-def biome_children(group: Group, gate: Gate, groups: list[Group]) -> tuple[Path, ...]:
-    command = gate["command"]
-    if (
-        group["path"] != "."
-        or group.get("language") != "javascript"
-        or gate.get("role") not in {"format-lint", "focused-tests", "typing-style"}
-        or gate.get("report")
-        or command[:2] not in (["biome", "ci"], ["biome", "lint"])
-        or "." not in command
-        or any(
-            arg not in {".", "--error-on-warnings"} and not arg.startswith("--only=")
-            for arg in command[2:]
-        )
-    ):
-        return ()
-    return tuple(
-        ROOT / child["path"]
-        for child in child_groups(group, gate.get("role"), groups)
-        if any(
-            check.get("role") == gate.get("role") and check["command"] == command
-            for check in child["checks"]
-        )
-    )
-
-
 def proven_elsewhere(base: str | None, quick: bool = False) -> bool:
     """A merged PR or verified upstream release already proved this change."""
     from update import check_scaffold_update
@@ -632,20 +613,6 @@ def proven_elsewhere(base: str | None, quick: bool = False) -> bool:
     return check_scaffold_update(ROOT, base, sources=not quick)
 
 
-def plan_base(base: str | None, plan_stage: str | None) -> str | None:
-    from shipping import passed_branch_point
-
-    if base is not None or plan_stage is None:
-        return base
-    if point := passed_branch_point(ROOT):
-        print(
-            f"Base-branch commit {point} passed the required CI checks; "
-            "checking only changes since it.",
-            flush=True,
-        )
-    return point
-
-
 def run_gates(groups: list[Group], timeout: float, related: str | None) -> bool | None:
     """Gate chains of separate packages overlap; None when dependency setup failed."""
     from gate_config import parse_config
@@ -654,6 +621,7 @@ def run_gates(groups: list[Group], timeout: float, related: str | None) -> bool 
     output_lock = threading.Lock()
     FAILED_GATES.clear()
     config = parse_config((ROOT / "hard-eng.gates.json").read_text())
+    CONFIGURED[:] = config["packages"]
     return run_checks(
         [(group, gate) for group in groups for gate in group["checks"]],
         lambda group, gate: run_gate(
@@ -676,11 +644,18 @@ def check(
     languages: LanguageFilter = NO_LANGUAGES,
     shard: str | None = None,
 ) -> int:
+    import plans
     from ci_setup import push_base, require_ci_base
     from gate_config import load_groups, parse_config
-    from process_group import clean_start, read_installed, record_pass, save_installed
+    from gate_times import gate_budget
+    from process_group import (
+        ci_edits,
+        clean_start,
+        read_installed,
+        record_pass,
+        save_installed,
+    )
     from reports import quick_groups
-    from shipping import gate_budget
 
     require_ci_base(base)
     base = push_base(ROOT, base)
@@ -707,7 +682,9 @@ def check(
             or shard is not None
         )
         start = clean_start(lock, ROOT, base, plan_stage, partial)
-        groups = load_groups(ROOT, plan_base(base, plan_stage), dependents=dependents)
+        groups = load_groups(
+            ROOT, plans.plan_base(ROOT, base, plan_stage), dependents=dependents
+        )
         groups = quick_groups(language_groups(groups, languages), quick, installed)
         if shard:
             from shards import shard_groups
@@ -718,13 +695,12 @@ def check(
         require_shrink(ROOT, base)
         timeout = timeout or gate_budget(ROOT)
         import change_size
-        import plans
         from comments import validate_comments, validate_suppressions
 
         if verify_plan:
             plan_stage = change_size.judged_stage(ROOT, base, plan_stage)
         validate_comments(ROOT, base)
-        validate_suppressions(ROOT, base)
+        validate_suppressions(ROOT, base, screens=shard != "merge")
         plans.validate_records(ROOT, base)
         before_gates(groups, quick, base)
         stop_keeping("listings")
@@ -736,6 +712,7 @@ def check(
         failed |= verify_plan and change_size.plan_skips(
             ROOT, base, groups, int(started)
         )
+        failed |= not quick and ci_edits(ROOT, base)
         plans.report_stage(failed, plan_stage, FAILED_GATES, quick)
         record_pass(lock, ROOT, start, failed)
         if shard:
@@ -783,6 +760,10 @@ def deliver(args: "Namespace") -> int:
         from hot_paths import scan_all
 
         return scan_all(ROOT, paths=args.paths)
+    if args.command == "text-walls":
+        from text_walls import walls_command
+
+        return walls_command(ROOT, args.paths, args.stdin)
     if args.command == "gap-issue":
         from gap_issue import file_gap
 
@@ -800,7 +781,7 @@ def adopt() -> int:
     """Record the findings the existing code fails with as shrink-only debt."""
     from debt import record, settled_run
     from gate_config import load_groups
-    from shipping import gate_budget
+    from gate_times import gate_budget
     from tool_setup import ensure_python_runtime
 
     ensure_python_runtime()
@@ -823,6 +804,11 @@ def check_command(args: "Namespace") -> int:
     if args.shard != "merge":
         ensure_python_runtime()
     exit_when_stopped()
+    if args.commit_secrets:
+        from gate_times import gate_budget
+        from gitleaks_scan import commit_secret_scan
+
+        return commit_secret_scan(ROOT, args.base, gate_budget(ROOT))
     return check(
         base=args.base,
         plan_stage=args.plan_stage,
@@ -867,6 +853,11 @@ def main() -> int:
         action="store_true",
         help="Run only format, lint, types and the file secret scan; the Stop hook uses it",
     )
+    checks.add_argument(
+        "--commit-secrets",
+        action="store_true",
+        help="Run only the secret scan of the commits since --base; pre-push uses it when CI runs the full check",
+    )
     impacts = add_language_filters(
         commands.add_parser(
             "impact",
@@ -888,6 +879,7 @@ def main() -> int:
         "hot-paths",
         help="List known slow patterns in the named files, else the whole repository",
     ).add_argument("paths", nargs="*")
+    add_walls_command(commands.add_parser)
     mutating = commands.add_parser(
         "mutation",
         help="Report changed lines whose tests miss small deliberate bugs",
@@ -960,6 +952,7 @@ def main() -> int:
         "gap-issue",
         "ci-usage",
         "hot-paths",
+        "text-walls",
     }:
         return deliver(args)
     from agent_hooks import handle_event

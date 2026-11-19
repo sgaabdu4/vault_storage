@@ -7,13 +7,15 @@ import tempfile
 from pathlib import Path
 from typing import IO
 
+from gate_config import Group
 from process_group import run_in_group
+from project_files import GIT_LISTING
 
 
 def scan_paths(repository: Path) -> list[Path]:
     """Return tracked files plus nonignored working-tree files that still exist."""
     result = subprocess.run(
-        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        [*GIT_LISTING, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=repository,
         check=True,
         capture_output=True,
@@ -331,3 +333,28 @@ def zizmor_config(directory: Path, temporary: Path) -> str:
     path = temporary / "zizmor.yml"
     path.write_text(yaml.safe_dump(config))
     return str(path)
+
+
+def commit_secret_scan(root: Path, base: str | None, timeout: float) -> int:
+    """Only the secret scan of the commits since base: the part of a push that CI cannot do, as it starts after the push."""
+    from ci_setup import push_base, require_ci_base
+    from gate_config import load_groups
+    from gate_runner import run_gates
+    from tool_setup import provision_tools
+
+    require_ci_base(base)
+    base = push_base(root, base)
+    groups: list[Group] = [
+        {
+            **group,
+            "checks": [
+                g for g in group["checks"] if g.get("role") == "secrets-history"
+            ],
+        }
+        for group in load_groups(root, base)
+    ]
+    if not any(group["checks"] for group in groups):
+        print("Hard Eng: the commit secret scan did not run; no secrets-history gate.")
+        return 1
+    provision_tools(root, groups, timeout)
+    return int(run_gates(groups, timeout, None) is not False)

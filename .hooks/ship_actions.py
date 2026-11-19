@@ -16,18 +16,26 @@ from xml.parsers.expat import ExpatError
 
 from challenge import shipping_note
 from gate_config import Group
-from process_group import exit_when_stopped, passed_minutes, passed_note
+from process_group import (
+    exit_when_stopped,
+    passed_minutes,
+    passed_note,
+    policy_at,
+    report_gate_edits,
+)
 from shipping import (
     PendingCheck,
     Shipment,
     ShippingError,
+    ShippingPolicy,
+    _compare,
     _pr_url,
     _pull,
     gh,
     git,
     load_policy,
+    merge_settings,
     pushed_policy,
-    rebase_step,
     verify,
 )
 from submodules import update_submodules
@@ -38,6 +46,60 @@ OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 GITHUB_SSH_PREFIX = re.compile(r"(?:ssh://)?git@github\.com[:/]")
 
 DERIVED_DATA = Path.home() / "Library/Developer/Xcode/DerivedData"
+
+
+def rebase_step(base: str) -> str:
+    return (
+        f"GitHub cannot rebase this PR onto {base}, so nothing was merged. "
+        f"Rebase the branch on origin/{base} and push it with --force-with-lease. "
+        "If GitHub still cannot rebase it, cut its commits (HE-PR-COMMITS). "
+        "Then wait for the checks and run ship again."
+    )
+
+
+def _stale_rebase_report(root: Path, repository: str, base: str, head: str) -> bool:
+    """True when the branch is current with base and has no merge commit."""
+    try:
+        comparison = _compare(root, repository, base, head)
+    except ShippingError:
+        return False
+    commits = comparison.get("commits")
+    return (
+        type(comparison.get("behind_by")) is int
+        and comparison["behind_by"] == 0
+        and isinstance(commits, list)
+        and comparison.get("total_commits") == len(commits)
+        and all(
+            isinstance(commit, dict)
+            and isinstance(commit.get("parents"), list)
+            and len(commit["parents"]) <= 1
+            for commit in commits
+        )
+    )
+
+
+def rebase_problem(root: Path, repository: str, base: str, head: str) -> str:
+    try:
+        allowed = merge_settings(root, repository, ("rebaseMergeAllowed",)).get(
+            "rebaseMergeAllowed"
+        )
+    except ShippingError:
+        return rebase_step(base)
+    if allowed is not False:
+        if _stale_rebase_report(root, repository, base, head):
+            return (
+                f"GitHub reports that it cannot rebase this PR onto {base}, but the "
+                f"branch is current with {base} and has no merge commit, so that "
+                "report can be stale. Close the pull request and open it again, wait "
+                "for the checks, then run ship again. If GitHub still cannot rebase "
+                "it, cut its commits (HE-PR-COMMITS)."
+            )
+        return rebase_step(base)
+    return (
+        "This repository does not allow rebase merges, and Hard Eng merges by "
+        "rebase only, so nothing was merged. Allow rebase merges in the "
+        "repository settings, then run ship again."
+    )
 
 
 def remote_base(root: Path, branch: str | None) -> str | None:
@@ -304,6 +366,62 @@ def push_check(runner: str, base: str | None, quick: bool) -> list[str]:
     return ["check", *(["--base", base, *narrow] if base else [])]
 
 
+def warn_ssh(root: Path) -> None:
+    with suppress(ShippingError):
+        if GITHUB_SSH_PREFIX.match(git(root, "remote", "get-url", "--push", "origin")):
+            print(
+                "Hard Eng: origin pushes to GitHub over SSH, which can drop the idle "
+                "connection while these checks run (push exit 141 after they pass). "
+                "Switch to HTTPS: git remote set-url origin https://github.com/<owner>/<repo>.git",
+                flush=True,
+            )
+
+
+def base_leaves_checks_to_ci(root: Path, policy: ShippingPolicy) -> bool:
+    """True only when the remote base tip's own policy also says "ci" for this base; the pushed commit cannot switch itself on."""
+    if policy["pre_push_checks"] != "ci":
+        return False
+    try:
+        tip = remote_base(root, policy["base"])
+    except (ShippingError, ValueError):
+        return False
+    held = None if tip is None else policy_at(root, tip)
+    return (
+        held is not None
+        and held["pre_push_checks"] == "ci"
+        and held["base"] == policy["base"]
+    )
+
+
+def push_checks(
+    checkout: Path,
+    environment: dict[str, str],
+    base: str | None,
+    policy: ShippingPolicy,
+    ci: bool,
+    passed: bool,
+) -> int:
+    """The checks of one pushed revision; CI runs the full check when the base leaves it there, so only the commit secret scan stays."""
+    if ci:
+        scan = ["check", "--commit-secrets", *(["--base", base] if base else [])]
+        if returncode := run_hard_eng(checkout, scan, environment):
+            return returncode
+        print(
+            'Hard Eng: the full check is left to CI (shipping pre_push_checks "ci"); '
+            "the pushed commits passed the secret scan.",
+            flush=True,
+        )
+        # Mutation runs on installed dependencies, which the quick check installs.
+        if base is None or not policy["pre_push_mutation_seconds"]:
+            return 0
+        check = push_check("", base, True)
+    else:
+        check = push_check(runner_text(checkout), base, passed)
+    if returncode := run_hard_eng(checkout, check, environment):
+        return returncode
+    return int(report_gate_edits(checkout, environment))
+
+
 def pre_push(root: Path) -> int:
     exit_when_stopped()
     started, mutating = time.monotonic(), 0.0
@@ -324,37 +442,14 @@ def pre_push(root: Path) -> int:
         passed = spared(root, revision, base)
         if passed and not policy["pre_push_mutation_seconds"]:
             continue
-        with suppress(ShippingError):
-            if GITHUB_SSH_PREFIX.match(
-                git(root, "remote", "get-url", "--push", "origin")
-            ):
-                print(
-                    "Hard Eng: origin pushes to GitHub over SSH, which can drop the idle "
-                    "connection while these checks run (push exit 141 after they pass). "
-                    "Switch to HTTPS: git remote set-url origin https://github.com/<owner>/<repo>.git",
-                    flush=True,
-                )
+        warn_ssh(root)
         environment = snapshot_environment(root)
+        ci = base_leaves_checks_to_ci(root, policy)
         with snapshot(root, revision, environment) as checkout:
-            check = push_check(runner_text(checkout), base, passed)
-            if returncode := run_hard_eng(checkout, check, environment):
+            if returncode := push_checks(
+                checkout, environment, base, policy, ci, passed
+            ):
                 return returncode
-            changed = subprocess.run(
-                ["git", "diff", "--name-only"],
-                cwd=checkout,
-                env=environment,
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.split()
-            if changed:
-                print(
-                    "Hard Eng: a gate changed pushed files: "
-                    + ", ".join(changed)
-                    + ". The push differs from what passed; apply the change, commit it and push again.",
-                    flush=True,
-                )
-                return 1
             if base is not None and (limit := policy["pre_push_mutation_seconds"]):
                 began = time.monotonic()
                 arguments = ["mutation", "--base", base, "--in-place"]
@@ -543,7 +638,11 @@ def merge(target: Path, plan: Path | None, shipment: Shipment, method: str) -> S
         )
     except ShippingError as failure:
         if _pull(target, *_pr_url(shipment.pr_url)).rebaseable is False:
-            raise ShippingError(rebase_step(shipment.base)) from failure
+            raise ShippingError(
+                rebase_problem(
+                    target, shipment.repository, shipment.base, shipment.head_sha
+                )
+            ) from failure
         raise
     try:
         return verify(target, plan, shipment.pr_url, "delivered")
