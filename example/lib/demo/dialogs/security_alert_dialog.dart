@@ -1,3 +1,5 @@
+import 'package:example/core/widgets/app_dialog.dart';
+import 'package:example/core/widgets/app_text_button.dart';
 import 'package:example/design/spacing.dart';
 import 'package:example/l10n/app_localizations.g.dart';
 import 'package:material_ui/material_ui.dart';
@@ -18,8 +20,8 @@ class SecurityAlertDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return AlertDialog.adaptive(
-      title: Text(l10n.securityAlertTitle),
+    return AppDialog.adaptive(
+      title: l10n.securityAlertTitle,
       content: Column(
         mainAxisSize: .min,
         crossAxisAlignment: .start,
@@ -35,7 +37,7 @@ class SecurityAlertDialog extends StatelessWidget {
           Text(l10n.securityFunctionalityLimited),
         ],
       ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.ok))],
+      actions: [AppTextButton(onPressed: () => Navigator.of(context).pop(), label: l10n.ok)],
     );
   }
 }
