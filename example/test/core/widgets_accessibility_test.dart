@@ -100,6 +100,11 @@ void main() {
     await tester.tap(find.byType(AppElevatedButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(SecurityAlertDialog), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == 'CupertinoAlertDialog'),
+      findsOneWidget,
+    );
     await _expectGuidelines(tester);
   });
 }
