@@ -36,7 +36,7 @@ Authority: Autonomous. Maintainer's 2026-11-22 UI Single Source of Truth rollout
 
 - [x] `analysis_options.yaml` and `example/analysis_options.yaml` pin `flutter_skill_lints: ^0.16.0` with zero analyzer issues → N/A — `dart analyze --fatal-infos .` in root and `example/` passes with zero issues.
 - [x] All 14 raw Material control calls in `example/lib/demo/` route through `example/lib/core/widgets/` with zero `b5` hits → N/A — `b5` `ui_whole.ui_findings_whole` reports `0` findings for `["example/lib/core/widgets/**"]`.
-- [x] Changed example widgets and dialogs pass all four Flutter accessibility guidelines and preserve identical rendered output → `example/test/core/widgets_accessibility_test.dart::shared controls meet contrast and tap-target guidelines` and `example/test/core/widgets_accessibility_test.dart::demo dialogs meet contrast and tap-target guidelines` pass all four `meetsGuideline` checks and before/after web captures match byte for byte at 390, 768, and 1280 px.
+- [x] Changed example widgets and dialogs pass all four Flutter accessibility guidelines (including adaptive Cupertino iOS security alert), dropdown stored-key selection retrieves saved values, and loaded web captures match byte for byte at 390, 768, and 1280 px → `example/test/core/widgets_accessibility_test.dart::shared controls meet contrast and tap-target guidelines`, `example/test/core/widgets_accessibility_test.dart::demo dialogs meet contrast and tap-target guidelines`, `example/test/core/widgets_accessibility_test.dart::adaptive security alert meets iOS guidelines through its route`, and `example/test/app/my_app_test.dart::selecting a stored key from the dropdown retrieves its value` plus loaded non-blank before/after web captures at 390, 768, and 1280 px and open dialog captures.
 
 ## Baseline + execution
 
@@ -55,8 +55,8 @@ N/A — unchanged: ![Before](.hard-eng/browser/before-1280.png) ![After](.hard-e
 ## Verification
 
 Result: Passed
-Evidence: `dart analyze --fatal-infos .` passed in root and `example/` with `0` issues; `b5` whole-project UI single-source scan returned `0` hits for `["example/lib/core/widgets/**"]`; `flutter test` passed all example tests including `example/test/core/widgets_accessibility_test.dart`; before (`origin/main`) and after (`HEAD`) web captures matched byte for byte at 390, 768, and 1280 px; full `python3 .hooks/hard-eng.py check --base origin/main --plan-stage Complete` passed.
-E2E: Passed — built and served the real Flutter web example for `origin/main` and `HEAD`, captured 390, 768, and 1280 px via `hard-eng.py browser capture` (byte-identical), and ran `example/test/app/my_app_test.dart` covering save/retrieve/delete/clear/storage-location flows.
+Evidence: `dart analyze --fatal-infos .` passed in root and `example/` with `0` issues; `b5` whole-project UI single-source scan returned `0` hits for `["example/lib/core/widgets/**"]`; `flutter test` passed all example tests including `example/test/core/widgets_accessibility_test.dart` (Material controls, all six demo dialogs, and iOS adaptive Cupertino `SecurityAlertDialog`) and `example/test/app/my_app_test.dart` (including selecting stored keys via `AppDropdownField`); loaded non-blank before (`origin/main`) and after (`HEAD`) web captures matched byte for byte at 390, 768, and 1280 px (plus open dialog captures); full `python3 .hooks/hard-eng.py check --base origin/main --plan-stage Complete` passed.
+E2E: Passed — built and served the real Flutter web example for `origin/main` and `HEAD`, waited for Flutter rendering, captured non-blank 390, 768, and 1280 px home and open-dialog screens via `hard-eng.py browser measure` (byte-identical), and ran `example/test/app/my_app_test.dart` covering save/retrieve/dropdown-select/delete/clear/storage-location flows.
 Real service: N/A — local storage package and example UI make no outside service calls.
 Retro: None — clean refactor with no recurring failures.
 Delivery target: Merge

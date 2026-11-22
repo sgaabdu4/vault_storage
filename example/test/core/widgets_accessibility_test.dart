@@ -15,8 +15,8 @@ import 'package:example/l10n/app_localizations.g.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-Widget _app(Widget child) => MaterialApp(
-  theme: buildAppTheme(),
+Widget _app(Widget child, {TargetPlatform? platform}) => MaterialApp(
+  theme: platform == null ? buildAppTheme() : buildAppTheme().copyWith(platform: platform),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: Scaffold(body: Center(child: child)),
@@ -83,5 +83,23 @@ void main() {
       await tester.pumpWidget(_app(dialog));
       await _expectGuidelines(tester);
     }
+  });
+
+  testWidgets('adaptive security alert meets iOS guidelines through its route', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) => AppElevatedButton(
+            label: 'Show alert',
+            onPressed: () => SecurityAlertDialog.show(context, threats: const ['Root detected']),
+          ),
+        ),
+        platform: .iOS,
+      ),
+    );
+    await tester.tap(find.byType(AppElevatedButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await _expectGuidelines(tester);
   });
 }

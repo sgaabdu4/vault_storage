@@ -1,7 +1,7 @@
 ---
 name: Vault Storage
 colors:
-  primary: "#2196f3"
+  primary: "#6750a4"
   success: "#4caf50"
   failure: "#f44336"
 ---

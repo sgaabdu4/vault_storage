@@ -1,7 +1,9 @@
+import 'package:example/core/widgets/app_dropdown_field.dart';
 import 'package:example/demo/demo_keys.dart';
 import 'package:example/demo/storage_kind.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'demo_harness.dart';
 
@@ -102,4 +104,26 @@ void main() {
       expect(find.text('Key not found'), findsOneWidget);
     });
   }
+
+  testWidgets('selecting a stored key from the dropdown retrieves its value', (tester) async {
+    addTearDown(() => demo.close(tester));
+    await demo.start(tester);
+    await demo.tapButton(tester, DemoKeys.saveValue(.normal));
+    await tester.enterText(find.byKey(DemoKeys.keyField), 'dropdown-key');
+    await tester.enterText(find.byKey(DemoKeys.valueField), 'dropdown-value');
+    await demo.submit(tester, 'Normal value saved successfully!');
+
+    await demo.tapButton(tester, DemoKeys.getValue(.normal));
+    await tester.tap(find.byType(AppDropdownField));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final menuItem = find.byWidgetPredicate(
+      (w) => w is DropdownMenuItem<String> && w.value == 'dropdown-key',
+    );
+    await tester.tap(find.ancestor(of: menuItem.last, matching: find.byType(InkWell)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await demo.submit(tester, 'Value: dropdown-value');
+    expect(find.text('Value: dropdown-value'), findsOneWidget);
+  });
 }
