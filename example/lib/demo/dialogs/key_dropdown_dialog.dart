@@ -1,3 +1,5 @@
+import 'package:example/core/widgets/app_dropdown_field.dart';
+import 'package:example/core/widgets/app_text_field.dart';
 import 'package:example/demo/demo_keys.dart';
 import 'package:example/demo/dialogs/confirm_dialog.dart';
 import 'package:example/design/spacing.dart';
@@ -63,10 +65,8 @@ class _KeyDropdownDialogState extends State<KeyDropdownDialog> {
         mainAxisSize: .min,
         spacing: Spacing.lg,
         children: [
-          DropdownButtonFormField<String>(
-            decoration: InputDecoration(
-              labelText: hasKeys ? l10n.selectFromKeys : l10n.noKeysAvailable,
-            ),
+          AppDropdownField(
+            labelText: hasKeys ? l10n.selectFromKeys : l10n.noKeysAvailable,
             initialValue: _selectedKey,
             items: [
               if (hasKeys)
@@ -77,10 +77,10 @@ class _KeyDropdownDialogState extends State<KeyDropdownDialog> {
             onChanged: hasKeys ? _select : null,
           ),
           Text(l10n.orSeparator, style: Theme.of(context).textTheme.titleSmall),
-          TextField(
+          AppTextField(
             key: DemoKeys.textInputField,
             controller: _controller,
-            decoration: InputDecoration(labelText: widget.label),
+            labelText: widget.label,
             onChanged: _clearSelection,
           ),
         ],

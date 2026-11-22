@@ -1,8 +1,16 @@
+---
+name: Vault Storage
+colors:
+  primary: "#2196f3"
+  success: "#4caf50"
+  failure: "#f44336"
+---
+
 # Vault Storage Design
 
 ## Overview
 
-`VaultStorage` exposes `IVaultStorage`. `VaultStorageImpl` coordinates Hive boxes, key-value serialization, file metadata and optional mobile security checks. Consumers use the public library exports.
+`VaultStorage` exposes `IVaultStorage`. `VaultStorageImpl` coordinates Hive boxes, key-value serialization, file metadata and optional mobile security checks. Consumers use the public library exports. Shared example controls are listed in [UI-LIBRARY.md](UI-LIBRARY.md).
 
 ## Components
 

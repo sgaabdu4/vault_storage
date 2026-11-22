@@ -12,7 +12,7 @@ analyzer:
   - build/**
   - example/**
 plugins:
-  flutter_skill_lints: ^0.15.1
+  flutter_skill_lints: ^0.16.0
 formatter:
   page_width: 100
 linter:

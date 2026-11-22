@@ -1,3 +1,5 @@
+import 'package:example/core/widgets/app_dialog.dart';
+import 'package:example/core/widgets/app_text_button.dart';
 import 'package:example/demo/demo_keys.dart';
 import 'package:example/l10n/app_localizations.g.dart';
 import 'package:flutter/services.dart';
@@ -58,19 +60,19 @@ class StorageLocationDialog extends StatelessWidget {
         Text(l10n.storageKeyFileSaveFirst),
       ],
     ];
-    return AlertDialog(
-      title: Text(l10n.storageLocationTitle),
+    return AppDialog(
+      title: l10n.storageLocationTitle,
       content: SingleChildScrollView(child: ListBody(children: lines)),
       actions: [
-        TextButton(
+        AppTextButton(
           key: DemoKeys.copyPath,
           onPressed: () => _copyPath(context),
-          child: Text(l10n.copyPath),
+          label: l10n.copyPath,
         ),
-        TextButton(
+        AppTextButton(
           key: DemoKeys.closeDialog,
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.close),
+          label: l10n.close,
         ),
       ],
     );

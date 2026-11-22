@@ -1,3 +1,4 @@
+import 'package:example/core/widgets/app_elevated_button.dart';
 import 'package:example/design/spacing.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -16,6 +17,6 @@ class DemoButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const .symmetric(vertical: Spacing.xs),
-    child: ElevatedButton(onPressed: enabled ? onPressed : null, child: Text(label)),
+    child: AppElevatedButton(label: label, onPressed: enabled ? onPressed : null),
   );
 }

@@ -1,3 +1,4 @@
+import 'package:example/core/widgets/app_text_field.dart';
 import 'package:example/demo/demo_keys.dart';
 import 'package:example/demo/dialogs/confirm_dialog.dart';
 import 'package:example/design/spacing.dart';
@@ -42,15 +43,15 @@ class _KeyValueDialogState extends State<KeyValueDialog> {
         mainAxisSize: .min,
         spacing: Spacing.lg,
         children: [
-          TextField(
+          AppTextField(
             key: DemoKeys.keyField,
             controller: _keyController,
-            decoration: InputDecoration(labelText: l10n.fieldKey),
+            labelText: l10n.fieldKey,
           ),
-          TextField(
+          AppTextField(
             key: DemoKeys.valueField,
             controller: _valueController,
-            decoration: InputDecoration(labelText: l10n.fieldValue),
+            labelText: l10n.fieldValue,
           ),
         ],
       ),

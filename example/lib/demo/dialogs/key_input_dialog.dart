@@ -1,3 +1,4 @@
+import 'package:example/core/widgets/app_text_field.dart';
 import 'package:example/demo/demo_keys.dart';
 import 'package:example/demo/dialogs/confirm_dialog.dart';
 import 'package:material_ui/material_ui.dart';
@@ -34,10 +35,10 @@ class _KeyInputDialogState extends State<KeyInputDialog> {
   @override
   Widget build(BuildContext context) => ConfirmDialog<String>(
     title: widget.title,
-    content: TextField(
+    content: AppTextField(
       key: DemoKeys.textInputField,
       controller: _controller,
-      decoration: InputDecoration(labelText: widget.label),
+      labelText: widget.label,
     ),
     result: () => _controller.text,
   );
